@@ -14,7 +14,7 @@ using WarLeague.Discord.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-// Configuration
+// Configuration.
 var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development";
 builder.Configuration
     .SetBasePath(Directory.GetCurrentDirectory())
