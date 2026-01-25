@@ -66,5 +66,12 @@ namespace WarLeague.Core.Repositories
                 .Where(s => s.Format.Id == formatId)
                .SingleAsync(s => s.Active);
         }
+
+        public async Task<Season> GetSingleActiveSeasonByFormatNameAsync(string formatName)
+        {
+            return await _context.Seasons
+               .Where(s => s.Format.Name == formatName)
+              .SingleAsync(s => s.Active);
+        }
     }
 }

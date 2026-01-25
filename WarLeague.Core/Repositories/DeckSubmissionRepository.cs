@@ -40,7 +40,6 @@ public class DeckSubmissionRepository
     {
         return await _context.DeckSubmissions
             .Include(d => d.Player)
-            .Where(d => d.Player.TeamId == teamId && d.WeekId == weekId)
             .ToListAsync();
     }
 

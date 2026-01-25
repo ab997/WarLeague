@@ -22,7 +22,7 @@ namespace WarLeague.Discord.Commands
         [SlashCommand("create", "Creates a new season")]
         public async Task CreateAsync(int seasonNumber)
         {
-            await DeferAsync(ephemeral: true);
+            await DeferAsync(ephemeral: false);
 
             Format format = await _helperService.GetFormatByCategoryNameAsync(Context);
 
@@ -47,7 +47,7 @@ namespace WarLeague.Discord.Commands
         [SlashCommand("delete", "Deletes a season")]
         public async Task DeleteAsync(int seasonNumber)
         {
-            await DeferAsync(ephemeral: true);
+            await DeferAsync(ephemeral: false);
 
             Format format = await _helperService.GetFormatByCategoryNameAsync(Context);
 
@@ -65,7 +65,7 @@ namespace WarLeague.Discord.Commands
         [SlashCommand("set-active", "Sets a season to active (all other to inactive)")]
         public async Task SetActive(int seasonNumber)
         {
-            await DeferAsync(ephemeral: true);
+            await DeferAsync(ephemeral: false);
 
             Format format = await _helperService.GetFormatByCategoryNameAsync(Context);
 

@@ -6,7 +6,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using WarLeague.Core.Data;
-using WarLeague.Core.Domain.Services;
 using WarLeague.Core.Repositories;
 using WarLeague.Discord.HostedService;
 using WarLeague.Discord.Roles;
@@ -47,18 +46,11 @@ builder.Services.AddScoped<FormatRepository>();
 builder.Services.AddScoped<SeasonRepository>();
 
 // Services
-builder.Services.AddScoped<TeamService>();
-builder.Services.AddScoped<MatchService>();
-builder.Services.AddScoped<WeekService>();
-builder.Services.AddScoped<DeckSubmissionService>();
-builder.Services.AddScoped<StandingsService>();
 builder.Services.AddScoped<HelperService>();
 
 // Discord services
 builder.Services.AddSingleton(discordClient);
 builder.Services.AddSingleton(interactionService);
-builder.Services.AddScoped<PermissionService>();
-builder.Services.AddSingleton<MessageService>();
 builder.Services.AddSingleton<FileValidationService>();
 builder.Services.Configure<DiscordRoleMappings>(builder.Configuration.GetSection("DiscordRoleMappings"));
 builder.Services.AddSingleton<DiscordRoleMapper>();

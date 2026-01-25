@@ -6,11 +6,6 @@ public class Player
 {
     public int Id { get; set; }
     public ulong DiscordUserId { get; set; }
-    public string DiscordUsername { get; set; } = string.Empty;
-    public int? TeamId { get; set; }
-    public Team? Team { get; set; }
-    public Role Role { get; set; } = Role.Player;
-    public bool IsActive { get; set; } = true;
     public IEnumerable<Match> MatchesAsPlayer1 { get; set; } = new List<Match>();
     public IEnumerable<Match> MatchesAsPlayer2 { get; set; } = new List<Match>();
     public IEnumerable<Match> MatchesWon { get; set; } = new List<Match>();

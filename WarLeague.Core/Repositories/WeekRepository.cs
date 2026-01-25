@@ -68,4 +68,11 @@ public class WeekRepository
         _context.Weeks.Update(week);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<Week?> GetByWeekNumberAndSeasonAsync(int weekNumber, int id)
+    {
+        return await _context.Weeks
+            .Where(w => w.SeasonId == id)
+            .SingleOrDefaultAsync(w => w.WeekNumber == weekNumber);
+    }
 }
