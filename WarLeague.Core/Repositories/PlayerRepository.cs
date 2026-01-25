@@ -13,5 +13,15 @@ public class PlayerRepository
         _context = context;
     }
 
-    
+    public async Task AddAsync(Player player)
+    {
+        _context.Players.Add(player);
+        await _context.SaveChangesAsync();
+    }
+
+    public Player? GetByDiscordUserId(ulong userId)
+    {
+        return _context.Players
+            .SingleOrDefault(p => p.DiscordUserId == userId);
+    }
 }

@@ -13,8 +13,8 @@ namespace WarLeague.Discord.Commands
     public class SeasonCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly SeasonRepository _seasonRepository;
-        private readonly HelperService _helperService;
-        public SeasonCommands(SeasonRepository seasonRepository, HelperService helperService)
+        private readonly DiscordApiHelperService _helperService;
+        public SeasonCommands(SeasonRepository seasonRepository, DiscordApiHelperService helperService)
         {
             _seasonRepository = seasonRepository;
             _helperService = helperService;

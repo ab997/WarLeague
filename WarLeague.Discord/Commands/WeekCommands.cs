@@ -15,8 +15,8 @@ namespace WarLeague.Discord.Commands
     public class WeekCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly WeekRepository _weekRepository;
-        private readonly HelperService _helperService;
-        public WeekCommands(WeekRepository weekRepository, HelperService helperService)
+        private readonly DiscordApiHelperService _helperService;
+        public WeekCommands(WeekRepository weekRepository, DiscordApiHelperService helperService)
         {
             _weekRepository = weekRepository;
             _helperService = helperService;
