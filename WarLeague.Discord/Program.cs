@@ -14,14 +14,13 @@ using WarLeague.Discord.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-// Configuration
+// Configuration.
 var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development";
 builder.Configuration
     .SetBasePath(Directory.GetCurrentDirectory())
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
-    .AddUserSecrets<Program>() // For development - stores secrets in user profile, not in project
-    .AddEnvironmentVariables(); // For production - use environment variables
+    ;
 
 // Discord client
 var discordConfig = new DiscordSocketConfig
