@@ -14,14 +14,10 @@ namespace WarLeague.Discord.Commands
     [EnsureChannelIsInFormatCategory]
     public class WeekCommands : InteractionModuleBase<SocketInteractionContext>
     {
-        private readonly FormatRepository _formatRepository;
-        private readonly SeasonRepository _seasonRepository;
         private readonly WeekRepository _weekRepository;
         private readonly HelperService _helperService;
-        public WeekCommands(SeasonRepository seasonRepository, FormatRepository formatRepository, WeekRepository weekRepository, HelperService helperService)
+        public WeekCommands(WeekRepository weekRepository, HelperService helperService)
         {
-            _seasonRepository = seasonRepository;
-            _formatRepository = formatRepository;
             _weekRepository = weekRepository;
             _helperService = helperService;
         }
@@ -34,7 +30,9 @@ namespace WarLeague.Discord.Commands
         {
             await DeferAsync(ephemeral: true);
 
-            Week? week = await _weekRepository.GetByWeekNumberAsync(weekNumber);
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+            Week? week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, season.Id);
 
             if (week != null)
             {
@@ -46,13 +44,9 @@ namespace WarLeague.Discord.Commands
                 !DateTime.TryParse(endDateStr, out var endDate) ||
                 !DateTime.TryParse(subCloseDateStr, out var subCloseDate))
             {
-                await RespondAsync("Invalid date format. Use YYYY-MM-DD.", ephemeral: true);
+                await FollowupAsync("Invalid date format. Use YYYY-MM-DD.", ephemeral: true);
                 return;
             }
-
-            Format format = await _helperService.GetFormatByCategoryNameAsync(Context);
-
-            Season season = await _seasonRepository.GetSingleActiveSeasonByFormatAsync(format.Id);
 
             Week weekNew = new Week
             {
