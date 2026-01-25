@@ -219,6 +219,57 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         await transaction.CommitAsync();
     }
 
+    [SlashCommand("drop-member", "Removes a member from your team (captain only)")]
+    public async Task DropMemberAsync(
+       [Summary("member", "User to remove")] IUser user)
+    {
+        await DeferAsync(ephemeral: false);
+
+        using var transaction = await _context.Database.BeginTransactionAsync();
+
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+        // Ensure caller is a player
+        Player caller = await _playerService.EnsurePlayerExistsAsync(Context.User);
+
+        // Find the team where caller is captain for the current season
+        Team? team = await _teamRepository.GetByCaptainAndSeasonAsync(caller.Id, season.Id);
+        if (team == null)
+        {
+            await FollowupAsync("You are not the captain of any team for the current season.");
+            return;
+        }
+
+        // Ensure target player exists
+        Player targetPlayer = await _playerService.EnsurePlayerExistsAsync(user);
+
+        // Prevent dropping the captain
+        if (team.CaptainId == targetPlayer.Id)
+        {
+            await FollowupAsync("The team captain cannot be removed. Transfer captainship first if needed.");
+            return;
+        }
+
+        // Ensure the user is a member of this team in the current season
+        PlayerSeasonTeam? pst =
+            await _playerSeasonTeamRepository.GetByPlayerSeasonAndTeamAsync(
+                targetPlayer.Id,
+                season.Id,
+                team.Id);
+
+        if (pst == null)
+        {
+            await FollowupAsync($"{user.Mention} is not a member of your team '{team.Name}'.");
+            return;
+        }
+
+        await _playerSeasonTeamRepository.DeleteAsync(pst);
+
+        await transaction.CommitAsync();
+
+        await FollowupAsync($"Removed {user.Mention} from your team '{team.Name}'.");
+    }
+
     [SlashCommand("admin-add-member", "Adds a member to any team (Admin only)")]
     public async Task AdminAddMemberAsync(
       [Summary("team-name", "Name of the team")] string teamName,
@@ -265,6 +316,49 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         await FollowupAsync($"Added {user.Mention} to team '{teamName}'.");
 
         await transaction.CommitAsync();
+    }
+    [SlashCommand("admin-drop-member", "Removes a member from any team (Admin only)")]
+    public async Task AdminDropMemberAsync(
+      [Summary("member", "User to remove")] IUser user)
+    {
+        await DeferAsync(ephemeral: false);
+
+        if (!_helperService.IsUserAdmin(Context))
+        {
+            await FollowupAsync("Only Admins can use this command.");
+            return;
+        }
+
+        using var transaction = await _context.Database.BeginTransactionAsync();
+
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+        // Ensure target player exists
+        Player targetPlayer = await _playerService.EnsurePlayerExistsAsync(user);
+
+        // Ensure the player has a membership in the current season
+        PlayerSeasonTeam? pst =
+            await _playerSeasonTeamRepository.GetByPlayerAndSeasonAsync(targetPlayer.Id, season.Id);
+
+        if (pst == null)
+        {
+            await FollowupAsync($"{user.Mention} is not a member of any team for the current season.");
+            return;
+        }
+
+        // Prevent dropping captains
+        bool isCaptain = !await _playerSeasonTeamRepository.EnsurePlayerIsNotCaptainOfTeamInSeasonAsync(targetPlayer.Id, season.Id);
+        if (isCaptain)
+        {
+            await FollowupAsync("Captains cannot be removed. Transfer captainship first if needed.");
+            return;
+        }
+
+        await _playerSeasonTeamRepository.DeleteAsync(pst);
+
+        await transaction.CommitAsync();
+
+        await FollowupAsync($"Removed {user.Mention} from team '{pst.Team.Name}'.");
     }
 
     [SlashCommand("admin-transfer-member", "Transfers a member to another team (Admin only)")]
