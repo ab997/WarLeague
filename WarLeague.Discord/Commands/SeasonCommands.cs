@@ -13,8 +13,8 @@ namespace WarLeague.Discord.Commands
     public class SeasonCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly SeasonRepository _seasonRepository;
-        private readonly HelperService _helperService;
-        public SeasonCommands(SeasonRepository seasonRepository, HelperService helperService)
+        private readonly DiscordApiHelperService _helperService;
+        public SeasonCommands(SeasonRepository seasonRepository, DiscordApiHelperService helperService)
         {
             _seasonRepository = seasonRepository;
             _helperService = helperService;
@@ -88,6 +88,27 @@ namespace WarLeague.Discord.Commands
 
 
             await FollowupAsync($"Season '{seasonNumber}' is now active.");
+        }
+
+        [SlashCommand("admin-set-team-modifications", "Enables or disables captain team modifications for the current season (Admin only)")]
+        public async Task AdminSetTeamModificationsAsync(
+        [Summary("enabled", "True to enable captain add/drop, false to disable")] bool enabled)
+        {
+            await DeferAsync(ephemeral: false);
+
+            if (!_helperService.IsUserAdmin(Context))
+            {
+                await FollowupAsync("Only Admins can use this command.");
+                return;
+            }
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+            season.DisableTeamModification = !enabled;
+
+            await _seasonRepository.UpdateAsync(season);
+
+            await FollowupAsync($"Captain team modifications have been {(enabled ? "enabled" : "disabled")} for season {season.SeasonNumber}.");
         }
     }
 }

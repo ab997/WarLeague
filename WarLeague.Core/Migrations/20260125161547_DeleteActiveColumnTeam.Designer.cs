@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WarLeague.Core.Data;
 
@@ -11,9 +12,11 @@ using WarLeague.Core.Data;
 namespace WarLeague.Core.Migrations
 {
     [DbContext(typeof(WarLeagueDbContext))]
-    partial class WarLeagueDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260125161547_DeleteActiveColumnTeam")]
+    partial class DeleteActiveColumnTeam
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -133,10 +136,6 @@ namespace WarLeague.Core.Migrations
                     b.Property<decimal>("DiscordUserId")
                         .HasColumnType("decimal(20,0)");
 
-                    b.Property<string>("UserName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.HasKey("Id");
 
                     b.HasIndex("DiscordUserId")
@@ -183,9 +182,6 @@ namespace WarLeague.Core.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("Active")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("DisableTeamModification")
                         .HasColumnType("bit");
 
                     b.Property<int>("FormatId")

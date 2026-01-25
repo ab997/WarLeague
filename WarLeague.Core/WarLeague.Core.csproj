@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Domain\" />
+    <Folder Include="Domain\Services\" />
     <Folder Include="Migrations\" />
   </ItemGroup>
 

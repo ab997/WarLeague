@@ -15,7 +15,7 @@ namespace WarLeague.Discord.Preconditions
         public override async Task<PreconditionResult> CheckRequirementsAsync(IInteractionContext context, ICommandInfo commandInfo, IServiceProvider services)
         {
             SeasonRepository seasonRepository = services.GetRequiredService<SeasonRepository>();
-            HelperService helperService = services.GetRequiredService<HelperService>();
+            DiscordApiHelperService helperService = services.GetRequiredService<DiscordApiHelperService>();
 
             Format format = await helperService.GetFormatByCategoryNameAsync((SocketInteractionContext)context);
 

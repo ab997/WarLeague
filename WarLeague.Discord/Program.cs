@@ -44,9 +44,12 @@ builder.Services.AddScoped<WeekRepository>();
 builder.Services.AddScoped<DeckSubmissionRepository>();
 builder.Services.AddScoped<FormatRepository>();
 builder.Services.AddScoped<SeasonRepository>();
+builder.Services.AddScoped<PlayerRepository>();
+builder.Services.AddScoped<PlayerSeasonTeamRepository>();
 
 // Services
-builder.Services.AddScoped<HelperService>();
+builder.Services.AddScoped<DiscordApiHelperService>();
+builder.Services.AddScoped<PlayerService>();
 
 // Discord services
 builder.Services.AddSingleton(discordClient);

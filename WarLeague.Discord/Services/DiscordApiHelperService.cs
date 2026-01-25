@@ -1,18 +1,15 @@
 ﻿using Discord.Interactions;
 using Discord.WebSocket;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Repositories;
 
 namespace WarLeague.Discord.Services
 {
-    public class HelperService
+    public class DiscordApiHelperService
     {
         private readonly FormatRepository _formatRepository;
         private readonly SeasonRepository _seasonRepository;
-        public HelperService(FormatRepository formatRepository, SeasonRepository seasonRepository)
+        public DiscordApiHelperService(FormatRepository formatRepository, SeasonRepository seasonRepository)
         {
             _formatRepository = formatRepository;
             _seasonRepository = seasonRepository;
@@ -36,6 +33,17 @@ namespace WarLeague.Discord.Services
             string categoryName = channel.Category.Name;
 
             return (await _seasonRepository.GetSingleActiveSeasonByFormatNameAsync(categoryName))!;
+        }
+
+        /// <summary>
+        /// Returns true if the invoking user has a role named "Admin" on the guild.
+        /// </summary>
+        public bool IsUserAdmin(SocketInteractionContext context)
+        {
+            var guildUser = context.User as SocketGuildUser;
+            if (guildUser == null) return false;
+
+            return guildUser.Roles.Any(r => string.Equals(r.Name, "Admin", StringComparison.OrdinalIgnoreCase));
         }
     }
 }
