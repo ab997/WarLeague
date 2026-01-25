@@ -184,6 +184,13 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
+        // Block captain modifications if disabled for the season (Admins bypass)
+        if (season.DisableTeamModification && !_helperService.IsUserAdmin(Context))
+        {
+            await FollowupAsync("Team modifications are currently disabled for this season.");
+            return;
+        }
+
         // Ensure caller is a player
         Player caller = await _playerService.EnsurePlayerExistsAsync(Context.User);
 
@@ -228,6 +235,13 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         using var transaction = await _context.Database.BeginTransactionAsync();
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+        // Block captain modifications if disabled for the season (Admins bypass)
+        if (season.DisableTeamModification && !_helperService.IsUserAdmin(Context))
+        {
+            await FollowupAsync("Team modifications are currently disabled for this season.");
+            return;
+        }
 
         // Ensure caller is a player
         Player caller = await _playerService.EnsurePlayerExistsAsync(Context.User);
@@ -465,4 +479,6 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         await FollowupAsync($"{newCaptain.Mention} is now the captain of '{team.Name}'.");
     }
+
+    
 }
