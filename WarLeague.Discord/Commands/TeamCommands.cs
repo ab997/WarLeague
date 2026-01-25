@@ -78,9 +78,9 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         await _playerSeasonTeamRepository.AddAsync(pst);
 
-        await FollowupAsync($"Team '{teamName}' created with you as captain.");
-
         await transaction.CommitAsync();
+
+        await FollowupAsync($"Team '{teamName}' created with you as captain.");
     }
 
     [SlashCommand("admin-create", "Creates a team and assigns the specified user as captain (Admin only)")]
@@ -138,9 +138,9 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         await _playerSeasonTeamRepository.AddAsync(pst);
 
-        await FollowupAsync($"Team '{teamName}' created with {captain.Mention} as captain.");
-
         await transaction.CommitAsync();
+
+        await FollowupAsync($"Team '{teamName}' created with {captain.Mention} as captain.");
     }
 
     [SlashCommand("delete", "Deletes team")]
@@ -214,9 +214,9 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         await _playerSeasonTeamRepository.AddAsync(pst);
 
-        await FollowupAsync($"Added {user.Mention} to your team '{team.Name}'.");
-
         await transaction.CommitAsync();
+
+        await FollowupAsync($"Added {user.Mention} to your team '{team.Name}'.");
     }
 
     [SlashCommand("drop-member", "Removes a member from your team (captain only)")]
@@ -313,9 +313,9 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         await _playerSeasonTeamRepository.AddAsync(pst);
 
-        await FollowupAsync($"Added {user.Mention} to team '{teamName}'.");
-
         await transaction.CommitAsync();
+
+        await FollowupAsync($"Added {user.Mention} to team '{teamName}'.");
     }
     [SlashCommand("admin-drop-member", "Removes a member from any team (Admin only)")]
     public async Task AdminDropMemberAsync(
