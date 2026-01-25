@@ -11,8 +11,8 @@ namespace WarLeague.Discord.Commands;
 [Group("team", "Team management commands")]
 [RequireRole("Admin", Group = "Permission")]
 [RequireRole("Captain", Group = "Permission")]
-[EnsureChannelIsInFormatCategory]
 [EnsureSingleActiveSeason]
+[EnsureChannelIsInFormatCategory]
 public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly WarLeagueDbContext _context;
