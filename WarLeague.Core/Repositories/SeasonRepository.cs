@@ -18,27 +18,9 @@ namespace WarLeague.Core.Repositories
             _context = context;
         }
 
-        public async Task<Season?> GetByIdAsync(int id)
-        {
-            return await _context.Seasons
-                .Include(s => s.Format)
-                .Include(s => s.Weeks)
-                .SingleOrDefaultAsync(s => s.Id == id);
-        }
-
-        public async Task<Season?> GetByNumberAndFormatAsync(int seasonNumber, string formatName)
-        {
-            return await _context.Seasons
-                .Include(s => s.Format)
-                .Include(s => s.Weeks)
-                .SingleOrDefaultAsync(s => s.SeasonNumber == seasonNumber && s.Format.Name == formatName);
-        }
-
         public async Task<List<Season>> GetAllAsync()
         {
             return await _context.Seasons
-                .Include(s => s.Format)
-                .Include(s => s.Weeks)
                 .ToListAsync();
         }
 
@@ -59,6 +41,17 @@ namespace WarLeague.Core.Repositories
         public async Task DeleteAsync(Season season)
         {
             _context.Seasons.Remove(season);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<Season?> GetBySeasonNumberAsync(int seasonNumber)
+        {
+            return await _context.Seasons.SingleOrDefaultAsync(s => s.SeasonNumber == seasonNumber);
+        }
+
+        public async Task UpdateRangeAsync(List<Season> seasons)
+        {
+            _context.Seasons.UpdateRange(seasons);
             await _context.SaveChangesAsync();
         }
     }

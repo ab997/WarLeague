@@ -47,4 +47,17 @@ public class FormatRepository
         _context.Formats.Remove(format);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<Format?> GetSingleActiveFormatOrDefaultAsync()
+    {
+        return await _context.Formats
+            .Include(f => f.Seasons)
+            .SingleOrDefaultAsync(f => f.Active);
+    }
+
+    public async Task UpdateRangeAsync(List<Format> formats)
+    {
+        _context.Formats.UpdateRange(formats);
+        await _context.SaveChangesAsync();
+    }
 }

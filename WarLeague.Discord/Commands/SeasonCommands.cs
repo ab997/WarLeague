@@ -2,11 +2,13 @@
 using Discord.Interactions;
 using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Repositories;
+using WarLeague.Discord.Preconditions;
 
 namespace WarLeague.Discord.Commands
 {
     [Group("season", "Season commands")]
     [RequireRole("Admin")]
+    [EnsureSingleActiveFormat]
     public class SeasonCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly SeasonRepository _seasonRepository;
@@ -16,17 +18,12 @@ namespace WarLeague.Discord.Commands
             _seasonRepository = seasonRepository;
             _formatRepository = formatRepository;
         }
-        [SlashCommand("create-season", "Creates a new season")]
-        public async Task CreateSeasonAsync(int seasonNumber, string formatName)
+        [SlashCommand("create", "Creates a new season")]
+        public async Task CreateAsync(int seasonNumber)
         {
             await DeferAsync(ephemeral: true);
 
-            var format = await _formatRepository.GetByNameAsync(formatName);
-            if (format == null)
-            {
-                await FollowupAsync($"Format with name {formatName} not found.");
-                return;
-            }
+            Format format = (await _formatRepository.GetSingleActiveFormatOrDefaultAsync())!;
 
             var existing = format.Seasons.SingleOrDefault(s => s.SeasonNumber == seasonNumber);
             if (existing != null)
@@ -47,12 +44,12 @@ namespace WarLeague.Discord.Commands
             await FollowupAsync($"Season '{seasonNumber}' created (inactive).");
         }
 
-        [SlashCommand("delete-season", "Deletes a season")]
-        public async Task DeleteSeasonAsync(int seasonNumber, string formatName)
+        [SlashCommand("delete", "Deletes a season")]
+        public async Task DeleteAsync(int seasonNumber)
         {
             await DeferAsync(ephemeral: true);
 
-            var season = await _seasonRepository.GetByNumberAndFormatAsync(seasonNumber, formatName);
+            var season = await _seasonRepository.GetBySeasonNumberAsync(seasonNumber);
             if (season == null)
             {
                 await FollowupAsync($"Season with number {seasonNumber} not found.");
@@ -63,50 +60,32 @@ namespace WarLeague.Discord.Commands
             await FollowupAsync($"Season '{seasonNumber}' deleted.");
         }
 
-        [SlashCommand("enable-season", "Enables a season (sets Active = true)")]
-        public async Task EnableSeasonAsync(int seasonNumber, string formatName)
+        [SlashCommand("set-active", "Sets a season to active (all other to inactive)")]
+        public async Task SetActive(int seasonNumber)
         {
             await DeferAsync(ephemeral: true);
 
-            var season = await _seasonRepository.GetByNumberAndFormatAsync(seasonNumber, formatName);
+            var season = await _seasonRepository.GetBySeasonNumberAsync(seasonNumber);
             if (season == null)
             {
                 await FollowupAsync($"Season with number {seasonNumber} not found.");
                 return;
             }
 
-            if (season.Active)
-            {
-                await FollowupAsync($"Season '{seasonNumber}' is already enabled.");
-                return;
-            }
+            var allSeasons = await _seasonRepository.GetAllAsync();
+
+            // due to active index we need 2 step update
+
+            foreach (var s in allSeasons)
+                s.Active = false;
+
+            await _seasonRepository.UpdateRangeAsync(allSeasons);
 
             season.Active = true;
             await _seasonRepository.UpdateAsync(season);
-            await FollowupAsync($"Season '{seasonNumber}' enabled.");
-        }
 
-        [SlashCommand("disable-season", "Disables a season (sets Active = false)")]
-        public async Task DisableSeasonAsync(int seasonNumber, string formatName)
-        {
-            await DeferAsync(ephemeral: true);
 
-            var season = await _seasonRepository.GetByNumberAndFormatAsync(seasonNumber, formatName);
-            if (season == null)
-            {
-                await FollowupAsync($"Season with number {seasonNumber} not found.");
-                return;
-            }
-
-            if (!season.Active)
-            {
-                await FollowupAsync($"Season '{seasonNumber}' is already disabled.");
-                return;
-            }
-
-            season.Active = false;
-            await _seasonRepository.UpdateAsync(season);
-            await FollowupAsync($"Season '{seasonNumber}' disabled.");
+            await FollowupAsync($"Season '{seasonNumber}' is now active.");
         }
     }
 }
