@@ -9,4 +9,5 @@ public class Season
     public IEnumerable<Week> Weeks { get; set; } = new List<Week>();
     public IEnumerable<Team> Teams { get; set; } = new List<Team>();
     public bool Active { get; set; }
+    public bool DisableTeamModification { get; set; }
 }
