@@ -78,9 +78,9 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         await _playerSeasonTeamRepository.AddAsync(pst);
 
-        await FollowupAsync($"Team '{teamName}' created with you as captain.");
-
         await transaction.CommitAsync();
+
+        await FollowupAsync($"Team '{teamName}' created with you as captain.");
     }
 
     [SlashCommand("admin-create", "Creates a team and assigns the specified user as captain (Admin only)")]
@@ -138,9 +138,9 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         await _playerSeasonTeamRepository.AddAsync(pst);
 
-        await FollowupAsync($"Team '{teamName}' created with {captain.Mention} as captain.");
-
         await transaction.CommitAsync();
+
+        await FollowupAsync($"Team '{teamName}' created with {captain.Mention} as captain.");
     }
 
     [SlashCommand("delete", "Deletes team")]
@@ -184,6 +184,13 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
+        // Block captain modifications if disabled for the season (Admins bypass)
+        if (season.DisableTeamModification && !_helperService.IsUserAdmin(Context))
+        {
+            await FollowupAsync("Team modifications are currently disabled for this season.");
+            return;
+        }
+
         // Ensure caller is a player
         Player caller = await _playerService.EnsurePlayerExistsAsync(Context.User);
 
@@ -214,9 +221,9 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         await _playerSeasonTeamRepository.AddAsync(pst);
 
-        await FollowupAsync($"Added {user.Mention} to your team '{team.Name}'.");
-
         await transaction.CommitAsync();
+
+        await FollowupAsync($"Added {user.Mention} to your team '{team.Name}'.");
     }
 
     [SlashCommand("drop-member", "Removes a member from your team (captain only)")]
@@ -228,6 +235,13 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         using var transaction = await _context.Database.BeginTransactionAsync();
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+        // Block captain modifications if disabled for the season (Admins bypass)
+        if (season.DisableTeamModification && !_helperService.IsUserAdmin(Context))
+        {
+            await FollowupAsync("Team modifications are currently disabled for this season.");
+            return;
+        }
 
         // Ensure caller is a player
         Player caller = await _playerService.EnsurePlayerExistsAsync(Context.User);
@@ -313,9 +327,9 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         await _playerSeasonTeamRepository.AddAsync(pst);
 
-        await FollowupAsync($"Added {user.Mention} to team '{teamName}'.");
-
         await transaction.CommitAsync();
+
+        await FollowupAsync($"Added {user.Mention} to team '{teamName}'.");
     }
     [SlashCommand("admin-drop-member", "Removes a member from any team (Admin only)")]
     public async Task AdminDropMemberAsync(
@@ -465,4 +479,6 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         await FollowupAsync($"{newCaptain.Mention} is now the captain of '{team.Name}'.");
     }
+
+    
 }
