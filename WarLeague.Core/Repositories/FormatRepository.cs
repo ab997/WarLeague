@@ -60,4 +60,10 @@ public class FormatRepository
         _context.Formats.UpdateRange(formats);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<Format> GetSingleActiveFormatAsync()
+    {
+        return await _context.Formats
+            .SingleAsync(f => f.Active);
+    }
 }

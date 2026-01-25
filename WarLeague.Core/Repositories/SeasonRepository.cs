@@ -54,5 +54,17 @@ namespace WarLeague.Core.Repositories
             _context.Seasons.UpdateRange(seasons);
             await _context.SaveChangesAsync();
         }
+
+        public async Task<Season?> GetSingleActiveSeasonOrDefaultAsync()
+        {
+            return await _context.Seasons
+                .SingleOrDefaultAsync(s => s.Active);
+        }
+
+        public async Task<Season> GetSingleActiveSeasonAsync()
+        {
+            return await _context.Seasons
+               .SingleAsync(s => s.Active);
+        }
     }
 }

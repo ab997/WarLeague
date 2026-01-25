@@ -110,17 +110,15 @@ public class WarLeagueDbContext : DbContext
             .IsUnique()
             .HasFilter("[Active] = 1");
 
-        modelBuilder.Entity<Week>()
-            .HasIndex(w => w.Active)
-            .IsUnique()
-            .HasFilter("[Active] = 1");
-
 
         //--------------------------------------
         // global query filters
         //--------------------------------------
         modelBuilder.Entity<Season>()
         .HasQueryFilter(s => s.Format.Active);
+
+        modelBuilder.Entity<Week>()
+        .HasQueryFilter(w => w.Season.Active);
 
         //--------------------------------------
         // disable cascade delete

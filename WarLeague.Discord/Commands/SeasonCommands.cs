@@ -23,7 +23,7 @@ namespace WarLeague.Discord.Commands
         {
             await DeferAsync(ephemeral: true);
 
-            Format format = (await _formatRepository.GetSingleActiveFormatOrDefaultAsync())!;
+            Format format = await _formatRepository.GetSingleActiveFormatAsync();
 
             var existing = format.Seasons.SingleOrDefault(s => s.SeasonNumber == seasonNumber);
             if (existing != null)

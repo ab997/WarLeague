@@ -41,6 +41,12 @@ public class WeekRepository
             .SingleOrDefaultAsync(w => w.WeekNumber == weekNumber && w.SeasonId == seasonId);
     }
 
+    public async Task<Week?> GetByWeekNumberAsync(int weekNumber)
+    {
+        return await _context.Weeks
+            .SingleOrDefaultAsync(w => w.WeekNumber == weekNumber);
+    }
+
     public async Task<List<Week>> GetAllAsync()
     {
         return await _context.Weeks
