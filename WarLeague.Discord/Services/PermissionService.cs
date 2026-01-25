@@ -24,7 +24,7 @@ public class PermissionService
             return Role.Player;
         }
 
-        return player.Role;
+        return Role.Player;
     }
 
     public async Task<bool> IsAdminAsync(ulong discordUserId)
@@ -37,28 +37,6 @@ public class PermissionService
     {
         var role = await GetUserRoleAsync(discordUserId);
         return role == Role.TeamCaptain || role == Role.Admin;
-    }
-
-    public async Task<bool> CanModifyTeamAsync(ulong discordUserId, int teamId)
-    {
-        var player = await _playerRepository.GetByDiscordUserIdAsync(discordUserId);
-        if (player == null)
-        {
-            return false;
-        }
-
-        if (player.Role == Role.Admin)
-        {
-            return true;
-        }
-
-        if (player.Role == Role.TeamCaptain)
-        {
-            var team = await _teamRepository.GetByIdAsync(teamId);
-            return team?.CaptainId == player.Id;
-        }
-
-        return false;
     }
 
     public async Task<int?> GetPlayerIdAsync(ulong discordUserId)

@@ -211,7 +211,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         foreach (var rosterPlayer in team.Players)
         {
-            rosterText += $"- <@{rosterPlayer.DiscordUserId}> ({rosterPlayer.DiscordUsername})\n";
+            rosterText += $"- <@{rosterPlayer.DiscordUserId}> ({rosterPlayer.DiscordUserId})\n";
         }
 
         await RespondAsync(rosterText, ephemeral: false);

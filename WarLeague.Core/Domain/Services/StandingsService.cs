@@ -100,7 +100,6 @@ public class StandingsService
                 players[match.Player1Id] = new IndividualStanding
                 {
                     PlayerId = match.Player1Id,
-                    PlayerName = match.Player1.DiscordUsername,
                     TeamId = match.Player1.TeamId ?? 0,
                     TeamName = match.Player1.Team?.Name ?? "No Team",
                     Wins = 0,
@@ -113,7 +112,6 @@ public class StandingsService
                 players[match.Player2Id] = new IndividualStanding
                 {
                     PlayerId = match.Player2Id,
-                    PlayerName = match.Player2.DiscordUsername,
                     TeamId = match.Player2.TeamId ?? 0,
                     TeamName = match.Player2.Team?.Name ?? "No Team",
                     Wins = 0,

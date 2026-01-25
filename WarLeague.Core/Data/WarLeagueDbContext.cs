@@ -67,10 +67,6 @@ public class WarLeagueDbContext : DbContext
         .Property(w => w.Status)
         .HasConversion<string>();
 
-        modelBuilder.Entity<Player>()
-      .Property(w => w.Role)
-      .HasConversion<string>();
-
         //--------------------------------------
         // unique indexes
         //--------------------------------------

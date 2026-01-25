@@ -37,7 +37,7 @@ public class MatchService
         // Get all players for each team
         foreach (var team in teams)
         {
-            playersByTeam[team.Id] = team.Players.Where(p => p.IsActive).ToList();
+            playersByTeam[team.Id] = team.Players.ToList();
         }
 
         // Generate round-robin matches between teams

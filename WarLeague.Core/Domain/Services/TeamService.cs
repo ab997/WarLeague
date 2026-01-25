@@ -51,7 +51,7 @@ public class TeamService
 
         if (player.TeamId != null)
         {
-            throw new InvalidOperationException($"Player {player.DiscordUsername} is already on a team.");
+            throw new InvalidOperationException($"Player {player.DiscordUserId} is already on a team.");
         }
 
         player.TeamId = teamId;
@@ -88,7 +88,7 @@ public class TeamService
 
         if (player.TeamId != teamId)
         {
-            throw new InvalidOperationException($"Player {player.DiscordUsername} is not on this team.");
+            throw new InvalidOperationException($"Player {player.DiscordUserId} is not on this team.");
         }
 
         if (player.Id == team.CaptainId)
