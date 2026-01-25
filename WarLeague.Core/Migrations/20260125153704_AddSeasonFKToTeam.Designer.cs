@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WarLeague.Core.Data;
 
@@ -11,9 +12,11 @@ using WarLeague.Core.Data;
 namespace WarLeague.Core.Migrations
 {
     [DbContext(typeof(WarLeagueDbContext))]
-    partial class WarLeagueDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260125153704_AddSeasonFKToTeam")]
+    partial class AddSeasonFKToTeam
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -133,41 +136,17 @@ namespace WarLeague.Core.Migrations
                     b.Property<decimal>("DiscordUserId")
                         .HasColumnType("decimal(20,0)");
 
+                    b.Property<int?>("TeamId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DiscordUserId")
                         .IsUnique();
 
-                    b.ToTable("Players");
-                });
-
-            modelBuilder.Entity("WarLeague.Core.Data.Entities.PlayerSeasonTeam", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("PlayerId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SeasonId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TeamId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SeasonId");
-
                     b.HasIndex("TeamId");
 
-                    b.HasIndex("PlayerId", "SeasonId")
-                        .IsUnique();
-
-                    b.ToTable("PlayerSeasonTeams");
+                    b.ToTable("Players");
                 });
 
             modelBuilder.Entity("WarLeague.Core.Data.Entities.Season", b =>
@@ -319,29 +298,12 @@ namespace WarLeague.Core.Migrations
                     b.Navigation("Winner");
                 });
 
-            modelBuilder.Entity("WarLeague.Core.Data.Entities.PlayerSeasonTeam", b =>
+            modelBuilder.Entity("WarLeague.Core.Data.Entities.Player", b =>
                 {
-                    b.HasOne("WarLeague.Core.Data.Entities.Player", "Player")
-                        .WithMany()
-                        .HasForeignKey("PlayerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("WarLeague.Core.Data.Entities.Season", "Season")
-                        .WithMany()
-                        .HasForeignKey("SeasonId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("WarLeague.Core.Data.Entities.Team", "Team")
-                        .WithMany()
+                        .WithMany("Players")
                         .HasForeignKey("TeamId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Player");
-
-                    b.Navigation("Season");
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Team");
                 });
@@ -406,6 +368,11 @@ namespace WarLeague.Core.Migrations
                     b.Navigation("Teams");
 
                     b.Navigation("Weeks");
+                });
+
+            modelBuilder.Entity("WarLeague.Core.Data.Entities.Team", b =>
+                {
+                    b.Navigation("Players");
                 });
 
             modelBuilder.Entity("WarLeague.Core.Data.Entities.Week", b =>

@@ -6,7 +6,8 @@ public class Team
     public string Name { get; set; } = string.Empty;
     public int CaptainId { get; set; }
     public Player Captain { get; set; } = null!;
-    public List<Player> Players { get; set; } = new();
     public bool IsActive { get; set; } = true;
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
+    public int SeasonId { get; set; }
+    public Season Season { get; set; } = new();
 }

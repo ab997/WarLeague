@@ -16,6 +16,7 @@ public class WarLeagueDbContext : DbContext
     public DbSet<Season> Seasons { get; set; }
     public DbSet<Team> Teams { get; set; }
     public DbSet<Week> Weeks { get; set; }
+    public DbSet<PlayerSeasonTeam> PlayerSeasonTeams { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -24,13 +25,6 @@ public class WarLeagueDbContext : DbContext
         //--------------------------------------
         // relationships that cannot be established by EF conventions
         //--------------------------------------
-
-        // Player ↔ Team (membership)
-        modelBuilder.Entity<Player>()
-            .HasOne(p => p.Team)
-            .WithMany(t => t.Players)
-            .HasForeignKey(p => p.TeamId)
-            .IsRequired(false);
 
         // Team ↔ Player (captain)
         modelBuilder.Entity<Team>()
@@ -90,6 +84,11 @@ public class WarLeagueDbContext : DbContext
         // Week: unique per (SeasonId, WeekNumber)
         modelBuilder.Entity<Week>()
             .HasIndex(w => new { w.SeasonId, w.WeekNumber })
+            .IsUnique();
+
+        // PlayerSeasonTeam: unique per (PlayerId, SeasonId) -> a player can only be in one team per season
+        modelBuilder.Entity<PlayerSeasonTeam>()
+            .HasIndex(x => new { x.PlayerId, x.SeasonId })
             .IsUnique();
 
 
