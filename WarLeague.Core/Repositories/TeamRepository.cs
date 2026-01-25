@@ -49,4 +49,10 @@ public class TeamRepository
 
         await _context.SaveChangesAsync();
     }
+
+    public async Task UpdateAsync(Team team)
+    {
+        _context.Teams.Update(team);
+        await _context.SaveChangesAsync();
+    }
 }

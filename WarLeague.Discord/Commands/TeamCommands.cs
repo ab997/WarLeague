@@ -266,4 +266,109 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         await transaction.CommitAsync();
     }
+
+    [SlashCommand("admin-transfer-member", "Transfers a member to another team (Admin only)")]
+    public async Task AdminTransferMemberAsync(
+    [Summary("member", "User to transfer")] IUser user,
+    [Summary("team-name", "Target team name")] string teamName)
+    {
+        await DeferAsync(ephemeral: false);
+
+        if (!_helperService.IsUserAdmin(Context))
+        {
+            await FollowupAsync("Only Admins can use this command.");
+            return;
+        }
+
+        using var transaction = await _context.Database.BeginTransactionAsync();
+
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+        Team? targetTeam = await _teamRepository.GetByNameAsync(teamName);
+        if (targetTeam == null)
+        {
+            await FollowupAsync($"Team with name '{teamName}' not found.");
+            return;
+        }
+
+        Player player = await _playerService.EnsurePlayerExistsAsync(user);
+
+        // Captains cannot be transferred
+        bool canTransfer = await _playerSeasonTeamRepository.EnsurePlayerIsNotCaptainOfTeamInSeasonAsync(player.Id, season.Id);
+        if (!canTransfer)
+        {
+            await FollowupAsync("Captains cannot be transferred.");
+            return;
+        }
+
+        // Find existing membership (if any)
+        PlayerSeasonTeam? existingPst =
+            await _playerSeasonTeamRepository.GetByPlayerAndSeasonAsync(player.Id, season.Id);
+
+        if (existingPst != null)
+        {
+            await _playerSeasonTeamRepository.DeleteAsync(existingPst);
+        }
+
+        PlayerSeasonTeam newPst = new PlayerSeasonTeam
+        {
+            Player = player,
+            Season = season,
+            Team = targetTeam
+        };
+
+        await _playerSeasonTeamRepository.AddAsync(newPst);
+
+        await transaction.CommitAsync();
+
+        await FollowupAsync($"Transferred {user.Mention} to team '{targetTeam.Name}'.");
+    }
+
+    [SlashCommand("admin-transfer-captainship", "Transfers captainship to another team member (Admin only)")]
+    public async Task AdminTransferCaptainshipAsync(
+    [Summary("team-name", "Name of the team")] string teamName,
+    [Summary("new-captain", "User to become captain")] IUser newCaptain)
+    {
+        await DeferAsync(ephemeral: false);
+
+        if (!_helperService.IsUserAdmin(Context))
+        {
+            await FollowupAsync("Only Admins can use this command.");
+            return;
+        }
+
+        using var transaction = await _context.Database.BeginTransactionAsync();
+
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+        Team? team = await _teamRepository.GetByNameAsync(teamName);
+        if (team == null)
+        {
+            await FollowupAsync($"Team with name '{teamName}' not found.");
+            return;
+        }
+
+        Player newCaptainPlayer = await _playerService.EnsurePlayerExistsAsync(newCaptain);
+
+        // Ensure the user is already a member of the team
+        PlayerSeasonTeam? pst =
+            await _playerSeasonTeamRepository.GetByPlayerSeasonAndTeamAsync(
+                newCaptainPlayer.Id,
+                season.Id,
+                team.Id);
+
+        if (pst == null)
+        {
+            await FollowupAsync($"{newCaptain.Mention} is not a member of team '{team.Name}'. Captainship transfer is supported only among existing members.");
+            return;
+        }
+
+        team.CaptainId = newCaptainPlayer.Id;
+
+        await _teamRepository.UpdateAsync(team);
+
+        await transaction.CommitAsync();
+
+        await FollowupAsync($"{newCaptain.Mention} is now the captain of '{team.Name}'.");
+    }
 }
