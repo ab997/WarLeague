@@ -48,6 +48,13 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
+            // Validate logical ordering
+            if (startDate > endDate)
+            {
+                await FollowupAsync("Start date must be before end date.", ephemeral: true);
+                return;
+            }
+
             Week weekNew = new Week
             {
                 WeekNumber = weekNumber,
@@ -61,6 +68,75 @@ namespace WarLeague.Discord.Commands
             await _weekRepository.AddAsync(weekNew);
 
             await FollowupAsync($"Week created.");
+        }
+
+
+        [SlashCommand("update", "Updates a week")]
+        public async Task Update(int weekNumber,
+            [Summary("start-date", "Start date (YYYY-MM-DD)")] string? startDateStr = null,
+            [Summary("end-date", "End date (YYYY-MM-DD)")] string? endDateStr = null,
+            [Summary("submissions-close-date", "Submissions close date (YYYY-MM-DD)")] string? subCloseDateStr = null,
+            [Summary("status")] WeekStatus? status = null
+            )
+        {
+            await DeferAsync(ephemeral: true);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+            Week? week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, season.Id);
+
+            if (week is null)
+            {
+                await FollowupAsync($"Week with number {weekNumber} does not exist.");
+                return;
+            }
+
+            // Parse provided dates (only when provided)
+            if (startDateStr is not null)
+            {
+                if (!DateTime.TryParse(startDateStr, out var parsedStart))
+                {
+                    await FollowupAsync("Invalid start date format. Use YYYY-MM-DD.", ephemeral: true);
+                    return;
+                }
+                week.StartDate = parsedStart;
+            }
+
+            if (endDateStr is not null)
+            {
+                if (!DateTime.TryParse(endDateStr, out var parsedEnd))
+                {
+                    await FollowupAsync("Invalid end date format. Use YYYY-MM-DD.", ephemeral: true);
+                    return;
+                }
+                week.EndDate = parsedEnd;
+            }
+
+            if (subCloseDateStr is not null)
+            {
+                if (!DateTime.TryParse(subCloseDateStr, out var parsedSubClose))
+                {
+                    await FollowupAsync("Invalid submissions close date format. Use YYYY-MM-DD.", ephemeral: true);
+                    return;
+                }
+                week.SubmissionsClosedDate = parsedSubClose;
+            }
+
+            // Validate logical ordering
+            if (week.StartDate > week.EndDate)
+            {
+                await FollowupAsync("Start date must be before end date.", ephemeral: true);
+                return;
+            }
+
+            if (status.HasValue)
+            {
+                week.Status = status.Value;
+            }
+
+            await _weekRepository.UpdateAsync(week);
+
+            await FollowupAsync($"Week {weekNumber} updated.", ephemeral: true);
         }
     }
 }
