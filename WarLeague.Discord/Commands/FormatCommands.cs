@@ -1,10 +1,7 @@
 ﻿
 using Discord;
 using Discord.Interactions;
-
 using System.Text.Json;
-using System.Threading.Tasks;
-using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Repositories;
 using Format = WarLeague.Core.Data.Entities.Format;
 
@@ -56,32 +53,7 @@ namespace WarLeague.Discord.Commands
             await FollowupAsync($"Format '{formatName}' deleted.");
         }
 
-        [SlashCommand("set-active", "Sets a format to active (all other to inactive)")]
-        public async Task SetActive(string formatName)
-        {
-            await DeferAsync(ephemeral: true);
-
-            var format = await _formatRepository.GetByNameAsync(formatName);
-            if (format == null)
-            {
-                await FollowupAsync($"Format with name {formatName} not found.");
-                return;
-            }
-
-            var allFormats = await _formatRepository.GetAllAsync();
-
-            // due to active index we need 2 step update
-
-            foreach (var f in allFormats)
-                f.Active = false;
-
-            await _formatRepository.UpdateRangeAsync(allFormats);
-
-            format.Active = true;
-            await _formatRepository.UpdateAsync(format);
-
-            await FollowupAsync($"Format '{formatName}' is now active.");
-        }
+     
 
         [SlashCommand("update-rules", "Update format rules from a .json file")]
         public async Task UpdateRulesAsync(

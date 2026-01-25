@@ -3,27 +3,28 @@ using Discord.Interactions;
 using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Repositories;
 using WarLeague.Discord.Preconditions;
+using WarLeague.Discord.Services;
 
 namespace WarLeague.Discord.Commands
 {
     [Group("season", "Season commands")]
     [RequireRole("Admin")]
-    [EnsureSingleActiveFormat]
+    [EnsureChannelIsInFormatCategory]
     public class SeasonCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly SeasonRepository _seasonRepository;
-        private readonly FormatRepository _formatRepository;
-        public SeasonCommands(SeasonRepository seasonRepository, FormatRepository formatRepository)
+        private readonly HelperService _helperService;
+        public SeasonCommands(SeasonRepository seasonRepository, HelperService helperService)
         {
             _seasonRepository = seasonRepository;
-            _formatRepository = formatRepository;
+            _helperService = helperService;
         }
         [SlashCommand("create", "Creates a new season")]
         public async Task CreateAsync(int seasonNumber)
         {
             await DeferAsync(ephemeral: true);
 
-            Format format = await _formatRepository.GetSingleActiveFormatAsync();
+            Format format = await _helperService.GetFormatByCategoryNameAsync(Context);
 
             var existing = format.Seasons.SingleOrDefault(s => s.SeasonNumber == seasonNumber);
             if (existing != null)
@@ -35,7 +36,6 @@ namespace WarLeague.Discord.Commands
             var season = new Season
             {
                 SeasonNumber = seasonNumber,
-                FormatId = format.Id,
                 Format = format,
                 Active = false
             };
@@ -49,7 +49,9 @@ namespace WarLeague.Discord.Commands
         {
             await DeferAsync(ephemeral: true);
 
-            var season = await _seasonRepository.GetBySeasonNumberAsync(seasonNumber);
+            Format format = await _helperService.GetFormatByCategoryNameAsync(Context);
+
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(seasonNumber, format.Id);
             if (season == null)
             {
                 await FollowupAsync($"Season with number {seasonNumber} not found.");
@@ -65,16 +67,16 @@ namespace WarLeague.Discord.Commands
         {
             await DeferAsync(ephemeral: true);
 
-            var season = await _seasonRepository.GetBySeasonNumberAsync(seasonNumber);
+            Format format = await _helperService.GetFormatByCategoryNameAsync(Context);
+
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(seasonNumber, format.Id);
             if (season == null)
             {
                 await FollowupAsync($"Season with number {seasonNumber} not found.");
                 return;
             }
 
-            var allSeasons = await _seasonRepository.GetAllAsync();
-
-            // due to active index we need 2 step update
+            var allSeasons = await _seasonRepository.GetAllByFormatAsync(format.Id);
 
             foreach (var s in allSeasons)
                 s.Active = false;

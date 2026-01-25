@@ -52,6 +52,7 @@ builder.Services.AddScoped<MatchService>();
 builder.Services.AddScoped<WeekService>();
 builder.Services.AddScoped<DeckSubmissionService>();
 builder.Services.AddScoped<StandingsService>();
+builder.Services.AddScoped<HelperService>();
 
 // Discord services
 builder.Services.AddSingleton(discordClient);
