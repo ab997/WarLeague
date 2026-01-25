@@ -96,26 +96,12 @@ public class WarLeagueDbContext : DbContext
             .HasIndex(w => new { w.SeasonId, w.WeekNumber })
             .IsUnique();
 
-        //--------------------------------------
-        // Ensure only one active Format, Season and Week at a time (filtered unique indexes)
-        // Note: .HasFilter uses SQL Server syntax ("[Active] = 1"); adjust if using another provider.
-        //--------------------------------------
-        modelBuilder.Entity<Format>()
-            .HasIndex(f => f.Active)
-            .IsUnique()
-            .HasFilter("[Active] = 1");
 
-        modelBuilder.Entity<Season>()
-            .HasIndex(s => s.Active)
-            .IsUnique()
-            .HasFilter("[Active] = 1");
 
 
         //--------------------------------------
         // global query filters
         //--------------------------------------
-        modelBuilder.Entity<Season>()
-        .HasQueryFilter(s => s.Format.Active);
 
         modelBuilder.Entity<Week>()
         .HasQueryFilter(w => w.Season.Active);

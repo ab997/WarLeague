@@ -1,9 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using WarLeague.Core.Data;
 using WarLeague.Core.Data.Entities;
 
@@ -18,9 +13,10 @@ namespace WarLeague.Core.Repositories
             _context = context;
         }
 
-        public async Task<List<Season>> GetAllAsync()
+        public async Task<List<Season>> GetAllByFormatAsync(int formatId)
         {
             return await _context.Seasons
+                .Where(s => s.Format.Id == formatId)
                 .ToListAsync();
         }
 
@@ -44,9 +40,11 @@ namespace WarLeague.Core.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public async Task<Season?> GetBySeasonNumberAsync(int seasonNumber)
+        public async Task<Season?> GetBySeasonNumberAndFormatAsync(int seasonNumber, int formatId)
         {
-            return await _context.Seasons.SingleOrDefaultAsync(s => s.SeasonNumber == seasonNumber);
+            return await _context.Seasons
+                .Where(s => s.Format.Id == formatId)
+                .SingleOrDefaultAsync(s => s.SeasonNumber == seasonNumber);
         }
 
         public async Task UpdateRangeAsync(List<Season> seasons)
@@ -55,15 +53,17 @@ namespace WarLeague.Core.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public async Task<Season?> GetSingleActiveSeasonOrDefaultAsync()
+        public async Task<List<Season>> GetActiveSeasonsByFormatAsync(int formatId)
         {
             return await _context.Seasons
-                .SingleOrDefaultAsync(s => s.Active);
+                .Where(s => s.Format.Id == formatId && s.Active)
+                .ToListAsync();
         }
 
-        public async Task<Season> GetSingleActiveSeasonAsync()
+        public async Task<Season> GetSingleActiveSeasonByFormatAsync(int formatId)
         {
             return await _context.Seasons
+                .Where(s => s.Format.Id == formatId)
                .SingleAsync(s => s.Active);
         }
     }

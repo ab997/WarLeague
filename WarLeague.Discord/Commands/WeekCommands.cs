@@ -4,23 +4,26 @@ using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Data.Enums;
 using WarLeague.Core.Repositories;
 using WarLeague.Discord.Preconditions;
+using WarLeague.Discord.Services;
 
 namespace WarLeague.Discord.Commands
 {
     [Group("week", "Week commands")]
     [RequireRole("Admin")]
-    [EnsureSingleActiveFormat]
     [EnsureSingleActiveSeason]
+    [EnsureChannelIsInFormatCategory]
     public class WeekCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly FormatRepository _formatRepository;
         private readonly SeasonRepository _seasonRepository;
         private readonly WeekRepository _weekRepository;
-        public WeekCommands(SeasonRepository seasonRepository, FormatRepository formatRepository, WeekRepository weekRepository)
+        private readonly HelperService _helperService;
+        public WeekCommands(SeasonRepository seasonRepository, FormatRepository formatRepository, WeekRepository weekRepository, HelperService helperService)
         {
             _seasonRepository = seasonRepository;
             _formatRepository = formatRepository;
             _weekRepository = weekRepository;
+            _helperService = helperService;
         }
         [SlashCommand("create", "Creates a week")]
         public async Task Create(int weekNumber,
@@ -47,7 +50,9 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            Season season = await _seasonRepository.GetSingleActiveSeasonAsync();
+            Format format = await _helperService.GetFormatByCategoryNameAsync(Context);
+
+            Season season = await _seasonRepository.GetSingleActiveSeasonByFormatAsync(format.Id);
 
             Week weekNew = new Week
             {
