@@ -117,11 +117,11 @@ namespace WarLeague.Discord.HostedService
 
             if (!interaction.HasResponded)
             {
-                await interaction.RespondAsync(message, ephemeral: true);
+                await interaction.RespondAsync(message, ephemeral: false);
             }
             else
             {
-                await interaction.FollowupAsync(message, ephemeral: true);
+                await interaction.FollowupAsync(message, ephemeral: false);
             }
         }
     }

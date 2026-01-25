@@ -28,7 +28,7 @@ namespace WarLeague.Discord.Commands
             [Summary("submissions-close-date", "Submissions close date (YYYY-MM-DD)")] string subCloseDateStr
             )
         {
-            await DeferAsync(ephemeral: true);
+            await DeferAsync(ephemeral: false);
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
@@ -44,14 +44,14 @@ namespace WarLeague.Discord.Commands
                 !DateTime.TryParse(endDateStr, out var endDate) ||
                 !DateTime.TryParse(subCloseDateStr, out var subCloseDate))
             {
-                await FollowupAsync("Invalid date format. Use YYYY-MM-DD.", ephemeral: true);
+                await FollowupAsync("Invalid date format. Use YYYY-MM-DD.", ephemeral: false);
                 return;
             }
 
             // Validate logical ordering
             if (startDate > endDate)
             {
-                await FollowupAsync("Start date must be before end date.", ephemeral: true);
+                await FollowupAsync("Start date must be before end date.", ephemeral: false);
                 return;
             }
 
@@ -79,7 +79,7 @@ namespace WarLeague.Discord.Commands
             [Summary("status")] WeekStatus? status = null
             )
         {
-            await DeferAsync(ephemeral: true);
+            await DeferAsync(ephemeral: false);
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
@@ -96,7 +96,7 @@ namespace WarLeague.Discord.Commands
             {
                 if (!DateTime.TryParse(startDateStr, out var parsedStart))
                 {
-                    await FollowupAsync("Invalid start date format. Use YYYY-MM-DD.", ephemeral: true);
+                    await FollowupAsync("Invalid start date format. Use YYYY-MM-DD.", ephemeral: false);
                     return;
                 }
                 week.StartDate = parsedStart;
@@ -106,7 +106,7 @@ namespace WarLeague.Discord.Commands
             {
                 if (!DateTime.TryParse(endDateStr, out var parsedEnd))
                 {
-                    await FollowupAsync("Invalid end date format. Use YYYY-MM-DD.", ephemeral: true);
+                    await FollowupAsync("Invalid end date format. Use YYYY-MM-DD.", ephemeral: false);
                     return;
                 }
                 week.EndDate = parsedEnd;
@@ -116,7 +116,7 @@ namespace WarLeague.Discord.Commands
             {
                 if (!DateTime.TryParse(subCloseDateStr, out var parsedSubClose))
                 {
-                    await FollowupAsync("Invalid submissions close date format. Use YYYY-MM-DD.", ephemeral: true);
+                    await FollowupAsync("Invalid submissions close date format. Use YYYY-MM-DD.", ephemeral: false);
                     return;
                 }
                 week.SubmissionsClosedDate = parsedSubClose;
@@ -125,7 +125,7 @@ namespace WarLeague.Discord.Commands
             // Validate logical ordering
             if (week.StartDate > week.EndDate)
             {
-                await FollowupAsync("Start date must be before end date.", ephemeral: true);
+                await FollowupAsync("Start date must be before end date.", ephemeral: false);
                 return;
             }
 
@@ -136,7 +136,7 @@ namespace WarLeague.Discord.Commands
 
             await _weekRepository.UpdateAsync(week);
 
-            await FollowupAsync($"Week {weekNumber} updated.", ephemeral: true);
+            await FollowupAsync($"Week {weekNumber} updated.", ephemeral: false);
         }
     }
 }

@@ -19,7 +19,7 @@ namespace WarLeague.Discord.Commands
         [SlashCommand("create", "Creates a new format")]
         public async Task CreateAsync(string formatName)
         {
-            await DeferAsync(ephemeral: true);
+            await DeferAsync(ephemeral: false);
 
             Format? format = await _formatRepository.GetByNameAsync(formatName);
 
@@ -40,7 +40,7 @@ namespace WarLeague.Discord.Commands
         [SlashCommand("delete", "Deletes format")]
         public async Task DeleteAsync(string formatName)
         {
-            await DeferAsync(ephemeral: true);
+            await DeferAsync(ephemeral: false);
 
             var format = await _formatRepository.GetByNameAsync(formatName);
             if (format == null)
@@ -60,7 +60,7 @@ namespace WarLeague.Discord.Commands
            [Summary("format", "Format name")] string formatName,
            [Summary("rules-file", "JSON file containing rules")] IAttachment rulesFile)
         {
-            await DeferAsync(ephemeral: true);
+            await DeferAsync(ephemeral: false);
 
             var format = await _formatRepository.GetByNameAsync(formatName);
             if (format == null)

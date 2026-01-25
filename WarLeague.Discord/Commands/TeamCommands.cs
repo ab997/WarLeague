@@ -45,27 +45,27 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         var captainId = await _permissionService.GetPlayerIdAsync(Context.User.Id);
         if (!captainId.HasValue)
         {
-            await RespondAsync("You are not registered as a player.", ephemeral: true);
+            await RespondAsync("You are not registered as a player.", ephemeral: false);
             return;
         }
 
         if (!await _permissionService.IsTeamCaptainAsync(Context.User.Id))
         {
-            await RespondAsync("Only team captains can add players to teams.", ephemeral: true);
+            await RespondAsync("Only team captains can add players to teams.", ephemeral: false);
             return;
         }
 
         var team = await _teamRepository.GetByCaptainIdAsync(captainId.Value);
         if (team == null)
         {
-            await RespondAsync("You are not a captain of any team.", ephemeral: true);
+            await RespondAsync("You are not a captain of any team.", ephemeral: false);
             return;
         }
 
         var playerToAdd = await _playerRepository.GetByDiscordUserIdAsync(user.Id);
         if (playerToAdd == null)
         {
-            await RespondAsync($"User {user.Mention} is not registered as a player.", ephemeral: true);
+            await RespondAsync($"User {user.Mention} is not registered as a player.", ephemeral: false);
             return;
         }
 
@@ -76,7 +76,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         }
         catch (Exception ex)
         {
-            await RespondAsync($"Error: {ex.Message}", ephemeral: true);
+            await RespondAsync($"Error: {ex.Message}", ephemeral: false);
         }
     }
 
@@ -87,27 +87,27 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         var captainId = await _permissionService.GetPlayerIdAsync(Context.User.Id);
         if (!captainId.HasValue)
         {
-            await RespondAsync("You are not registered as a player.", ephemeral: true);
+            await RespondAsync("You are not registered as a player.", ephemeral: false);
             return;
         }
 
         if (!await _permissionService.IsTeamCaptainAsync(Context.User.Id))
         {
-            await RespondAsync("Only team captains can remove players from teams.", ephemeral: true);
+            await RespondAsync("Only team captains can remove players from teams.", ephemeral: false);
             return;
         }
 
         var team = await _teamRepository.GetByCaptainIdAsync(captainId.Value);
         if (team == null)
         {
-            await RespondAsync("You are not a captain of any team.", ephemeral: true);
+            await RespondAsync("You are not a captain of any team.", ephemeral: false);
             return;
         }
 
         var playerToRemove = await _playerRepository.GetByDiscordUserIdAsync(user.Id);
         if (playerToRemove == null)
         {
-            await RespondAsync($"User {user.Mention} is not registered as a player.", ephemeral: true);
+            await RespondAsync($"User {user.Mention} is not registered as a player.", ephemeral: false);
             return;
         }
 
@@ -118,7 +118,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         }
         catch (Exception ex)
         {
-            await RespondAsync($"Error: {ex.Message}", ephemeral: true);
+            await RespondAsync($"Error: {ex.Message}", ephemeral: false);
         }
     }
 
@@ -131,40 +131,40 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         var playerId = await _permissionService.GetPlayerIdAsync(Context.User.Id);
         if (!playerId.HasValue)
         {
-            await RespondAsync("You are not registered as a player.", ephemeral: true);
+            await RespondAsync("You are not registered as a player.", ephemeral: false);
             return;
         }
 
         if (!await _permissionService.IsTeamCaptainAsync(Context.User.Id))
         {
-            await RespondAsync("Only team captains can submit decks.", ephemeral: true);
+            await RespondAsync("Only team captains can submit decks.", ephemeral: false);
             return;
         }
 
         var player = await _playerRepository.GetByIdAsync(playerId.Value);
         if (player?.TeamId == null)
         {
-            await RespondAsync("You are not on a team.", ephemeral: true);
+            await RespondAsync("You are not on a team.", ephemeral: false);
             return;
         }
 
         if (!_fileValidationService.IsValidYdkFile(file.Filename))
         {
-            await RespondAsync("Deck file must be a .ydk file.", ephemeral: true);
+            await RespondAsync("Deck file must be a .ydk file.", ephemeral: false);
             return;
         }
 
         var format = await _formatRepository.GetByNameAsync(formatName);
         if (format == null)
         {
-            await RespondAsync($"Format '{formatName}' not found.", ephemeral: true);
+            await RespondAsync($"Format '{formatName}' not found.", ephemeral: false);
             return;
         }
 
         var week = await _weekRepository.GetByWeekNumberAsync(weekNumber, 1); // Assuming season 1 for now
         if (week == null)
         {
-            await RespondAsync($"Week {weekNumber} not found.", ephemeral: true);
+            await RespondAsync($"Week {weekNumber} not found.", ephemeral: false);
             return;
         }
 
@@ -177,7 +177,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         }
         catch (Exception ex)
         {
-            await RespondAsync($"Error: {ex.Message}", ephemeral: true);
+            await RespondAsync($"Error: {ex.Message}", ephemeral: false);
         }
     }
 
@@ -187,21 +187,21 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         var playerId = await _permissionService.GetPlayerIdAsync(Context.User.Id);
         if (!playerId.HasValue)
         {
-            await RespondAsync("You are not registered as a player.", ephemeral: true);
+            await RespondAsync("You are not registered as a player.", ephemeral: false);
             return;
         }
 
         var player = await _playerRepository.GetByIdAsync(playerId.Value);
         if (player?.TeamId == null)
         {
-            await RespondAsync("You are not on a team.", ephemeral: true);
+            await RespondAsync("You are not on a team.", ephemeral: false);
             return;
         }
 
         var team = await _teamRepository.GetByIdAsync(player.TeamId.Value);
         if (team == null)
         {
-            await RespondAsync("Your team was not found.", ephemeral: true);
+            await RespondAsync("Your team was not found.", ephemeral: false);
             return;
         }
 
