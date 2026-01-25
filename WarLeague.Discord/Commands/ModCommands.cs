@@ -42,35 +42,7 @@ public class ModCommands : InteractionModuleBase<SocketInteractionContext>
         _configuration = configuration;
     }
 
-    [SlashCommand("start-week", "Start a new week")]
-    public async Task StartWeek(
-        [Summary("week-number", "Week number")] int weekNumber,
-        [Summary("start-date", "Start date (YYYY-MM-DD)")] string startDateStr,
-        [Summary("end-date", "End date (YYYY-MM-DD)")] string endDateStr)
-    {
-        if (!await _permissionService.IsAdminAsync(Context.User.Id))
-        {
-            await RespondAsync("Only administrators can start weeks.", ephemeral: true);
-            return;
-        }
-
-        if (!DateTime.TryParse(startDateStr, out var startDate) ||
-            !DateTime.TryParse(endDateStr, out var endDate))
-        {
-            await RespondAsync("Invalid date format. Use YYYY-MM-DD.", ephemeral: true);
-            return;
-        }
-
-        try
-        {
-            var week = await _weekService.StartWeekAsync(weekNumber, 1, startDate, endDate); // Assuming season 1
-            await RespondAsync($"Week {weekNumber} started successfully! Submissions are now open.", ephemeral: false);
-        }
-        catch (Exception ex)
-        {
-            await RespondAsync($"Error: {ex.Message}", ephemeral: true);
-        }
-    }
+ 
 
     [SlashCommand("close-submissions", "Close submissions for a week")]
     public async Task CloseSubmissions(
