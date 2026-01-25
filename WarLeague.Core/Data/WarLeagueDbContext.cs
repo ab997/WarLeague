@@ -74,17 +74,14 @@ public class WarLeagueDbContext : DbContext
         //--------------------------------------
         // unique indexes
         //--------------------------------------
-        // Format.Name unique
         modelBuilder.Entity<Format>()
             .HasIndex(f => f.Name)
             .IsUnique();
 
-        // Player.DiscordUserId unique
         modelBuilder.Entity<Player>()
             .HasIndex(p => p.DiscordUserId)
             .IsUnique();
 
-        // Team.Name unique
         modelBuilder.Entity<Team>()
             .HasIndex(t => t.Name)
             .IsUnique();
@@ -98,6 +95,32 @@ public class WarLeagueDbContext : DbContext
         modelBuilder.Entity<Week>()
             .HasIndex(w => new { w.SeasonId, w.WeekNumber })
             .IsUnique();
+
+        //--------------------------------------
+        // Ensure only one active Format, Season and Week at a time (filtered unique indexes)
+        // Note: .HasFilter uses SQL Server syntax ("[Active] = 1"); adjust if using another provider.
+        //--------------------------------------
+        modelBuilder.Entity<Format>()
+            .HasIndex(f => f.Active)
+            .IsUnique()
+            .HasFilter("[Active] = 1");
+
+        modelBuilder.Entity<Season>()
+            .HasIndex(s => s.Active)
+            .IsUnique()
+            .HasFilter("[Active] = 1");
+
+        modelBuilder.Entity<Week>()
+            .HasIndex(w => w.Active)
+            .IsUnique()
+            .HasFilter("[Active] = 1");
+
+
+        //--------------------------------------
+        // global query filters
+        //--------------------------------------
+        modelBuilder.Entity<Season>()
+        .HasQueryFilter(s => s.Format.Active);
 
         //--------------------------------------
         // disable cascade delete

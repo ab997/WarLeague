@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WarLeague.Core.Data;
 
@@ -11,9 +12,11 @@ using WarLeague.Core.Data;
 namespace WarLeague.Core.Migrations
 {
     [DbContext(typeof(WarLeagueDbContext))]
-    partial class WarLeagueDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260125115016_EnsureSingleActiveEntity")]
+    partial class EnsureSingleActiveEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -52,7 +55,7 @@ namespace WarLeague.Core.Migrations
 
                     b.HasIndex("WeekId");
 
-                    b.ToTable("DeckSubmissions", (string)null);
+                    b.ToTable("DeckSubmissions");
                 });
 
             modelBuilder.Entity("WarLeague.Core.Data.Entities.Format", b =>
@@ -83,7 +86,7 @@ namespace WarLeague.Core.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Formats", (string)null);
+                    b.ToTable("Formats");
                 });
 
             modelBuilder.Entity("WarLeague.Core.Data.Entities.Match", b =>
@@ -126,7 +129,7 @@ namespace WarLeague.Core.Migrations
 
                     b.HasIndex("WinnerId");
 
-                    b.ToTable("Matches", (string)null);
+                    b.ToTable("Matches");
                 });
 
             modelBuilder.Entity("WarLeague.Core.Data.Entities.Player", b =>
@@ -161,7 +164,7 @@ namespace WarLeague.Core.Migrations
 
                     b.HasIndex("TeamId");
 
-                    b.ToTable("Players", (string)null);
+                    b.ToTable("Players");
                 });
 
             modelBuilder.Entity("WarLeague.Core.Data.Entities.Season", b =>
@@ -190,7 +193,7 @@ namespace WarLeague.Core.Migrations
                     b.HasIndex("FormatId", "SeasonNumber")
                         .IsUnique();
 
-                    b.ToTable("Seasons", (string)null);
+                    b.ToTable("Seasons");
                 });
 
             modelBuilder.Entity("WarLeague.Core.Data.Entities.Team", b =>
@@ -221,7 +224,7 @@ namespace WarLeague.Core.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Teams", (string)null);
+                    b.ToTable("Teams");
                 });
 
             modelBuilder.Entity("WarLeague.Core.Data.Entities.Week", b =>
@@ -263,7 +266,7 @@ namespace WarLeague.Core.Migrations
                     b.HasIndex("SeasonId", "WeekNumber")
                         .IsUnique();
 
-                    b.ToTable("Weeks", (string)null);
+                    b.ToTable("Weeks");
                 });
 
             modelBuilder.Entity("WarLeague.Core.Data.Entities.DeckSubmission", b =>

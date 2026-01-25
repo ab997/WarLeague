@@ -1,10 +1,7 @@
 ﻿
 using Discord;
 using Discord.Interactions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+
 using System.Text.Json;
 using System.Threading.Tasks;
 using WarLeague.Core.Data.Entities;
@@ -22,8 +19,8 @@ namespace WarLeague.Discord.Commands
         {
             _formatRepository = formatRepository;
         }
-        [SlashCommand("create-format", "Creates a new format")]
-        public async Task CreateFormatAsync(string formatName)
+        [SlashCommand("create", "Creates a new format")]
+        public async Task CreateAsync(string formatName)
         {
             await DeferAsync(ephemeral: true);
 
@@ -43,8 +40,8 @@ namespace WarLeague.Discord.Commands
             await FollowupAsync($"Format created.");
         }
 
-        [SlashCommand("delete-format", "Deletes format")]
-        public async Task DeleteFormatAsync(string formatName)
+        [SlashCommand("delete", "Deletes format")]
+        public async Task DeleteAsync(string formatName)
         {
             await DeferAsync(ephemeral: true);
 
@@ -59,8 +56,35 @@ namespace WarLeague.Discord.Commands
             await FollowupAsync($"Format '{formatName}' deleted.");
         }
 
-        [SlashCommand("update-format-rules", "Update format rules from a .json file")]
-        public async Task UpdateFormatRulesAsync(
+        [SlashCommand("set-active", "Sets a format to active (all other to inactive)")]
+        public async Task SetActive(string formatName)
+        {
+            await DeferAsync(ephemeral: true);
+
+            var format = await _formatRepository.GetByNameAsync(formatName);
+            if (format == null)
+            {
+                await FollowupAsync($"Format with name {formatName} not found.");
+                return;
+            }
+
+            var allFormats = await _formatRepository.GetAllAsync();
+
+            // due to active index we need 2 step update
+
+            foreach (var f in allFormats)
+                f.Active = false;
+
+            await _formatRepository.UpdateRangeAsync(allFormats);
+
+            format.Active = true;
+            await _formatRepository.UpdateAsync(format);
+
+            await FollowupAsync($"Format '{formatName}' is now active.");
+        }
+
+        [SlashCommand("update-rules", "Update format rules from a .json file")]
+        public async Task UpdateRulesAsync(
            [Summary("format", "Format name")] string formatName,
            [Summary("rules-file", "JSON file containing rules")] IAttachment rulesFile)
         {
