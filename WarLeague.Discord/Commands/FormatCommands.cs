@@ -1,6 +1,8 @@
 ﻿
 using Discord;
 using Discord.Interactions;
+using Discord.WebSocket;
+using System;
 using System.Text.Json;
 using WarLeague.Core.Repositories;
 using Format = WarLeague.Core.Data.Entities.Format;
@@ -34,7 +36,53 @@ namespace WarLeague.Discord.Commands
                 Name = formatName
             });
 
-            await FollowupAsync($"Format created.");
+            var guild = Context.Guild as SocketGuild;
+            if (guild == null)
+            {
+                await FollowupAsync("This command can only be used inside a guild.");
+                return;
+            }
+
+            // Normalize channel name if not provided
+            string channelName = formatName.ToLowerInvariant().Replace(' ', '-');
+
+            // Optionally verify bot permissions
+            if (!guild.CurrentUser.GuildPermissions.ManageChannels)
+            {
+                await FollowupAsync("I don't have permission to manage channels. Grant the bot Manage Channels permission.");
+                return;
+            }
+            // Find or create category
+            var category = guild.CategoryChannels
+                .FirstOrDefault(c => string.Equals(c.Name, formatName, StringComparison.OrdinalIgnoreCase));
+
+            ulong categoryId = 0;
+            if (category == null)
+            {
+                var newCategory = await guild.CreateCategoryChannelAsync(formatName);
+                categoryId = newCategory.Id;
+                category = guild.GetCategoryChannel(categoryId);
+            }
+
+            // If a channel with the same name already exists under that category, return early
+            var existing = guild.TextChannels
+                .FirstOrDefault(c => string.Equals(c.Name, channelName, StringComparison.OrdinalIgnoreCase) && c.CategoryId == category.Id);
+
+            if (existing != null)
+            {
+                await FollowupAsync($"Channel '{existing.Mention}' already exists under category '{category.Name}'.");
+                return;
+            }
+
+            // Create the text channel and assign it to the category
+            var channel = await guild.CreateTextChannelAsync(channelName, props =>
+            {
+                props.Topic = $"Channel for {formatName}";
+                props.CategoryId = category.Id;
+            });
+
+
+            await FollowupAsync($"Format {formatName} created.");
         }
 
         [SlashCommand("delete", "Deletes format")]
