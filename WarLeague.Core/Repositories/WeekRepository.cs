@@ -125,4 +125,23 @@ public class WeekRepository
 
         throw new InvalidOperationException("Multiple open weeks exist for this season.");
     }
+
+    /// <summary>
+    /// Returns the single week in SubmissionsClosed status for the given season.
+    /// Returns null if there is no such week.
+    /// Throws if multiple such weeks exist (data inconsistency).
+    /// </summary>
+    public async Task<Week?> GetSingleSubmissionsClosedWeekBySeasonAsync(int seasonId)
+    {
+        var weeks = await _context.Weeks
+            .Include(w => w.DeckSubmissions)
+            .Where(w => w.SeasonId == seasonId && w.Status == WeekStatus.SubmissionsClosed)
+            .OrderBy(w => w.WeekNumber)
+            .ToListAsync();
+
+        if (weeks.Count == 0) return null;
+        if (weeks.Count == 1) return weeks[0];
+
+        throw new InvalidOperationException("Multiple weeks with status SubmissionsClosed exist for this season.");
+    }
 }

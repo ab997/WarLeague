@@ -210,14 +210,14 @@ namespace WarLeague.Discord.Commands
 
                 if (submittedCount != requiredDecksByTeams)
                 {
-                    invalidTeams.Add($"{team.Name} ({submittedCount}/5)");
+                    invalidTeams.Add($"{team.Name} ({submittedCount}/{requiredDecksByTeams})");
                 }
             }
 
             if (invalidTeams.Count > 0)
             {
                 await FollowupAsync(
-                    "Cannot start week because not all teams have exactly 5 submitted decks:\n" +
+                    $"Cannot start week because not all teams have exactly {requiredDecksByTeams} submitted decks:\n" +
                     string.Join("\n", invalidTeams));
                 return;
             }
