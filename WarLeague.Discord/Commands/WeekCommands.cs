@@ -15,10 +15,18 @@ namespace WarLeague.Discord.Commands
     public class WeekCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly WeekRepository _weekRepository;
+        private readonly TeamRepository _teamRepository;
+        private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
         private readonly DiscordApiHelperService _helperService;
-        public WeekCommands(WeekRepository weekRepository, DiscordApiHelperService helperService)
+        public WeekCommands(
+            WeekRepository weekRepository,
+            TeamRepository teamRepository,
+            PlayerSeasonTeamRepository playerSeasonTeamRepository,
+            DiscordApiHelperService helperService)
         {
             _weekRepository = weekRepository;
+            _teamRepository = teamRepository;
+            _playerSeasonTeamRepository = playerSeasonTeamRepository;
             _helperService = helperService;
         }
         [SlashCommand("create", "Creates a week")]
@@ -143,6 +151,81 @@ namespace WarLeague.Discord.Commands
             await _weekRepository.UpdateAsync(week);
 
             await FollowupAsync($"Week {weekNumber} updated.", ephemeral: false);
+        }
+
+        [SlashCommand("start", "Starts the current week by closing submissions")]
+        public async Task StartAsync(int requiredDecksByTeams = 5)
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+            Week? openWeek;
+            try
+            {
+                openWeek = await _weekRepository.GetOpenWeekBySeasonAsync(season.Id);
+            }
+            catch (InvalidOperationException)
+            {
+                await FollowupAsync("There are multiple open weeks for the active season. Please fix week statuses first.");
+                return;
+            }
+
+            if (openWeek == null)
+            {
+                await FollowupAsync("There is no open week for the active season right now.");
+                return;
+            }
+
+            if (openWeek.Status != WeekStatus.Open)
+            {
+                await FollowupAsync("The current week is not open, so it cannot be started.");
+                return;
+            }
+
+            var teams = await _teamRepository.GetBySeasonAsync(season.Id);
+            if (teams.Count == 0)
+            {
+                await FollowupAsync("There are no teams in the active season.");
+                return;
+            }
+
+            var psts = await _playerSeasonTeamRepository.GetBySeasonAsync(season.Id);
+
+            var invalidTeams = new List<string>();
+
+            foreach (var team in teams.OrderBy(t => t.Name))
+            {
+                var teamPlayerIds = psts
+                    .Where(p => p.TeamId == team.Id)
+                    .Select(p => p.PlayerId)
+                    .Distinct()
+                    .ToList();
+
+                var submittedCount = openWeek.DeckSubmissions
+                    .Where(ds => teamPlayerIds.Contains(ds.PlayerId))
+                    .Select(ds => ds.PlayerId)
+                    .Distinct()
+                    .Count();
+
+                if (submittedCount != requiredDecksByTeams)
+                {
+                    invalidTeams.Add($"{team.Name} ({submittedCount}/5)");
+                }
+            }
+
+            if (invalidTeams.Count > 0)
+            {
+                await FollowupAsync(
+                    "Cannot start week because not all teams have exactly 5 submitted decks:\n" +
+                    string.Join("\n", invalidTeams));
+                return;
+            }
+
+            openWeek.Status = WeekStatus.SubmissionsClosed;
+            await _weekRepository.UpdateAsync(openWeek);
+
+            await FollowupAsync($"Week {openWeek.WeekNumber} submissions are now closed.");
         }
     }
 }
