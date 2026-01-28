@@ -399,40 +399,7 @@ namespace WarLeague.Discord.Commands
             await SendEmbedsInBatchesAsync(embeds);
         }
 
-        private async Task SendInChunksAsync(string content, int chunkSize = 1800)
-        {
-            if (string.IsNullOrEmpty(content))
-            {
-                await FollowupAsync("<empty>");
-                return;
-            }
-
-            int start = 0;
-            bool first = true;
-            while (start < content.Length)
-            {
-                int length = Math.Min(chunkSize, content.Length - start);
-                // Try to break on newline to keep things tidy
-                int lastNewLine = content.LastIndexOf('\n', start + length - 1, length);
-                if (lastNewLine > start && lastNewLine - start < length)
-                {
-                    length = lastNewLine - start + 1;
-                }
-
-                var part = content.Substring(start, length);
-                if (first)
-                {
-                    await FollowupAsync(part);
-                    first = false;
-                }
-                else
-                {
-                    await FollowupAsync(part);
-                }
-
-                start += length;
-            }
-        }
+       
 
         private static List<string> SplitIntoFieldChunks(string text, int maxChars)
         {
