@@ -28,6 +28,7 @@ public class TeamRepository
     public async Task<Team?> GetByNameAndSeasonAsync(string teamName, int seasonId)
     {
         return await _context.Teams
+            .Include(x => x.Captain)
             .Where(x => x.SeasonId == seasonId)
             .SingleOrDefaultAsync(t => t.Name == teamName);
     }
@@ -54,5 +55,12 @@ public class TeamRepository
     {
         _context.Teams.Update(team);
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<List<Team>> GetBySeasonAsync(int id)
+    {
+        return await _context.Teams
+            .Where(t => t.SeasonId == id)
+            .ToListAsync();
     }
 }
