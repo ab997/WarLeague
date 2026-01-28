@@ -45,7 +45,12 @@ namespace WarLeague.Core.Repositories
 
         public async Task<PlayerSeasonTeam?> GetByPlayerAndSeasonAsync(int playerId, int seasonId)
         {
-            return await _context.PlayerSeasonTeams.SingleOrDefaultAsync(x => x.PlayerId == playerId && x.SeasonId == seasonId);
+            return await _context.PlayerSeasonTeams
+                .Include(x => x.Player)
+                .Include(x => x.Team)
+                    .ThenInclude(x => x.Captain)
+                .Include(x => x.Season)
+                .SingleOrDefaultAsync(x => x.PlayerId == playerId && x.SeasonId == seasonId);
         }
 
         public async Task DeleteAsync(PlayerSeasonTeam existingPst)
@@ -57,6 +62,21 @@ namespace WarLeague.Core.Repositories
         public async Task<PlayerSeasonTeam?> GetByPlayerSeasonAndTeamAsync(int playerId, int seasonId, int teamId)
         {
             return await _context.PlayerSeasonTeams.SingleOrDefaultAsync(x => x.PlayerId == playerId && x.SeasonId == seasonId && x.TeamId == teamId);
+        }
+
+        public async Task GetByPlayerAndSeasonAsync(int id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<List<PlayerSeasonTeam>> GetBySeasonAsync(int seasonId)
+        {
+            return await _context.PlayerSeasonTeams
+                        .AsNoTracking()
+                        .Where(pst => pst.Season.Id == seasonId)
+                        .Include(pst => pst.Team)
+                        .Include(pst => pst.Player)
+                        .ToListAsync();
         }
     }
 }
