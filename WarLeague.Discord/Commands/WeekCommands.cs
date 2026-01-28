@@ -1,4 +1,4 @@
-﻿using Discord.Interactions;
+using Discord.Interactions;
 using System.Globalization;
 using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Data.Enums;
@@ -66,6 +66,7 @@ namespace WarLeague.Discord.Commands
             };
 
             await _weekRepository.AddAsync(weekNew);
+            await _weekRepository.CloseOtherOpenWeeksAsync(season.Id, weekNew.Id);
 
             await FollowupAsync($"Week created.");
         }
@@ -132,6 +133,11 @@ namespace WarLeague.Discord.Commands
             if (status.HasValue)
             {
                 week.Status = status.Value;
+            }
+
+            if (week.Status == WeekStatus.Open)
+            {
+                await _weekRepository.CloseOtherOpenWeeksAsync(season.Id, week.Id);
             }
 
             await _weekRepository.UpdateAsync(week);

@@ -78,6 +78,28 @@ public class WeekRepository
         await _context.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Ensures there is at most one Open week per season by closing any other Open weeks.
+    /// This does not change the status of the specified weekId.
+    /// </summary>
+    public async Task CloseOtherOpenWeeksAsync(int seasonId, int weekId)
+    {
+        var otherOpenWeeks = await _context.Weeks
+            .Where(w => w.SeasonId == seasonId && w.Id != weekId && w.Status == WeekStatus.Open)
+            .ToListAsync();
+
+        if (otherOpenWeeks.Count == 0) return;
+
+        foreach (var w in otherOpenWeeks)
+        {
+            // The simplest, safest automatic transition for a previously-open week:
+            // closing submissions prevents multiple simultaneous "open" weeks.
+            w.Status = WeekStatus.SubmissionsClosed;
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<Week?> GetByWeekNumberAndSeasonAsync(int weekNumber, int id)
     {
         return await _context.Weeks
