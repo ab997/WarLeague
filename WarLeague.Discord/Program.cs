@@ -8,7 +8,6 @@ using Microsoft.Extensions.Hosting;
 using WarLeague.Core.Data;
 using WarLeague.Core.Repositories;
 using WarLeague.Discord.HostedService;
-using WarLeague.Discord.Roles;
 using WarLeague.Discord.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -54,14 +53,10 @@ builder.Services.AddScoped<PlayerService>();
 // Discord services
 builder.Services.AddSingleton(discordClient);
 builder.Services.AddSingleton(interactionService);
-builder.Services.AddSingleton<FileValidationService>();
-builder.Services.Configure<DiscordRoleMappings>(builder.Configuration.GetSection("DiscordRoleMappings"));
-builder.Services.AddSingleton<DiscordRoleMapper>();
 
 // Hosted services
 builder.Services.AddHostedService<DiscordBotService>();
 builder.Services.AddHostedService<InteractionHandlingService>();
-//builder.Services.AddHostedService<DailyStandingsService>();
 
 var app = builder.Build();
 
