@@ -1,3 +1,5 @@
+
+using Discord;
 using Discord.Interactions;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
@@ -5,6 +7,7 @@ using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Repositories;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
+using Format = WarLeague.Core.Data.Entities.Format;
 
 namespace WarLeague.Discord.Commands
 {
@@ -304,61 +307,96 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            var sb = new StringBuilder();
+            var embeds = new List<Embed>();
 
-            foreach (var format in formats)
+            foreach (var format in formats.OrderBy(f => f.Name))
             {
-                sb.AppendLine($"Format: {format.Name}");
-
                 var seasons = await _seasonRepository.GetAllByFormatAsync(format.Id);
-                if (seasons.Count == 0)
+                var orderedSeasons = seasons.OrderBy(s => s.SeasonNumber).ToList();
+
+                if (orderedSeasons.Count == 0)
                 {
-                    sb.AppendLine("  Seasons: none");
-                    sb.AppendLine();
+                    embeds.Add(new EmbedBuilder()
+                        .WithTitle($"Format: {format.Name}")
+                        .WithDescription("No seasons yet.")
+                        .WithColor(new Color(120, 120, 120))
+                        .Build());
                     continue;
                 }
 
-                foreach (var season in seasons.OrderBy(s => s.SeasonNumber))
+                // We may need multiple embeds per format due to field/size limits.
+                EmbedBuilder NewEmbedForFormat(int page) => new EmbedBuilder()
+                    .WithTitle(page == 1 ? $"Format: {format.Name}" : $"Format: {format.Name} (page {page})")
+                    .WithColor(new Color(88, 101, 242)); // Discord blurple
+
+                var pageNumber = 1;
+                var eb = NewEmbedForFormat(pageNumber);
+
+                foreach (var season in orderedSeasons)
                 {
-                    sb.AppendLine($"  Season {season.SeasonNumber}" + (season.Active ? " (active)" : string.Empty));
-
-                    // Teams in this season
                     var teams = await _teamRepository.GetBySeasonAsync(season.Id);
-
-                    // Memberships in this season (group by team)
                     var memberships = await _playerSeasonTeamRepository.GetBySeasonAsync(season.Id);
 
                     var membersByTeamId = memberships
-                        .GroupBy(p => p.Team.Id)
+                        .Where(m => m.Team is not null)
+                        .GroupBy(p => p.Team!.Id)
                         .ToDictionary(g => g.Key, g => g.Select(x => x.Player).ToList());
 
+                    var seasonTitle = season.Active
+                        ? $"Season {season.SeasonNumber} • Active"
+                        : $"Season {season.SeasonNumber}";
+
+                    string seasonBody;
                     if (teams.Count == 0)
                     {
-                        sb.AppendLine("    Teams: none");
-                        continue;
+                        seasonBody = "_No teams yet._";
                     }
-
-                    foreach (var team in teams)
+                    else
                     {
-                        sb.AppendLine($"    Team: {team.Name}");
+                        var lines = new List<string>(capacity: Math.Max(teams.Count, 1));
+                        foreach (var team in teams.OrderBy(t => t.Name))
+                        {
+                            if (!membersByTeamId.TryGetValue(team.Id, out var players) || players.Count == 0)
+                            {
+                                lines.Add($"**{team.Name}** — _no players_");
+                                continue;
+                            }
 
-                        if (!membersByTeamId.TryGetValue(team.Id, out var players) || players.Count == 0)
-                        {
-                            sb.AppendLine("      Players: none");
+                            var playerMentions = players
+                                .Where(p => p is not null)
+                                .Select(p => $"<@{p.DiscordUserId}>")
+                                .Distinct()
+                                .ToList();
+
+                            lines.Add($"**{team.Name}** ({playerMentions.Count}): {string.Join(", ", playerMentions)}");
                         }
-                        else
-                        {
-                            // We don't assume a display field on Player; list by Player.Id to be schema-safe
-                            var playerList = string.Join(", ", players.Select(p => $"<@{p.DiscordUserId}>"));
-                            sb.AppendLine($"      Players ({players.Count}): {playerList}");
-                        }
+
+                        seasonBody = string.Join('\n', lines);
                     }
 
-                    sb.AppendLine();
+                    // Field values must be <= 1024 chars. Split the season into multiple fields if needed.
+                    var fieldChunks = SplitIntoFieldChunks(seasonBody, maxChars: 1024);
+                    for (int i = 0; i < fieldChunks.Count; i++)
+                    {
+                        var fieldName = i == 0 ? seasonTitle : $"{seasonTitle} (cont.)";
+                        var fieldValue = fieldChunks[i];
+
+                        // Discord embed limit: max 25 fields per embed.
+                        if (eb.Fields.Count >= 25)
+                        {
+                            embeds.Add(eb.Build());
+                            pageNumber++;
+                            eb = NewEmbedForFormat(pageNumber);
+                        }
+
+                        eb.AddField(fieldName, fieldValue, inline: false);
+                    }
                 }
+
+                embeds.Add(eb.Build());
             }
 
-            await SendInChunksAsync(sb.ToString());
+            await SendEmbedsInBatchesAsync(embeds);
         }
 
         private async Task SendInChunksAsync(string content, int chunkSize = 1800)
@@ -393,6 +431,62 @@ namespace WarLeague.Discord.Commands
                 }
 
                 start += length;
+            }
+        }
+
+        private static List<string> SplitIntoFieldChunks(string text, int maxChars)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return new List<string> { "_<empty>_" };
+            }
+
+            if (text.Length <= maxChars)
+            {
+                return new List<string> { text };
+            }
+
+            var chunks = new List<string>();
+            int start = 0;
+            while (start < text.Length)
+            {
+                int len = Math.Min(maxChars, text.Length - start);
+                int end = start + len;
+
+                // Prefer to break on newline so we don't split a team line.
+                int lastNewLine = text.LastIndexOf('\n', end - 1, len);
+                if (lastNewLine > start)
+                {
+                    end = lastNewLine + 1;
+                }
+
+                var part = text.Substring(start, end - start).Trim();
+                if (part.Length == 0)
+                {
+                    part = "_…_";
+                }
+
+                chunks.Add(part);
+                start = end;
+            }
+
+            return chunks;
+        }
+
+        private async Task SendEmbedsInBatchesAsync(IReadOnlyList<Embed> embeds)
+        {
+            if (embeds.Count == 0)
+            {
+                await FollowupAsync("Nothing to show.");
+                return;
+            }
+
+            // Discord allows up to 10 embeds per message.
+            const int batchSize = 10;
+            for (int i = 0; i < embeds.Count; i += batchSize)
+            {
+                var batch = embeds.Skip(i).Take(batchSize).ToArray();
+                await FollowupAsync(embeds: batch);
             }
         }
     }
