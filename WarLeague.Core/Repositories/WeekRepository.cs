@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WarLeague.Core.Data;
 using WarLeague.Core.Data.Entities;
+using WarLeague.Core.Data.Enums;
 
 
 namespace WarLeague.Core.Repositories;
@@ -56,6 +57,14 @@ public class WeekRepository
             .ToListAsync();
     }
 
+    public async Task<List<Week>> GetBySeasonAsync(int seasonId)
+    {
+        return await _context.Weeks
+            .Where(w => w.SeasonId == seasonId)
+            .OrderBy(w => w.WeekNumber)
+            .ToListAsync();
+    }
+
     public async Task<Week> AddAsync(Week week)
     {
         await _context.Weeks.AddAsync(week);
@@ -74,5 +83,24 @@ public class WeekRepository
         return await _context.Weeks
             .Where(w => w.SeasonId == id)
             .SingleOrDefaultAsync(w => w.WeekNumber == weekNumber);
+    }
+
+    /// <summary>
+    /// Returns the single open week for the given season.
+    /// Returns null if there is no open week.
+    /// Throws if multiple open weeks exist (data inconsistency).
+    /// </summary>
+    public async Task<Week?> GetOpenWeekBySeasonAsync(int seasonId)
+    {
+        var openWeeks = await _context.Weeks
+            .Include(w => w.DeckSubmissions)
+            .Where(w => w.SeasonId == seasonId && w.Status == WeekStatus.Open)
+            .OrderBy(w => w.WeekNumber)
+            .ToListAsync();
+
+        if (openWeeks.Count == 0) return null;
+        if (openWeeks.Count == 1) return openWeeks[0];
+
+        throw new InvalidOperationException("Multiple open weeks exist for this season.");
     }
 }

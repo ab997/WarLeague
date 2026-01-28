@@ -13,34 +13,12 @@ public class DeckSubmissionRepository
         _context = context;
     }
 
-    public async Task<DeckSubmission?> GetByIdAsync(int id)
-    {
-        return await _context.DeckSubmissions
-            .Include(d => d.Player)
-            .Include(d => d.Week)
-            .SingleOrDefaultAsync(d => d.Id == id);
-    }
-
     public async Task<DeckSubmission?> GetByPlayerAndWeekAsync(int playerId, int weekId)
     {
         return await _context.DeckSubmissions
-            .Include(d => d.Player)
-            .SingleOrDefaultAsync(d => d.PlayerId == playerId && d.WeekId == weekId);
-    }
-
-    public async Task<List<DeckSubmission>> GetByWeekIdAsync(int weekId)
-    {
-        return await _context.DeckSubmissions
-            .Include(d => d.Player)
-            .Where(d => d.WeekId == weekId)
-            .ToListAsync();
-    }
-
-    public async Task<List<DeckSubmission>> GetByTeamIdAndWeekIdAsync(int teamId, int weekId)
-    {
-        return await _context.DeckSubmissions
-            .Include(d => d.Player)
-            .ToListAsync();
+            .Include(ds => ds.Player)
+            .Include(ds => ds.Week)
+            .SingleOrDefaultAsync(ds => ds.PlayerId == playerId && ds.WeekId == weekId);
     }
 
     public async Task<DeckSubmission> AddAsync(DeckSubmission submission)
@@ -55,4 +33,20 @@ public class DeckSubmissionRepository
         _context.DeckSubmissions.Update(submission);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<bool> DeleteByPlayerAndWeekAsync(int playerId, int weekId)
+    {
+        var existing = await _context.DeckSubmissions
+            .SingleOrDefaultAsync(ds => ds.PlayerId == playerId && ds.WeekId == weekId);
+
+        if (existing is null)
+        {
+            return false;
+        }
+
+        _context.DeckSubmissions.Remove(existing);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
 }

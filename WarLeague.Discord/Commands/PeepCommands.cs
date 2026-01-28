@@ -166,43 +166,7 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            Team team = pst.Team;
-
-            var memberships = await _playerSeasonTeamRepository.GetBySeasonAsync(season.Id);
-            var players = memberships
-                .Where(x => x.TeamId == team.Id)
-                .Select(x => x.Player)
-                .OrderBy(p => p.UserName)
-                .ToList();
-
-            var sb = new StringBuilder();
-            sb.AppendLine($"Team: {team.Name}");
-            sb.AppendLine($"Captain: <@{team.Captain.DiscordUserId}>");
-            sb.AppendLine($"Created: {team.CreatedDate:yyyy-MM-dd}");
-            sb.AppendLine();
-            sb.AppendLine($"Players ({players.Count}):");
-
-            if (players.Count == 0)
-            {
-                sb.AppendLine("- <none>");
-            }
-            else
-            {
-                foreach (var p in players)
-                {
-                    // Prefer stored username; include a mention for convenience
-                    var name = string.IsNullOrWhiteSpace(p.UserName) ? $"Player #{p.Id}" : p.UserName;
-                    sb.AppendLine($"- {name} (<@{p.DiscordUserId}>)");
-                }
-            }
-
-            if (_helperService.IsUserAdmin(Context))
-            {
-                sb.AppendLine();
-                sb.AppendLine($"[Admin] TeamId: {team.Id} | CaptainId: {team.CaptainId} | SeasonId: {season.Id}");
-            }
-
-            await FollowupAsync(sb.ToString());
+            await FollowupAsync(await BuildTeamDetailsAsync(season, pst.Team));
         }
 
         [SlashCommand("team", "Shows a team's details in the active season")]
@@ -222,41 +186,7 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            var memberships = await _playerSeasonTeamRepository.GetBySeasonAsync(season.Id);
-            var players = memberships
-                .Where(x => x.TeamId == team.Id)
-                .Select(x => x.Player)
-                .OrderBy(p => p.UserName)
-                .ToList();
-
-            var sb = new StringBuilder();
-            sb.AppendLine($"Team: {team.Name}");
-            sb.AppendLine($"Captain: <@{team.Captain.DiscordUserId}>");
-            sb.AppendLine($"Created: {team.CreatedDate:yyyy-MM-dd}");
-            sb.AppendLine();
-            sb.AppendLine($"Players ({players.Count}):");
-
-            if (players.Count == 0)
-            {
-                sb.AppendLine("- <none>");
-            }
-            else
-            {
-                foreach (var p in players)
-                {
-                    // Prefer stored username; include a mention for convenience
-                    var name = string.IsNullOrWhiteSpace(p.UserName) ? $"Player #{p.Id}" : p.UserName;
-                    sb.AppendLine($"- {name} (<@{p.DiscordUserId}>)");
-                }
-            }
-
-            if (_helperService.IsUserAdmin(Context))
-            {
-                sb.AppendLine();
-                sb.AppendLine($"[Admin] TeamId: {team.Id} | CaptainId: {team.CaptainId} | SeasonId: {season.Id}");
-            }
-
-            await FollowupAsync(sb.ToString());
+            await FollowupAsync(await BuildTeamDetailsAsync(season, team));
         }
 
         [SlashCommand("rules", "Shows a snippet of the format rules JSON")]
@@ -336,6 +266,7 @@ namespace WarLeague.Discord.Commands
                 {
                     var teams = await _teamRepository.GetBySeasonAsync(season.Id);
                     var memberships = await _playerSeasonTeamRepository.GetBySeasonAsync(season.Id);
+                    var weeks = await _weekRepository.GetBySeasonAsync(season.Id);
 
                     var membersByTeamId = memberships
                         .Where(m => m.Team is not null)
@@ -347,13 +278,53 @@ namespace WarLeague.Discord.Commands
                         : $"Season {season.SeasonNumber}";
 
                     string seasonBody;
-                    if (teams.Count == 0)
+                    var lines = new List<string>(capacity: Math.Max(teams.Count + 3, 3));
+
+                    // Weeks overview (compact to avoid embed limits)
+                    if (weeks.Count == 0)
                     {
-                        seasonBody = "_No teams yet._";
+                        lines.Add("**Weeks:** _none_");
                     }
                     else
                     {
-                        var lines = new List<string>(capacity: Math.Max(teams.Count, 1));
+                        static string fmt(DateTime d) => d.ToString("MM-dd");
+
+                        // Example: W1(Open 01-01→01-07), W2(SubmissionsClosed 01-08→01-14)
+                        var weekParts = weeks
+                            .OrderBy(w => w.WeekNumber)
+                            .Select(w => $"W{w.WeekNumber}({w.Status} {fmt(w.StartDate)}→{fmt(w.EndDate)})")
+                            .ToList();
+
+                        // Keep it readable: if the joined string is too long, show a truncated prefix.
+                        var joined = string.Join(", ", weekParts);
+                        const int maxWeekLineChars = 950; // leave headroom for markdown and chunking
+                        if (joined.Length > maxWeekLineChars)
+                        {
+                            var sbWeeks = new StringBuilder();
+                            for (int wi = 0; wi < weekParts.Count; wi++)
+                            {
+                                var next = (sbWeeks.Length == 0 ? "" : ", ") + weekParts[wi];
+                                if (sbWeeks.Length + next.Length > maxWeekLineChars)
+                                {
+                                    sbWeeks.Append(sbWeeks.Length == 0 ? "…" : ", …");
+                                    break;
+                                }
+                                sbWeeks.Append(next);
+                            }
+                            joined = sbWeeks.ToString();
+                        }
+
+                        lines.Add($"**Weeks:** {joined}");
+                    }
+
+                    lines.Add(""); // spacer
+
+                    if (teams.Count == 0)
+                    {
+                        lines.Add("_No teams yet._");
+                    }
+                    else
+                    {
                         foreach (var team in teams.OrderBy(t => t.Name))
                         {
                             if (!membersByTeamId.TryGetValue(team.Id, out var players) || players.Count == 0)
@@ -370,9 +341,9 @@ namespace WarLeague.Discord.Commands
 
                             lines.Add($"**{team.Name}** ({playerMentions.Count}): {string.Join(", ", playerMentions)}");
                         }
-
-                        seasonBody = string.Join('\n', lines);
                     }
+
+                    seasonBody = string.Join('\n', lines).Trim();
 
                     // Field values must be <= 1024 chars. Split the season into multiple fields if needed.
                     var fieldChunks = SplitIntoFieldChunks(seasonBody, maxChars: 1024);
@@ -455,6 +426,45 @@ namespace WarLeague.Discord.Commands
                 var batch = embeds.Skip(i).Take(batchSize).ToArray();
                 await FollowupAsync(embeds: batch);
             }
+        }
+
+        private async Task<string> BuildTeamDetailsAsync(Season season, Team team)
+        {
+            var memberships = await _playerSeasonTeamRepository.GetBySeasonAsync(season.Id);
+            var players = memberships
+                .Where(x => x.TeamId == team.Id)
+                .Select(x => x.Player)
+                .OrderBy(p => p.UserName)
+                .ToList();
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"Team: {team.Name}");
+            sb.AppendLine($"Captain: <@{team.Captain.DiscordUserId}>");
+            sb.AppendLine($"Created: {team.CreatedDate:yyyy-MM-dd}");
+            sb.AppendLine();
+            sb.AppendLine($"Players ({players.Count}):");
+
+            if (players.Count == 0)
+            {
+                sb.AppendLine("- <none>");
+            }
+            else
+            {
+                foreach (var p in players)
+                {
+                    // Prefer stored username; include a mention for convenience
+                    var name = string.IsNullOrWhiteSpace(p.UserName) ? $"Player #{p.Id}" : p.UserName;
+                    sb.AppendLine($"- {name} (<@{p.DiscordUserId}>)");
+                }
+            }
+
+            if (_helperService.IsUserAdmin(Context))
+            {
+                sb.AppendLine();
+                sb.AppendLine($"[Admin] TeamId: {team.Id} | CaptainId: {team.CaptainId} | SeasonId: {season.Id}");
+            }
+
+            return sb.ToString();
         }
     }
 }
