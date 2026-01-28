@@ -1,0 +1,1 @@
+[] a season should always have a single open week -> the one we can submit decks for
