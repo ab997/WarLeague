@@ -163,7 +163,7 @@ namespace WarLeague.Discord.Commands
             Week? openWeek;
             try
             {
-                openWeek = await _weekRepository.GetOpenWeekBySeasonAsync(season.Id);
+                openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusAsync(season.Id, WeekStatus.Open);
             }
             catch (InvalidOperationException)
             {

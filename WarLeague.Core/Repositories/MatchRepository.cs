@@ -61,4 +61,14 @@ public class MatchRepository
         await _context.Matches.AddRangeAsync(matches);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<List<Match>> GetByPlayerAndWeekAsync(int playerId, int weekId)
+    {
+        return await _context.Matches
+            .Include(m => m.Player1)
+            .Include(m => m.Player2)
+            .Include(m => m.Winner)
+            .Where(m => (m.Player1Id == playerId || m.Player2Id == playerId) && m.WeekId == weekId)
+            .ToListAsync();
+    }
 }

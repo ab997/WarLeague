@@ -192,7 +192,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         // Resolve single open week for active season.
         try
         {
-            var openWeek = await _weekRepository.GetOpenWeekBySeasonAsync(seasonId);
+            var openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusAsync(seasonId, WeekStatus.Open);
             if (openWeek is null)
             {
                 await FollowupAsync("There is no open week for the active season right now.");
