@@ -4,6 +4,7 @@ public enum WeekStatus
 {
     Open = 0,
     SubmissionsClosed = 1,
-    Completed = 2,
-    NotOpenYet = 4
+    InProgress = 2,
+    Completed = 3,
+    NotOpenYet = 5
 }

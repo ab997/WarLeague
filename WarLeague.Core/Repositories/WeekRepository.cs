@@ -107,22 +107,17 @@ public class WeekRepository
             .SingleOrDefaultAsync(w => w.WeekNumber == weekNumber);
     }
 
-    /// <summary>
-    /// Returns the single open week for the given season.
-    /// Returns null if there is no open week.
-    /// Throws if multiple open weeks exist (data inconsistency).
-    /// </summary>
-    public async Task<Week?> GetOpenWeekBySeasonAsync(int seasonId)
+    public async Task<Week?> GetSingleWeekBySeasonAndStatusAsync(int seasonId, WeekStatus status)
     {
-        var openWeeks = await _context.Weeks
+        var weeks = await _context.Weeks
             .Include(w => w.DeckSubmissions)
-            .Where(w => w.SeasonId == seasonId && w.Status == WeekStatus.Open)
+            .Where(w => w.SeasonId == seasonId && w.Status == status)
             .OrderBy(w => w.WeekNumber)
             .ToListAsync();
 
-        if (openWeeks.Count == 0) return null;
-        if (openWeeks.Count == 1) return openWeeks[0];
+        if (weeks.Count == 0) return null;
+        if (weeks.Count == 1) return weeks[0];
 
-        throw new InvalidOperationException("Multiple open weeks exist for this season.");
+        throw new InvalidOperationException($"Multiple weeks with status {status} exist for this season.");
     }
 }
