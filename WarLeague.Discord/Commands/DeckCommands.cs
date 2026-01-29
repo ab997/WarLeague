@@ -52,8 +52,12 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         var (isAdmin, callerCaptainTeam) = await GetCallerCaptainTeamOrFollowupAsync(season, "Only Admins or team captains for the active season can submit decks.");
         if (!isAdmin && callerCaptainTeam is null) return;
 
-        Week? openWeek = await GetOpenWeekOrFollowupAsync(season.Id);
-        if (openWeek is null) return;
+        Week? openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(season.Id, WeekStatus.Open);
+        if (openWeek is null)
+        {
+            await FollowupAsync("There is no open week in the active season.");
+            return;
+        }
         if (!await EnsureDeckSubmissionsOpenAsync(openWeek)) return;
 
         var (targetPlayer, targetPst) = await GetTargetPlayerSeasonTeamOrFollowupAsync(player, season);
@@ -119,8 +123,12 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         var (isAdmin, callerCaptainTeam) = await GetCallerCaptainTeamOrFollowupAsync(season, "Only Admins or team captains for the active season can delete deck submissions.");
         if (!isAdmin && callerCaptainTeam is null) return;
 
-        Week? openWeek = await GetOpenWeekOrFollowupAsync(season.Id);
-        if (openWeek is null) return;
+        Week? openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(season.Id, WeekStatus.Open);
+        if (openWeek is null)
+        {
+            await FollowupAsync("There is no open week in the active season.");
+            return;
+        }
 
         var (targetPlayer, targetPst) = await GetTargetPlayerSeasonTeamOrFollowupAsync(player, season);
         if (targetPlayer is null || targetPst is null) return;
@@ -187,26 +195,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         return (false, callerCaptainTeam);
     }
 
-    private async Task<Week?> GetOpenWeekOrFollowupAsync(int seasonId)
-    {
-        // Resolve single open week for active season.
-        try
-        {
-            var openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusAsync(seasonId, WeekStatus.Open);
-            if (openWeek is null)
-            {
-                await FollowupAsync("There is no open week for the active season right now.");
-                return null;
-            }
-
-            return openWeek;
-        }
-        catch (InvalidOperationException)
-        {
-            await FollowupAsync("There are multiple open weeks for the active season. Please ask an Admin to fix the week status.");
-            return null;
-        }
-    }
+    
 
     private async Task<bool> EnsureDeckSubmissionsOpenAsync(Week openWeek)
     {

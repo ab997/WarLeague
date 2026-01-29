@@ -78,27 +78,27 @@ public class WeekRepository
         await _context.SaveChangesAsync();
     }
 
-    /// <summary>
-    /// Ensures there is at most one Open week per season by closing any other Open weeks.
-    /// This does not change the status of the specified weekId.
-    /// </summary>
-    public async Task CloseOtherOpenWeeksAsync(int seasonId, int weekId)
-    {
-        var otherOpenWeeks = await _context.Weeks
-            .Where(w => w.SeasonId == seasonId && w.Id != weekId && w.Status == WeekStatus.Open)
-            .ToListAsync();
+    ///// <summary>
+    ///// Ensures there is at most one Open week per season by closing any other Open weeks.
+    ///// This does not change the status of the specified weekId.
+    ///// </summary>
+    //public async Task CloseOtherOpenWeeksAsync(int seasonId, int weekId)
+    //{
+    //    var otherOpenWeeks = await _context.Weeks
+    //        .Where(w => w.SeasonId == seasonId && w.Id != weekId && w.Status == WeekStatus.Open)
+    //        .ToListAsync();
 
-        if (otherOpenWeeks.Count == 0) return;
+    //    if (otherOpenWeeks.Count == 0) return;
 
-        foreach (var w in otherOpenWeeks)
-        {
-            // The simplest, safest automatic transition for a previously-open week:
-            // closing submissions prevents multiple simultaneous "open" weeks.
-            w.Status = WeekStatus.SubmissionsClosed;
-        }
+    //    foreach (var w in otherOpenWeeks)
+    //    {
+    //        // The simplest, safest automatic transition for a previously-open week:
+    //        // closing submissions prevents multiple simultaneous "open" weeks.
+    //        w.Status = WeekStatus.SubmissionsClosed;
+    //    }
 
-        await _context.SaveChangesAsync();
-    }
+    //    await _context.SaveChangesAsync();
+    //}
 
     public async Task<Week?> GetByWeekNumberAndSeasonAsync(int weekNumber, int id)
     {
@@ -107,17 +107,11 @@ public class WeekRepository
             .SingleOrDefaultAsync(w => w.WeekNumber == weekNumber);
     }
 
-    public async Task<Week?> GetSingleWeekBySeasonAndStatusAsync(int seasonId, WeekStatus status)
+    public async Task<Week?> GetSingleWeekBySeasonAndStatusOrDefaultAsync(int seasonId, WeekStatus status)
     {
-        var weeks = await _context.Weeks
+        return await _context.Weeks
             .Include(w => w.DeckSubmissions)
             .Where(w => w.SeasonId == seasonId && w.Status == status)
-            .OrderBy(w => w.WeekNumber)
-            .ToListAsync();
-
-        if (weeks.Count == 0) return null;
-        if (weeks.Count == 1) return weeks[0];
-
-        throw new InvalidOperationException($"Multiple weeks with status {status} exist for this season.");
+            .SingleOrDefaultAsync();
     }
 }

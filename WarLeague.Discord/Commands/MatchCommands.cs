@@ -52,7 +52,7 @@ public class MatchCommands : InteractionModuleBase<SocketInteractionContext>
         Week? week;
         try
         {
-            week = await _weekRepository.GetSingleWeekBySeasonAndStatusAsync(season.Id, WeekStatus.SubmissionsClosed);
+            week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(season.Id, WeekStatus.SubmissionsClosed);
         }
         catch (InvalidOperationException)
         {

@@ -55,7 +55,7 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
         Week? week;
         try
         {
-            week = await _weekRepository.GetSingleWeekBySeasonAndStatusAsync(season.Id, WeekStatus.InProgress);
+            week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(season.Id, WeekStatus.InProgress);
         }
         catch (InvalidOperationException)
         {
