@@ -70,11 +70,10 @@ namespace WarLeague.Discord.Commands
                 StartDate = startDate,
                 EndDate = endDate,
                 SubmissionsClosedDate = subCloseDate,
-                Status = WeekStatus.Open,
+                Status = WeekStatus.NotOpenYet,
             };
 
             await _weekRepository.AddAsync(weekNew);
-            await _weekRepository.CloseOtherOpenWeeksAsync(season.Id, weekNew.Id);
 
             await FollowupAsync($"Week created.");
         }
@@ -160,28 +159,8 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            Week? openWeek;
-            try
-            {
-                openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusAsync(season.Id, WeekStatus.Open);
-            }
-            catch (InvalidOperationException)
-            {
-                await FollowupAsync("There are multiple open weeks for the active season. Please fix week statuses first.");
-                return;
-            }
-
-            if (openWeek == null)
-            {
-                await FollowupAsync("There is no open week for the active season right now.");
-                return;
-            }
-
-            if (openWeek.Status != WeekStatus.Open)
-            {
-                await FollowupAsync("The current week is not open, so it cannot be started.");
-                return;
-            }
+            Week? openWeek = await GetOpenWeekOrFollowupAsync(season.Id);
+            if (openWeek is null) return;
 
             var teams = await _teamRepository.GetBySeasonAsync(season.Id);
             if (teams.Count == 0)

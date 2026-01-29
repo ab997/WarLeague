@@ -170,12 +170,12 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
     {
         // Permissions: Admins can act for any team; otherwise require caller to be a captain in the active season.
         bool isAdmin = _helperService.IsUserAdmin(Context);
-        Player callerPlayer = await _playerService.EnsurePlayerExistsAsync(Context.User);
-
         if (isAdmin)
         {
             return (true, null);
         }
+
+        Player callerPlayer = await _playerService.EnsurePlayerExistsAsync(Context.User);
 
         var callerCaptainTeam = await _teamRepository.GetByCaptainAndSeasonAsync(callerPlayer.Id, season.Id);
         if (callerCaptainTeam is null)

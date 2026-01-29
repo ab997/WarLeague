@@ -96,12 +96,6 @@ namespace WarLeague.Discord.Commands
         {
             await DeferAsync(ephemeral: false);
 
-            if (!_helperService.IsUserAdmin(Context))
-            {
-                await FollowupAsync("Only Admins can use this command.");
-                return;
-            }
-
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
             season.DisableTeamModification = !enabled;
