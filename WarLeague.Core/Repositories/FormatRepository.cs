@@ -13,10 +13,6 @@ public class FormatRepository
         _context = context;
     }
 
-    public async Task<Format?> GetByIdOrDefaultAsync(int id)
-    {
-        return await _context.Formats.Include(x => x.Seasons).SingleOrDefaultAsync(f => f.Id == id);
-    }
     public async Task<Format> GetByIdAsync(int id)
     {
         return await _context.Formats.Include(x => x.Seasons).SingleAsync(f => f.Id == id);
@@ -49,12 +45,6 @@ public class FormatRepository
     public async Task DeleteAsync(Format format)
     {
         _context.Formats.Remove(format);
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task UpdateRangeAsync(List<Format> formats)
-    {
-        _context.Formats.UpdateRange(formats);
         await _context.SaveChangesAsync();
     }
 }

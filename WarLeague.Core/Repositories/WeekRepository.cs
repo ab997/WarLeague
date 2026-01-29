@@ -15,47 +15,6 @@ public class WeekRepository
         _context = context;
     }
 
-    public async Task<Week?> GetByIdAsync(int id)
-    {
-        return await _context.Weeks
-            .Include(w => w.Matches)
-            .Include(w => w.DeckSubmissions)
-            .SingleOrDefaultAsync(w => w.Id == id);
-    }
-
-    public async Task<Week?> GetCurrentWeekAsync()
-    {
-        var now = DateTime.UtcNow;
-        return await _context.Weeks
-            .Include(w => w.Matches)
-            .Include(w => w.DeckSubmissions)
-            .Where(w => w.StartDate <= now && w.EndDate >= now)
-            .OrderByDescending(w => w.StartDate)
-            .SingleOrDefaultAsync();
-    }
-
-    public async Task<Week?> GetByWeekNumberAsync(int weekNumber, int seasonId)
-    {
-        return await _context.Weeks
-            .Include(w => w.Matches)
-            .Include(w => w.DeckSubmissions)
-            .SingleOrDefaultAsync(w => w.WeekNumber == weekNumber && w.SeasonId == seasonId);
-    }
-
-    public async Task<Week?> GetByWeekNumberAsync(int weekNumber)
-    {
-        return await _context.Weeks
-            .SingleOrDefaultAsync(w => w.WeekNumber == weekNumber);
-    }
-
-    public async Task<List<Week>> GetAllAsync()
-    {
-        return await _context.Weeks
-            .Include(w => w.Matches)
-            .Include(w => w.DeckSubmissions)
-            .OrderBy(w => w.WeekNumber)
-            .ToListAsync();
-    }
 
     public async Task<List<Week>> GetBySeasonAsync(int seasonId)
     {
@@ -77,28 +36,6 @@ public class WeekRepository
         _context.Weeks.Update(week);
         await _context.SaveChangesAsync();
     }
-
-    ///// <summary>
-    ///// Ensures there is at most one Open week per season by closing any other Open weeks.
-    ///// This does not change the status of the specified weekId.
-    ///// </summary>
-    //public async Task CloseOtherOpenWeeksAsync(int seasonId, int weekId)
-    //{
-    //    var otherOpenWeeks = await _context.Weeks
-    //        .Where(w => w.SeasonId == seasonId && w.Id != weekId && w.Status == WeekStatus.Open)
-    //        .ToListAsync();
-
-    //    if (otherOpenWeeks.Count == 0) return;
-
-    //    foreach (var w in otherOpenWeeks)
-    //    {
-    //        // The simplest, safest automatic transition for a previously-open week:
-    //        // closing submissions prevents multiple simultaneous "open" weeks.
-    //        w.Status = WeekStatus.SubmissionsClosed;
-    //    }
-
-    //    await _context.SaveChangesAsync();
-    //}
 
     public async Task<Week?> GetByWeekNumberAndSeasonAsync(int weekNumber, int id)
     {
