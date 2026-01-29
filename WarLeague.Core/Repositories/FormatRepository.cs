@@ -13,9 +13,13 @@ public class FormatRepository
         _context = context;
     }
 
-    public async Task<Format?> GetByIdAsync(int id)
+    public async Task<Format?> GetByIdOrDefaultAsync(int id)
     {
-        return await _context.Formats.SingleOrDefaultAsync(f => f.Id == id);
+        return await _context.Formats.Include(x => x.Seasons).SingleOrDefaultAsync(f => f.Id == id);
+    }
+    public async Task<Format> GetByIdAsync(int id)
+    {
+        return await _context.Formats.Include(x => x.Seasons).SingleAsync(f => f.Id == id);
     }
 
     public async Task<Format?> GetByNameAsync(string name)
