@@ -74,7 +74,7 @@ namespace WarLeague.Core.Domain.Services
 
             await transaction.CommitAsync();
 
-            return new Result { Success = true, Message = "Team created successfully with you as captain." };
+            return new Result { Success = true, Message = $"Team created successfully with {player.UserName} as captain." };
         }
 
         public async Task<Team?> DeleteAsync(int seasonId, string teamName)
