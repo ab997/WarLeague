@@ -108,7 +108,7 @@ public class WarLeagueDbContext : DbContext
         .GetEntityTypes()
         .SelectMany(e => e.GetForeignKeys()))
         {
-            fk.DeleteBehavior = DeleteBehavior.NoAction;
+            fk.DeleteBehavior = DeleteBehavior.Restrict;
         }
     }
 }

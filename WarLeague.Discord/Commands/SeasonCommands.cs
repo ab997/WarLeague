@@ -63,7 +63,7 @@ namespace WarLeague.Discord.Commands
 
             Format format = await _helperService.GetFormatByCategoryNameAsync(Context);
 
-            var season = await _seasonService.SetActiveAsync(seasonNumber, format.Id);
+            var season = await _seasonService.SetActiveAsync(format.Id, seasonNumber);
 
             if (season == null)
             {
