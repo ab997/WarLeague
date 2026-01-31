@@ -43,7 +43,7 @@ public class TeamRepository
     {
         // Remove dependent PlayerSeasonTeam entries first (cascade delete disabled)
         var psts = _context.PlayerSeasonTeams.Where(p => p.TeamId == team.Id);
-        _context.PlayerSeasonTeams.RemoveRange(psts);
+        //_context.PlayerSeasonTeams.RemoveRange(psts);
 
         // Remove the team
         _context.Teams.Remove(team);

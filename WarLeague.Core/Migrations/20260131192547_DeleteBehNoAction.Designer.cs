@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WarLeague.Core.Data;
 
@@ -11,9 +12,11 @@ using WarLeague.Core.Data;
 namespace WarLeague.Core.Migrations
 {
     [DbContext(typeof(WarLeagueDbContext))]
-    partial class WarLeagueDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260131192547_DeleteBehNoAction")]
+    partial class DeleteBehNoAction
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -275,13 +278,13 @@ namespace WarLeague.Core.Migrations
                     b.HasOne("WarLeague.Core.Data.Entities.Player", "Player")
                         .WithMany()
                         .HasForeignKey("PlayerId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("WarLeague.Core.Data.Entities.Week", "Week")
                         .WithMany("DeckSubmissions")
                         .HasForeignKey("WeekId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Player");
@@ -294,24 +297,25 @@ namespace WarLeague.Core.Migrations
                     b.HasOne("WarLeague.Core.Data.Entities.Player", "Player1")
                         .WithMany("MatchesAsPlayer1")
                         .HasForeignKey("Player1Id")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("WarLeague.Core.Data.Entities.Player", "Player2")
                         .WithMany("MatchesAsPlayer2")
                         .HasForeignKey("Player2Id")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("WarLeague.Core.Data.Entities.Week", "Week")
                         .WithMany("Matches")
                         .HasForeignKey("WeekId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("WarLeague.Core.Data.Entities.Player", "Winner")
                         .WithMany("MatchesWon")
-                        .HasForeignKey("WinnerId");
+                        .HasForeignKey("WinnerId")
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("Player1");
 
@@ -327,19 +331,19 @@ namespace WarLeague.Core.Migrations
                     b.HasOne("WarLeague.Core.Data.Entities.Player", "Player")
                         .WithMany()
                         .HasForeignKey("PlayerId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("WarLeague.Core.Data.Entities.Season", "Season")
                         .WithMany()
                         .HasForeignKey("SeasonId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("WarLeague.Core.Data.Entities.Team", "Team")
                         .WithMany()
                         .HasForeignKey("TeamId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Player");
@@ -354,7 +358,7 @@ namespace WarLeague.Core.Migrations
                     b.HasOne("WarLeague.Core.Data.Entities.Format", "Format")
                         .WithMany("Seasons")
                         .HasForeignKey("FormatId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Format");
@@ -365,13 +369,13 @@ namespace WarLeague.Core.Migrations
                     b.HasOne("WarLeague.Core.Data.Entities.Player", "Captain")
                         .WithMany()
                         .HasForeignKey("CaptainId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("WarLeague.Core.Data.Entities.Season", "Season")
                         .WithMany("Teams")
                         .HasForeignKey("SeasonId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Captain");
@@ -384,7 +388,7 @@ namespace WarLeague.Core.Migrations
                     b.HasOne("WarLeague.Core.Data.Entities.Season", "Season")
                         .WithMany("Weeks")
                         .HasForeignKey("SeasonId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Season");
