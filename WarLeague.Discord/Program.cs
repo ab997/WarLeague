@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using WarLeague.Core.Data;
+using WarLeague.Core.Domain.Services;
 using WarLeague.Core.Repositories;
 using WarLeague.Discord.HostedService;
 using WarLeague.Discord.Services;
@@ -46,15 +47,19 @@ builder.Services.AddScoped<SeasonRepository>();
 builder.Services.AddScoped<PlayerRepository>();
 builder.Services.AddScoped<PlayerSeasonTeamRepository>();
 
-// Services
+// Services (core - domain)
+builder.Services.AddScoped<TeamService>();
+builder.Services.AddScoped<FormatService>();
+builder.Services.AddScoped<SeasonService>();
+builder.Services.AddScoped<WeekService>();
+
+
+// Services (discord)
 builder.Services.AddScoped<DiscordApiHelperService>();
 builder.Services.AddScoped<PlayerService>();
-
-// Discord services
 builder.Services.AddSingleton(discordClient);
 builder.Services.AddSingleton(interactionService);
 
-// Hosted services
 builder.Services.AddHostedService<DiscordBotService>();
 builder.Services.AddHostedService<InteractionHandlingService>();
 
