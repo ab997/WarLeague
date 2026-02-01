@@ -45,5 +45,15 @@ namespace WarLeague.Discord.Services
 
             return guildUser.Roles.Any(r => string.Equals(r.Name, "Admin", StringComparison.OrdinalIgnoreCase));
         }
+
+        /// <summary>
+        /// Validates that the provided URL is an absolute HTTP or HTTPS URL.
+        /// </summary>
+        public bool IsValidReplayUrl(string? replayUrl)
+        {
+            if (string.IsNullOrWhiteSpace(replayUrl)) return false;
+            if (!Uri.TryCreate(replayUrl, UriKind.Absolute, out var uri)) return false;
+            return uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
+        }
     }
 }

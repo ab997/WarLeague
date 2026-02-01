@@ -154,11 +154,11 @@ namespace WarLeague.Core.Domain.Services
                 return new Result { Success = false, Message = "No matches found for the active week." };
             }
 
-            bool allConfirmed = matches.All(m => m.Status == MatchStatus.Confirmed);
+            bool allConfirmed = matches.All(m => m.Status == MatchStatus.Reported);
 
             if (!allConfirmed)
             {
-                var pendingCount = matches.Count(m => m.Status != MatchStatus.Confirmed);
+                var pendingCount = matches.Count(m => m.Status != MatchStatus.Reported);
                 return new Result { Success = false, Message = $"Cannot close week: {pendingCount} match(es) not confirmed." };
             }
 
@@ -185,7 +185,7 @@ namespace WarLeague.Core.Domain.Services
             var matches = await _matchRepository.GetByWeekIdAsync(activeWeek.Id);
 
             var pendingPlayers = matches
-                .Where(m => m.Status != MatchStatus.Confirmed)
+                .Where(m => m.Status != MatchStatus.Reported)
                 .SelectMany(m => new[] { m.Player1, m.Player2 })
                 .Where(p => p != null)
                 .GroupBy(p => p!.Id)
@@ -194,6 +194,33 @@ namespace WarLeague.Core.Domain.Services
                 .ToList();
 
             return pendingPlayers;
+        }
+
+        public async Task<List<string>> GetPendingMatchPairsAsync(int seasonId)
+        {
+            // Find active week (prefer InProgress)
+            Week? activeWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
+
+            if (activeWeek is null)
+            {
+                return new List<string>();
+            }
+
+            var matches = await _matchRepository.GetByWeekIdAsync(activeWeek.Id);
+
+            var lines = matches
+                .Where(m => m.Status != MatchStatus.Reported)
+                .Select(m =>
+                {
+                    var p1 = m.Player1;
+                    var p2 = m.Player2;
+                    var m1 = p1 != null ? $"<@{p1.DiscordUserId}>" : "[TBD]";
+                    var m2 = p2 != null ? $"<@{p2.DiscordUserId}>" : "[TBD]";
+                    return $"{m1} vs {m2}";
+                })
+                .ToList();
+
+            return lines;
         }
     }
 }

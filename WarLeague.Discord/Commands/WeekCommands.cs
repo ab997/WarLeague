@@ -18,12 +18,15 @@ namespace WarLeague.Discord.Commands
     {
         private readonly WeekService _weekService;
         private readonly DiscordApiHelperService _helperService;
+        private readonly WeekRepository _weekRepository;
         public WeekCommands(
             DiscordApiHelperService helperService,
-            WeekService weekService)
+            WeekService weekService,
+            WeekRepository weekRepository)
         {
             _helperService = helperService;
             _weekService = weekService;
+            _weekRepository = weekRepository;
         }
         [SlashCommand("create", "Creates a week")]
         public async Task Create(int weekNumber,
@@ -141,6 +144,40 @@ namespace WarLeague.Discord.Commands
             await FollowupAsync(result.Message);
         }
 
+        [SlashCommand("open", "Sets the specified week status to Open")]
+        public async Task OpenAsync(int weekNumber)
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+            // Prevent multiple open weeks in the same season
+            try
+            {
+                var existingOpen = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(season.Id, WeekStatus.Open);
+                if (existingOpen is not null && existingOpen.WeekNumber != weekNumber)
+                {
+                    await FollowupAsync($"Week {existingOpen.WeekNumber} is already Open. Close or update it before opening another week.");
+                    return;
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                await FollowupAsync("Multiple weeks are marked Open. Resolve this before opening another week.");
+                return;
+            }
+
+            Week? week = await _weekService.UpdateAsync(season.Id, weekNumber, null, null, null, WeekStatus.Open);
+
+            if (week is null)
+            {
+                await FollowupAsync($"Week with number {weekNumber} does not exist.");
+                return;
+            }
+
+            await FollowupAsync($"Week {weekNumber} set to Open.");
+        }
+
         [SlashCommand("close", "Closes the current week after all matches are confirmed")]
         public async Task CloseAsync()
         {
@@ -160,20 +197,15 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            var players = await _weekService.GetPlayersNeedingToPlayAsync(season.Id);
+            var lines = await _weekService.GetPendingMatchPairsAsync(season.Id);
 
-            if (players.Count == 0)
+            if (lines.Count == 0)
             {
                 await FollowupAsync("All matches are confirmed. No players to ping.");
                 return;
             }
 
-            var mentions = players
-                .Select(p => $"<@{p.DiscordUserId}>")
-                .Distinct()
-                .ToList();
-
-            var message = $"Players needing to finish matches: {string.Join(", ", mentions)}";
+            var message = "Players needing to finish matches:\n" + string.Join("\n", lines);
 
             await FollowupAsync(message);
         }

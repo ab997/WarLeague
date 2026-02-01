@@ -19,6 +19,7 @@ namespace WarLeague.Discord.Commands
         private readonly TeamRepository _teamRepository;
         private readonly FormatRepository _formatRepository;
         private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
+        private readonly MatchRepository _matchRepository;
         private readonly DiscordPlayerService _playerService;
         private readonly DiscordApiHelperService _helperService;
 
@@ -27,6 +28,7 @@ namespace WarLeague.Discord.Commands
             WeekRepository weekRepository,
             TeamRepository teamRepository,
             PlayerSeasonTeamRepository playerSeasonTeamRepository,
+            MatchRepository matchRepository,
             DiscordPlayerService playerService,
             DiscordApiHelperService helperService,
             FormatRepository formatRepository)
@@ -35,6 +37,7 @@ namespace WarLeague.Discord.Commands
             _weekRepository = weekRepository;
             _teamRepository = teamRepository;
             _playerSeasonTeamRepository = playerSeasonTeamRepository;
+            _matchRepository = matchRepository;
             _playerService = playerService;
             _helperService = helperService;
             _formatRepository = formatRepository;
@@ -66,6 +69,8 @@ namespace WarLeague.Discord.Commands
                 sb.AppendLine("Seasons: none");
             }
 
+        
+
             if (includeRules)
             {
                 var rules = string.IsNullOrWhiteSpace(format.Rules) ? null : format.Rules!;
@@ -91,6 +96,33 @@ namespace WarLeague.Discord.Commands
             }
 
             await FollowupAsync(sb.ToString());
+        }
+
+        [SlashCommand("week-results", "Shows played and pending matches for the current week")]
+        [EnsureChannelIsInFormatCategory]
+        [EnsureSingleActiveSeason]
+        public async Task WeekResultsAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+            // Prefer InProgress; fallback to SubmissionsClosed
+            Week? week = await GetActiveOrClosedWeekAsync(season.Id);
+            if (week is null)
+            {
+                await FollowupAsync("No active week found (neither InProgress nor SubmissionsClosed).");
+                return;
+            }
+
+            var output = await BuildWeekResultsAsync(week.Id, week.WeekNumber);
+
+            if (_helperService.IsUserAdmin(Context))
+            {
+                output += $"\n[Admin] SeasonId: {season.Id} | WeekId: {week.Id}";
+            }
+
+            await FollowupAsync(output);
         }
 
         [SlashCommand("season-current", "Shows the current active season in this format")]
@@ -370,7 +402,119 @@ namespace WarLeague.Discord.Commands
             await SendEmbedsInBatchesAsync(embeds);
         }
 
-       
+        [SlashCommand("all-results", "Shows all results grouped by week for the active season")]
+        [EnsureChannelIsInFormatCategory]
+        [EnsureSingleActiveSeason]
+        public async Task AllResultsAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+            var weeks = await _weekRepository.GetBySeasonAsync(season.Id);
+
+            if (weeks.Count == 0)
+            {
+                await FollowupAsync("No weeks found for the active season.");
+                return;
+            }
+
+            var orderedWeeks = weeks.OrderBy(w => w.WeekNumber).ToList();
+            var sbAll = new StringBuilder();
+
+            foreach (var w in orderedWeeks)
+            {
+                var section = await BuildWeekResultsAsync(w.Id, w.WeekNumber);
+                sbAll.AppendLine(section);
+                sbAll.AppendLine();
+            }
+
+            if (_helperService.IsUserAdmin(Context))
+            {
+                sbAll.AppendLine($"[Admin] SeasonId: {season.Id}");
+            }
+
+            await FollowupAsync(sbAll.ToString().TrimEnd());
+        }
+
+        private async Task<string> BuildWeekResultsAsync(int weekId, int weekNumber)
+        {
+            var matches = await _matchRepository.GetByWeekIdAsync(weekId);
+
+            if (matches.Count == 0)
+            {
+                return $"Week {weekNumber} results:\n\nNo matches scheduled for week {weekNumber}.";
+            }
+
+            var played = matches.Where(m => m.Status == Core.Data.Enums.MatchStatus.Reported).ToList();
+            var pending = matches.Where(m => m.Status != Core.Data.Enums.MatchStatus.Reported).ToList();
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"Week {weekNumber} results:");
+            sb.AppendLine();
+
+            sb.AppendLine($"Played ({played.Count}):");
+            if (played.Count == 0)
+            {
+                sb.AppendLine("- <none>");
+            }
+            else
+            {
+                foreach (var m in played)
+                {
+                    var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : $"<@{m.Player1.DiscordUserId}>";
+                    var p2 = m.Player2 is null ? $"P#{m.Player2Id}" : $"<@{m.Player2.DiscordUserId}>";
+                    var win = m.Winner is null ? "<unknown>" : $"<@{m.Winner.DiscordUserId}>";
+                    var replay = string.IsNullOrWhiteSpace(m.ReplayUrl) ? "" : $" | Replay: {m.ReplayUrl}";
+                    sb.AppendLine($"- {p1} vs {p2} → Winner: {win}{replay}");
+                }
+            }
+
+            sb.AppendLine();
+
+            sb.AppendLine($"Pending ({pending.Count}):");
+            if (pending.Count == 0)
+            {
+                sb.AppendLine("- <none>");
+            }
+            else
+            {
+                foreach (var m in pending)
+                {
+                    var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : $"<@{m.Player1.DiscordUserId}>";
+                    var p2 = m.Player2 is null ? $"P#{m.Player2Id}" : $"<@{m.Player2.DiscordUserId}>";
+                    sb.AppendLine($"- {p1} vs {p2}");
+                }
+            }
+
+            return sb.ToString();
+        }
+
+        private async Task<Week?> GetActiveOrClosedWeekAsync(int seasonId)
+        {
+            Week? week;
+            try
+            {
+                week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, Core.Data.Enums.WeekStatus.InProgress);
+            }
+            catch (InvalidOperationException)
+            {
+                return null;
+            }
+
+            if (week is null)
+            {
+                try
+                {
+                    week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, Core.Data.Enums.WeekStatus.SubmissionsClosed);
+                }
+                catch (InvalidOperationException)
+                {
+                    return null;
+                }
+            }
+
+            return week;
+        }
 
         private static List<string> SplitIntoFieldChunks(string text, int maxChars)
         {
