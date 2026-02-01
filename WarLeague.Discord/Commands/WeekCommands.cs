@@ -17,20 +17,11 @@ namespace WarLeague.Discord.Commands
     public class WeekCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly WeekService _weekService;
-        private readonly WeekRepository _weekRepository;
-        private readonly TeamRepository _teamRepository;
-        private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
         private readonly DiscordApiHelperService _helperService;
         public WeekCommands(
-            WeekRepository weekRepository,
-            TeamRepository teamRepository,
-            PlayerSeasonTeamRepository playerSeasonTeamRepository,
             DiscordApiHelperService helperService,
             WeekService weekService)
         {
-            _weekRepository = weekRepository;
-            _teamRepository = teamRepository;
-            _playerSeasonTeamRepository = playerSeasonTeamRepository;
             _helperService = helperService;
             _weekService = weekService;
         }

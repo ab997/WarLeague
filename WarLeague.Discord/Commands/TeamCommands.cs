@@ -23,13 +23,11 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     private readonly PlayerService _playerService;
     private readonly DiscordApiHelperService _helperService;
     private readonly TeamRepository _teamRepository;
-    private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
-    public TeamCommands(PlayerService playerService, DiscordApiHelperService helperService, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, WarLeagueDbContext dbContext, TeamService teamService)
+    public TeamCommands(PlayerService playerService, DiscordApiHelperService helperService, TeamRepository teamRepository, WarLeagueDbContext dbContext, TeamService teamService)
     {
         _playerService = playerService;
         _helperService = helperService;
         _teamRepository = teamRepository;
-        _playerSeasonTeamRepository = playerSeasonTeamRepository;
         _context = dbContext;
         _teamService = teamService;
     }

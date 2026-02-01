@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Interactions;
+using System.Numerics;
 using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Data.Enums;
 using WarLeague.Core.Domain.Model;
@@ -13,6 +14,8 @@ namespace WarLeague.Discord.Commands;
 [Group("deck", "Deck submission commands")]
 [EnsureChannelIsInFormatCategory]
 [EnsureSingleActiveSeason]
+[RequireRole("Admin", Group = "Permission")]
+[RequireRole("Captain", Group = "Permission")]
 public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
 {
     private const int MaxDeckFileBytes = 1_000_000; // 1MB safety limit
@@ -21,8 +24,6 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
     private readonly PlayerService _playerService;
     private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
     private readonly TeamRepository _teamRepository;
-    private readonly WeekRepository _weekRepository;
-    private readonly DeckSubmissionRepository _deckSubmissionRepository;
     private readonly DeckSubmissionService _deckSubmissionService;
 
     public DeckCommands(
@@ -30,16 +31,12 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         PlayerService playerService,
         PlayerSeasonTeamRepository playerSeasonTeamRepository,
         TeamRepository teamRepository,
-        WeekRepository weekRepository,
-        DeckSubmissionRepository deckSubmissionRepository,
         DeckSubmissionService deckSubmissionService)
     {
         _helperService = helperService;
         _playerService = playerService;
         _playerSeasonTeamRepository = playerSeasonTeamRepository;
         _teamRepository = teamRepository;
-        _weekRepository = weekRepository;
-        _deckSubmissionRepository = deckSubmissionRepository;
         _deckSubmissionService = deckSubmissionService;
     }
 
@@ -56,29 +53,11 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
 
         Player callerPlayer = await _playerService.EnsurePlayerExistsAsync(Context.User);
 
-        bool isAdmin = _helperService.IsUserAdmin(Context);
-
-        var callerCaptainTeam = await _teamRepository.GetByCaptainAndSeasonAsync(callerPlayer.Id, season.Id);
-        if (!isAdmin && callerCaptainTeam is null)
-        {
-            await FollowupAsync("Only Admins or team captains for the active season can submit or modify decks.");
-            return;
-        }
-
         Player targetPlayer = await _playerService.EnsurePlayerExistsAsync(player);
 
-        var pst = await _playerSeasonTeamRepository.GetByPlayerAndSeasonAsync(targetPlayer.Id, season.Id);
-        if (pst is null)
+        bool flowControl = await ValidateDeckSubmissionRequest(season, callerPlayer, targetPlayer);
+        if (!flowControl)
         {
-            await FollowupAsync("Player is not on any team for the active season.");
-            return;
-        }
-
-        int targetTeamId = pst.TeamId;
-
-        if (!isAdmin && targetTeamId != callerCaptainTeam!.Id)
-        {
-            await FollowupAsync($"{player.Mention} is not on your team for the active season.");
             return;
         }
 
@@ -116,31 +95,50 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
     {
         await DeferAsync(ephemeral: false);
 
-        if (!await EnsureInGuildAsync()) return;
-
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-        var (isAdmin, callerCaptainTeam) = await GetCallerCaptainTeamOrFollowupAsync(season, "Only Admins or team captains for the active season can delete deck submissions.");
-        if (!isAdmin && callerCaptainTeam is null) return;
 
-        Week? openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(season.Id, WeekStatus.Open);
-        if (openWeek is null)
+        Player callerPlayer = await _playerService.EnsurePlayerExistsAsync(Context.User);
+
+        Player targetPlayer = await _playerService.EnsurePlayerExistsAsync(player);
+
+        bool flowControl = await ValidateDeckSubmissionRequest(season, callerPlayer, targetPlayer);
+        if (!flowControl)
         {
-            await FollowupAsync("There is no open week in the active season.");
             return;
         }
 
-        var (targetPlayer, targetPst) = await GetTargetPlayerSeasonTeamOrFollowupAsync(player, season);
-        if (targetPlayer is null || targetPst is null) return;
-        if (!await EnsureTargetPlayerOnCaptainTeamOrFollowupAsync(player, isAdmin, callerCaptainTeam, targetPst.TeamId)) return;
+        Result result = await _deckSubmissionService.DeleteSubmissionAsync(season.Id, targetPlayer.Id);
 
-        bool deleted = await _deckSubmissionRepository.DeleteByPlayerAndWeekAsync(targetPlayer.Id, openWeek.Id);
-        if (!deleted)
+        await FollowupAsync(result.Message);
+    }
+
+    private async Task<bool> ValidateDeckSubmissionRequest(Season season, Player callerPlayer, Player targetPlayer)
+    {
+        bool isAdmin = _helperService.IsUserAdmin(Context);
+
+        var callerCaptainTeam = await _teamRepository.GetByCaptainAndSeasonAsync(callerPlayer.Id, season.Id);
+        if (!isAdmin && callerCaptainTeam is null)
         {
-            await FollowupAsync($"No deck submission found for {player.Mention} for week {openWeek.WeekNumber} (season {season.SeasonNumber}).");
-            return;
+            await FollowupAsync("Only Admins or team captains for the active season can submit or modify decks.");
+            return false;
         }
 
-        await FollowupAsync($"Deleted deck submission for {player.Mention} for week {openWeek.WeekNumber} (season {season.SeasonNumber}).");
+        var pst = await _playerSeasonTeamRepository.GetByPlayerAndSeasonAsync(targetPlayer.Id, season.Id);
+        if (pst is null)
+        {
+            await FollowupAsync("Player is not on any team for the active season.");
+            return false;
+        }
+
+        int targetTeamId = pst.TeamId;
+
+        if (!isAdmin && targetTeamId != callerCaptainTeam!.Id)
+        {
+            await FollowupAsync($"{targetPlayer.UserName} is not on your team for the active season.");
+            return false;
+        }
+
+        return true;
     }
 
     private async Task<bool> ValidateDeckAttachmentAsync(IAttachment? deckFile)
@@ -160,21 +158,6 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         if (deckFile.Size > MaxDeckFileBytes)
         {
             await FollowupAsync($"That file is too large. Max size is {MaxDeckFileBytes / 1_000_000.0:0.#}MB.");
-            return false;
-        }
-
-        return true;
-    }
-
-
-    private async Task<bool> EnsureTargetPlayerOnCaptainTeamOrFollowupAsync(IUser targetUser, bool isAdmin, Team? callerCaptainTeam, int targetTeamId)
-    {
-        if (isAdmin) return true;
-        if (callerCaptainTeam is null) return false;
-
-        if (targetTeamId != callerCaptainTeam.Id)
-        {
-            await FollowupAsync($"{targetUser.Mention} is not on your team for the active season.");
             return false;
         }
 
