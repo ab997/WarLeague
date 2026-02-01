@@ -12,12 +12,14 @@ namespace WarLeague.Core.Domain.Services
     {
         private readonly WeekRepository _weekRepository;
         private readonly TeamRepository _teamRepository;
+        private readonly MatchRepository _matchRepository;
         private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
-        public WeekService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository)
+        public WeekService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, MatchRepository matchRepository)
         {
             _weekRepository = weekRepository;
             _teamRepository = teamRepository;
             _playerSeasonTeamRepository = playerSeasonTeamRepository;
+            _matchRepository = matchRepository;
         }
 
         public async Task<Week?> CreateAsync(int seasonId, int weekNumber, DateTime startDate, DateTime endDate, DateTime? subCloseDate)
@@ -128,6 +130,70 @@ namespace WarLeague.Core.Domain.Services
             await _weekRepository.UpdateAsync(openWeek);
 
             return new Result { Success = true, Message = "Week started successfully. Submission are now closed." };
+        }
+
+        public async Task<Result> CloseAsync(int seasonId)
+        {
+            // Try to find a week that is currently ongoing (in progress) or has submissions closed
+            Week? activeWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
+
+            //if (activeWeek is null)
+            //{
+            //    activeWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.SubmissionsClosed);
+            //}
+
+            if (activeWeek is null)
+            {
+                return new Result { Success = false, Message = "No active week found to close." };
+            }
+
+            var matches = await _matchRepository.GetByWeekIdAsync(activeWeek.Id);
+
+            if (matches.Count == 0)
+            {
+                return new Result { Success = false, Message = "No matches found for the active week." };
+            }
+
+            bool allConfirmed = matches.All(m => m.Status == MatchStatus.Confirmed);
+
+            if (!allConfirmed)
+            {
+                var pendingCount = matches.Count(m => m.Status != MatchStatus.Confirmed);
+                return new Result { Success = false, Message = $"Cannot close week: {pendingCount} match(es) not confirmed." };
+            }
+
+            activeWeek.Status = WeekStatus.Completed;
+            await _weekRepository.UpdateAsync(activeWeek);
+
+            return new Result { Success = true, Message = "Week closed successfully." };
+        }
+
+        public async Task<List<Player>> GetPlayersNeedingToPlayAsync(int seasonId)
+        {
+            // Find active week (prefer InProgress, fallback to SubmissionsClosed)
+            Week? activeWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
+            //if (activeWeek is null)
+            //{
+            //    activeWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.SubmissionsClosed);
+            //}
+
+            if (activeWeek is null)
+            {
+                return new List<Player>();
+            }
+
+            var matches = await _matchRepository.GetByWeekIdAsync(activeWeek.Id);
+
+            var pendingPlayers = matches
+                .Where(m => m.Status != MatchStatus.Confirmed)
+                .SelectMany(m => new[] { m.Player1, m.Player2 })
+                .Where(p => p != null)
+                .GroupBy(p => p!.Id)
+                .Select(g => g.First()!)
+                .OrderBy(p => p.UserName)
+                .ToList();
+
+            return pendingPlayers;
         }
     }
 }
