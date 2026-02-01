@@ -40,12 +40,6 @@ public class MatchCommands : InteractionModuleBase<SocketInteractionContext>
     {
         await DeferAsync(ephemeral: false);
 
-        if (Context.Guild is null)
-        {
-            await FollowupAsync("This command can only be used inside a guild.");
-            return;
-        }
-
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
         // Find the single week in SubmissionsClosed state for this season.
