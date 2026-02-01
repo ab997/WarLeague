@@ -29,7 +29,7 @@ namespace WarLeague.Discord.Commands
 
             Format? format = await _formatService.CreateFormatAsync(formatName);
 
-            if (format != null)
+            if (format is null)
             {
                 await FollowupAsync($"Format with name {formatName} already exists.");
                 return;
