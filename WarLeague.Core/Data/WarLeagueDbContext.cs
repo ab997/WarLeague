@@ -86,6 +86,13 @@ public class WarLeagueDbContext : DbContext
             .HasIndex(w => new { w.SeasonId, w.WeekNumber })
             .IsUnique();
 
+        // Week: only one non-Completed and non-NotOpenYet per SeasonId
+        // Status is stored as string via HasConversion<string>() above, so we filter on string values
+        modelBuilder.Entity<Week>()
+            .HasIndex(w => w.SeasonId)
+            .IsUnique()
+            .HasFilter("[Status] <> 'Completed' and [Status] <> 'NotOpenYet'");
+
         // PlayerSeasonTeam: unique per (PlayerId, SeasonId) -> a player can only be in one team per season
         modelBuilder.Entity<PlayerSeasonTeam>()
             .HasIndex(x => new { x.PlayerId, x.SeasonId })

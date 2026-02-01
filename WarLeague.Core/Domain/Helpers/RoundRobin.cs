@@ -5,7 +5,7 @@ using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Data.Enums;
 using WarLeague.Core.Domain.Model;
 
-namespace WarLeague.Core.Domain.Services
+namespace WarLeague.Core.Domain.Helpers
 {
     public static class RoundRobin
     {

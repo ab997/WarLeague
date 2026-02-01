@@ -1,5 +1,7 @@
+using Discord;
 using Discord.Interactions;
 using System.Globalization;
+using System.Text;
 using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Data.Enums;
 using WarLeague.Core.Domain.Model;
@@ -18,14 +20,20 @@ namespace WarLeague.Discord.Commands
     {
         private readonly WeekService _weekService;
         private readonly DiscordApiHelperService _helperService;
+        private readonly WeekRepository _weekRepository;
+        private readonly MatchService _matchService;
         public WeekCommands(
             DiscordApiHelperService helperService,
-            WeekService weekService)
+            WeekService weekService,
+            WeekRepository weekRepository,
+            MatchService matchService)
         {
             _helperService = helperService;
             _weekService = weekService;
+            _weekRepository = weekRepository;
+            _matchService = matchService;
         }
-        [SlashCommand("create", "Creates a week")]
+        [SlashCommand("create", "1 -> Creates a week (Status: null -> NotOpenYet)")]
         public async Task Create(int weekNumber,
             [Summary("start-date", "Start date (YYYY-MM-DD)")] string startDateStr,
             [Summary("end-date", "End date (YYYY-MM-DD)")] string endDateStr,
@@ -63,17 +71,117 @@ namespace WarLeague.Discord.Commands
         }
 
 
-        [SlashCommand("update", "Updates a week")]
-        public async Task Update(int weekNumber,
-            [Summary("start-date", "Start date (YYYY-MM-DD)")] string? startDateStr = null,
-            [Summary("end-date", "End date (YYYY-MM-DD)")] string? endDateStr = null,
-            [Summary("submissions-close-date", "Submissions close date (YYYY-MM-DD)")] string? subCloseDateStr = null,
-            [Summary("status")] WeekStatus? status = null
-            )
+      
+
+        [SlashCommand("open", "2 -> Opens the current week by allowing deck submissions (Status: NotOpenYet -> Open)")]
+        public async Task OpenAsync(int weekNumber)
         {
             await DeferAsync(ephemeral: false);
 
-            
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+            // Prevent multiple open weeks in the same season
+            try
+            {
+                var existingOpen = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(season.Id, WeekStatus.Open);
+                if (existingOpen is not null && existingOpen.WeekNumber != weekNumber)
+                {
+                    await FollowupAsync($"Week {existingOpen.WeekNumber} is already Open. Close or update it before opening another week.");
+                    return;
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                await FollowupAsync("Multiple weeks are marked Open. Resolve this before opening another week.");
+                return;
+            }
+
+            Week? week = await _weekService.UpdateAsync(season.Id, weekNumber, null, null, null, WeekStatus.Open);
+
+            if (week is null)
+            {
+                await FollowupAsync($"Week with number {weekNumber} does not exist.");
+                return;
+            }
+
+            await FollowupAsync($"Week {weekNumber} set to Open.");
+        }
+        [SlashCommand("start", "3 -> Starts the current week by closing submissions -> (Status: Open -> SubmissionsClosed)")]
+        public async Task StartAsync(int requiredDecksByTeams = 5)
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+            Result result = await _weekService.StartWeekAsync(season.Id, requiredDecksByTeams);
+
+            await FollowupAsync(result.Message);
+        }
+
+        [SlashCommand("generate-pairings", "4 -> Generate pairings (Status: SubmissionsClosed -> InProgress)")]
+        public async Task GeneratePairingsAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+            GeneratePairingsResult result = await _matchService.GeneratePairingsAsync(season.Id);
+
+            if (!result.Success || result.Week is null || result.WeeklyMatchups is null || result.CreatedMatches is null)
+            {
+                await FollowupAsync(result.Message);
+                return;
+            }
+
+            // Build embeds (Discord limits: 25 fields/embed, 10 embeds/message).
+            var embeds = BuildPairingsEmbeds(season, result.Week, result.WeeklyMatchups, result.CreatedMatches.Count);
+            await SendEmbedsInBatchesAsync(embeds);
+        }
+
+
+        [SlashCommand("close", "Closes the current week after all matches are confirmed  (Status: InProgress -> Completed)")]
+        public async Task CloseAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+            Result result = await _weekService.CloseAsync(season.Id);
+
+            await FollowupAsync(result.Message);
+        }
+
+        [SlashCommand("ping-players", "Tags players who need to finish their matches for the current week")]
+        public async Task PingPlayersAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+            var lines = await _weekService.GetPendingMatchPairsAsync(season.Id);
+
+            if (lines.Count == 0)
+            {
+                await FollowupAsync("All matches are confirmed. No players to ping.");
+                return;
+            }
+
+            var message = "Players needing to finish matches:\n" + string.Join("\n", lines);
+
+            await FollowupAsync(message);
+        }
+
+        [SlashCommand("update", "Updates a week")]
+        public async Task Update(int weekNumber,
+           [Summary("start-date", "Start date (YYYY-MM-DD)")] string? startDateStr = null,
+           [Summary("end-date", "End date (YYYY-MM-DD)")] string? endDateStr = null,
+           [Summary("submissions-close-date", "Submissions close date (YYYY-MM-DD)")] string? subCloseDateStr = null,
+           [Summary("status")] WeekStatus? status = null
+           )
+        {
+            await DeferAsync(ephemeral: false);
+
+
 
             // Parse provided dates (only when provided)
             DateTime? startDate = null;
@@ -129,53 +237,96 @@ namespace WarLeague.Discord.Commands
             await FollowupAsync($"Week {weekNumber} updated.", ephemeral: false);
         }
 
-        [SlashCommand("start", "Starts the current week by closing submissions")]
-        public async Task StartAsync(int requiredDecksByTeams = 5)
+
+
+
+        private static List<Embed> BuildPairingsEmbeds(
+            Season season,
+            Week week,
+            IReadOnlyList<WeeklyMatchup> matchupOutputs,
+            int totalMatchesCreated)
         {
-            await DeferAsync(ephemeral: false);
+            var embeds = new List<Embed>();
 
-            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+            EmbedBuilder NewEmbed(int page) => new EmbedBuilder()
+                .WithTitle(page == 1
+                    ? $"Week {week.WeekNumber} Pairings • Season {season.SeasonNumber}"
+                    : $"Week {week.WeekNumber} Pairings • Season {season.SeasonNumber} (page {page})")
+                .WithColor(new Color(88, 101, 242))
+                .WithDescription($"Generated {totalMatchesCreated} matches. Pairings are random among deck submitters.");
 
-            Result result = await _weekService.StartWeekAsync(season.Id, requiredDecksByTeams);
+            int pageNumber = 1;
+            var eb = NewEmbed(pageNumber);
 
-            await FollowupAsync(result.Message);
-        }
-
-        [SlashCommand("close", "Closes the current week after all matches are confirmed")]
-        public async Task CloseAsync()
-        {
-            await DeferAsync(ephemeral: false);
-
-            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-
-            Result result = await _weekService.CloseAsync(season.Id);
-
-            await FollowupAsync(result.Message);
-        }
-
-        [SlashCommand("ping-players", "Tags players who need to finish their matches for the current week")]
-        public async Task PingPlayersAsync()
-        {
-            await DeferAsync(ephemeral: false);
-
-            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-
-            var players = await _weekService.GetPlayersNeedingToPlayAsync(season.Id);
-
-            if (players.Count == 0)
+            foreach (WeeklyMatchup wm in matchupOutputs
+                         .OrderBy(x => x.TeamA.Name, StringComparer.OrdinalIgnoreCase)
+                         .ThenBy(x => x.TeamB.Name, StringComparer.OrdinalIgnoreCase))
             {
-                await FollowupAsync("All matches are confirmed. No players to ping.");
+                var sb = new StringBuilder();
+
+                if (wm.Pairs.Count == 0)
+                {
+                    sb.AppendLine("_No pairings (missing submissions on one or both teams)._");
+                }
+                else
+                {
+                    for (int i = 0; i < wm.Pairs.Count; i++)
+                    {
+                        var (p1, p2) = wm.Pairs[i];
+                        sb.AppendLine($"{i + 1}. <@{p1.DiscordUserId}> vs <@{p2.DiscordUserId}>");
+                    }
+                }
+
+                if (wm.UnpairedA.Count > 0)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine($"Unpaired ({wm.TeamA.Name}): {string.Join(", ", wm.UnpairedA.Select(p => $"<@{p.DiscordUserId}>"))}");
+                }
+
+                if (wm.UnpairedB.Count > 0)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine($"Unpaired ({wm.TeamB.Name}): {string.Join(", ", wm.UnpairedB.Select(p => $"<@{p.DiscordUserId}>"))}");
+                }
+
+                string fieldValue = TrimToMaxChars(sb.ToString().Trim(), 1024);
+
+                if (eb.Fields.Count >= 25)
+                {
+                    embeds.Add(eb.Build());
+                    pageNumber++;
+                    eb = NewEmbed(pageNumber);
+                }
+
+                eb.AddField($"{wm.TeamA.Name} vs {wm.TeamB.Name}", fieldValue, inline: false);
+            }
+
+            embeds.Add(eb.Build());
+            return embeds;
+        }
+
+        private static string TrimToMaxChars(string s, int maxChars)
+        {
+            if (string.IsNullOrEmpty(s)) return "_<empty>_";
+            if (s.Length <= maxChars) return s;
+            return s[..Math.Max(0, maxChars - 4)] + " …";
+        }
+
+        private async Task SendEmbedsInBatchesAsync(IReadOnlyList<Embed> embeds)
+        {
+            if (embeds.Count == 0)
+            {
+                await FollowupAsync("Nothing to show.");
                 return;
             }
 
-            var mentions = players
-                .Select(p => $"<@{p.DiscordUserId}>")
-                .Distinct()
-                .ToList();
-
-            var message = $"Players needing to finish matches: {string.Join(", ", mentions)}";
-
-            await FollowupAsync(message);
+            // Discord allows up to 10 embeds per message.
+            const int batchSize = 10;
+            for (int i = 0; i < embeds.Count; i += batchSize)
+            {
+                var batch = embeds.Skip(i).Take(batchSize).ToArray();
+                await FollowupAsync(embeds: batch);
+            }
         }
     }
 }

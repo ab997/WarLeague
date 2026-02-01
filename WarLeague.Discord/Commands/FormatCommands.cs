@@ -3,6 +3,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using System;
+using System.Net.Http;
 using System.Text.Json;
 using WarLeague.Core.Domain.Services;
 using WarLeague.Core.Repositories;
@@ -15,9 +16,11 @@ namespace WarLeague.Discord.Commands
     public class FormatCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly FormatService _formatService;
-        public FormatCommands(FormatService service)
+        private readonly HttpClient _httpClient;
+        public FormatCommands(FormatService service, HttpClient httpClient)
         {
             _formatService = service;
+            _httpClient = httpClient;
         }
         [SlashCommand("create", "Creates a new format")]
         public async Task CreateAsync(string formatName)
@@ -26,7 +29,7 @@ namespace WarLeague.Discord.Commands
 
             Format? format = await _formatService.CreateFormatAsync(formatName);
 
-            if (format != null)
+            if (format is null)
             {
                 await FollowupAsync($"Format with name {formatName} already exists.");
                 return;
@@ -76,8 +79,7 @@ namespace WarLeague.Discord.Commands
 
             try
             {
-                using var http = new HttpClient();
-                var jsonContent = await http.GetStringAsync(rulesFile.Url);
+                var jsonContent = await _httpClient.GetStringAsync(rulesFile.Url);
 
                 // Validate JSON
                 using var doc = JsonDocument.Parse(jsonContent);

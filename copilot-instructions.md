@@ -8,6 +8,7 @@ You are contributing to the WarLeague solution. Follow these rules strictly.
 - Favor readability and explicitness over cleverness.
 - Keep cross‑cutting utilities in shared services to avoid duplication.
 - Always use async/await and cancellation where applicable.
+- All commands for displaying information go in PeepCommands.
 
 ## Code Style
 - Language: C# targeting .NET 10; enable nullable reference types and treat warnings as errors.
