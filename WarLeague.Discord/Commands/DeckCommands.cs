@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Interactions;
+using System.Net.Http;
 using System.Numerics;
 using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Data.Enums;
@@ -25,19 +26,22 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
     private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
     private readonly TeamRepository _teamRepository;
     private readonly DeckSubmissionService _deckSubmissionService;
+    private readonly HttpClient _httpClient;
 
     public DeckCommands(
         DiscordApiHelperService helperService,
         DiscordPlayerService playerService,
         PlayerSeasonTeamRepository playerSeasonTeamRepository,
         TeamRepository teamRepository,
-        DeckSubmissionService deckSubmissionService)
+        DeckSubmissionService deckSubmissionService,
+        HttpClient httpClient)
     {
         _helperService = helperService;
         _playerService = playerService;
         _playerSeasonTeamRepository = playerSeasonTeamRepository;
         _teamRepository = teamRepository;
         _deckSubmissionService = deckSubmissionService;
+        _httpClient = httpClient;
     }
 
     [SlashCommand("submit", "Submit a .ydk deck file for the currently open week")]
@@ -64,8 +68,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         string deckContent;
         try
         {
-            using var http = new HttpClient();
-            deckContent = await http.GetStringAsync(deckFile.Url);
+            deckContent = await _httpClient.GetStringAsync(deckFile.Url);
         }
         catch (HttpRequestException ex)
         {
