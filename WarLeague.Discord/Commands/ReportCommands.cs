@@ -48,7 +48,7 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
         await FollowupAsync(result.Message);
     }
 
-    [SlashCommand("undo", "Undo a previously reported match result for this week between two players")]
+    [SlashCommand("undo", "Undo a previously reported match result between two players")]
     [RequireRole("Admin")]
     public async Task UndoAsync(
         [Summary("player1", "First player")] IUser player1,

@@ -402,7 +402,7 @@ namespace WarLeague.Discord.Commands
             await SendEmbedsInBatchesAsync(embeds);
         }
 
-        [SlashCommand("all-results", "Shows all results grouped by week for the active season")]
+        [SlashCommand("all-results", "Shows all results for the active season")]
         [EnsureChannelIsInFormatCategory]
         [EnsureSingleActiveSeason]
         public async Task AllResultsAsync()

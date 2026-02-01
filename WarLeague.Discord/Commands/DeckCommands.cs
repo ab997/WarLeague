@@ -44,7 +44,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         _httpClient = httpClient;
     }
 
-    [SlashCommand("submit", "Submit a .ydk deck file for the currently open week")]
+    [SlashCommand("submit", "Submit a .ydk file")]
     public async Task SubmitAsync(
         [Summary("player", "The team member whose deck is being submitted")] IUser player,
         [Summary("deck-file", "The .ydk file to submit")] IAttachment deckFile)
@@ -92,7 +92,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         await FollowupAsync(result.Message);
     }
 
-    [SlashCommand("delete", "Delete a player's deck submission for the currently open week")]
+    [SlashCommand("delete", "Delete a player's deck submission")]
     public async Task DeleteDeckSubmissionAsync(
         [Summary("player", "The team member whose deck submission should be deleted")] IUser player)
     {
