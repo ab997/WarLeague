@@ -12,8 +12,8 @@ using WarLeague.Core.Data;
 namespace WarLeague.Core.Migrations
 {
     [DbContext(typeof(WarLeagueDbContext))]
-    [Migration("20260125161547_DeleteActiveColumnTeam")]
-    partial class DeleteActiveColumnTeam
+    [Migration("20260131195736_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -136,6 +136,10 @@ namespace WarLeague.Core.Migrations
                     b.Property<decimal>("DiscordUserId")
                         .HasColumnType("decimal(20,0)");
 
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DiscordUserId")
@@ -182,6 +186,9 @@ namespace WarLeague.Core.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("Active")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("DisableTeamModification")
                         .HasColumnType("bit");
 
                     b.Property<int>("FormatId")

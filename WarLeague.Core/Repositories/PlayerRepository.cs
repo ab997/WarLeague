@@ -24,4 +24,10 @@ public class PlayerRepository
         return _context.Players
             .SingleOrDefault(p => p.DiscordUserId == userId);
     }
+
+    internal async Task<Player> GetByIdAsync(int playerId)
+    {
+        return await _context.Players
+            .SingleAsync(p => p.Id == playerId);
+    }
 }

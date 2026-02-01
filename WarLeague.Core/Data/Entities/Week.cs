@@ -12,6 +12,6 @@ public class Week
     public DateTime EndDate { get; set; }
     public WeekStatus Status { get; set; } = WeekStatus.Open;
     public DateTime? SubmissionsClosedDate { get; set; }
-    public List<Match> Matches { get; set; } = new();
-    public List<DeckSubmission> DeckSubmissions { get; set; } = new();
+    public List<Match> Matches { get; set; } = null!;
+    public List<DeckSubmission> DeckSubmissions { get; set; } = null!;
 }

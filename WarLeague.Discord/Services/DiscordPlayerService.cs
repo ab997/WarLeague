@@ -7,10 +7,10 @@ using WarLeague.Core.Repositories;
 
 namespace WarLeague.Discord.Services
 {
-    public class PlayerService
+    public class DiscordPlayerService
     {
         private readonly PlayerRepository _playerRepository;
-        public PlayerService(PlayerRepository playerRepository)
+        public DiscordPlayerService(PlayerRepository playerRepository)
         {
             _playerRepository = playerRepository;
         }

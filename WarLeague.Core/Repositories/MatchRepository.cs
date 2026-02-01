@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WarLeague.Core.Data;
 using WarLeague.Core.Data.Entities;
+using WarLeague.Core.Domain.Model;
 
 namespace WarLeague.Core.Repositories;
 
@@ -13,15 +14,6 @@ public class MatchRepository
         _context = context;
     }
 
-    public async Task<Match?> GetByIdAsync(int id)
-    {
-        return await _context.Matches
-            .Include(m => m.Player1)
-            .Include(m => m.Player2)
-            .Include(m => m.Winner)
-            .Include(m => m.Week)
-            .SingleOrDefaultAsync(m => m.Id == id);
-    }
 
     public async Task<List<Match>> GetByWeekIdAsync(int weekId)
     {
@@ -31,23 +23,6 @@ public class MatchRepository
             .Include(m => m.Winner)
             .Where(m => m.WeekId == weekId)
             .ToListAsync();
-    }
-
-    public async Task<List<Match>> GetByPlayerIdAsync(int playerId)
-    {
-        return await _context.Matches
-            .Include(m => m.Player1)
-            .Include(m => m.Player2)
-            .Include(m => m.Winner)
-            .Where(m => m.Player1Id == playerId || m.Player2Id == playerId)
-            .ToListAsync();
-    }
-
-    public async Task<Match> AddAsync(Match match)
-    {
-        await _context.Matches.AddAsync(match);
-        await _context.SaveChangesAsync();
-        return match;
     }
 
     public async Task UpdateAsync(Match match)

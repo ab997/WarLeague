@@ -60,18 +60,17 @@ namespace WarLeague.Core.Repositories
                 .ToListAsync();
         }
 
-        public async Task<Season> GetSingleActiveSeasonByFormatAsync(int formatId)
-        {
-            return await _context.Seasons
-                .Where(s => s.Format.Id == formatId)
-               .SingleAsync(s => s.Active);
-        }
-
         public async Task<Season> GetSingleActiveSeasonByFormatNameAsync(string formatName)
         {
             return await _context.Seasons
                .Where(s => s.Format.Name == formatName)
               .SingleAsync(s => s.Active);
+        }
+
+        internal async Task<Season?> GetByIdOrDefault(int seasonId)
+        {
+            return await _context.Seasons
+                .SingleOrDefaultAsync(s => s.Id == seasonId);
         }
     }
 }

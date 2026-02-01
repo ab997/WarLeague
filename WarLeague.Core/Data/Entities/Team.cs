@@ -8,5 +8,5 @@ public class Team
     public Player Captain { get; set; } = null!;
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
     public int SeasonId { get; set; }
-    public Season Season { get; set; } = new();
+    public Season Season { get; set; } = null!;
 }

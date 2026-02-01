@@ -64,11 +64,6 @@ namespace WarLeague.Core.Repositories
             return await _context.PlayerSeasonTeams.SingleOrDefaultAsync(x => x.PlayerId == playerId && x.SeasonId == seasonId && x.TeamId == teamId);
         }
 
-        public async Task GetByPlayerAndSeasonAsync(int id)
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<List<PlayerSeasonTeam>> GetBySeasonAsync(int seasonId)
         {
             return await _context.PlayerSeasonTeams

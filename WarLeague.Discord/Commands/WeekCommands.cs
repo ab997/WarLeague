@@ -2,6 +2,8 @@ using Discord.Interactions;
 using System.Globalization;
 using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Data.Enums;
+using WarLeague.Core.Domain.Model;
+using WarLeague.Core.Domain.Services;
 using WarLeague.Core.Repositories;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
@@ -14,20 +16,14 @@ namespace WarLeague.Discord.Commands
     [EnsureChannelIsInFormatCategory]
     public class WeekCommands : InteractionModuleBase<SocketInteractionContext>
     {
-        private readonly WeekRepository _weekRepository;
-        private readonly TeamRepository _teamRepository;
-        private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
+        private readonly WeekService _weekService;
         private readonly DiscordApiHelperService _helperService;
         public WeekCommands(
-            WeekRepository weekRepository,
-            TeamRepository teamRepository,
-            PlayerSeasonTeamRepository playerSeasonTeamRepository,
-            DiscordApiHelperService helperService)
+            DiscordApiHelperService helperService,
+            WeekService weekService)
         {
-            _weekRepository = weekRepository;
-            _teamRepository = teamRepository;
-            _playerSeasonTeamRepository = playerSeasonTeamRepository;
             _helperService = helperService;
+            _weekService = weekService;
         }
         [SlashCommand("create", "Creates a week")]
         public async Task Create(int weekNumber,
@@ -37,16 +33,6 @@ namespace WarLeague.Discord.Commands
             )
         {
             await DeferAsync(ephemeral: false);
-
-            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-
-            Week? week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, season.Id);
-
-            if (week != null)
-            {
-                await FollowupAsync($"Week with number {weekNumber} already exists.");
-                return;
-            }
 
             if (!DateTime.TryParse(startDateStr, out var startDate) ||
                 !DateTime.TryParse(endDateStr, out var endDate) ||
@@ -63,18 +49,15 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            Week weekNew = new Week
-            {
-                WeekNumber = weekNumber,
-                Season = season,
-                StartDate = startDate,
-                EndDate = endDate,
-                SubmissionsClosedDate = subCloseDate,
-                Status = WeekStatus.Open,
-            };
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            await _weekRepository.AddAsync(weekNew);
-            await _weekRepository.CloseOtherOpenWeeksAsync(season.Id, weekNew.Id);
+            Week? week = await _weekService.CreateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate);
+
+            if (week is null)
+            {
+                await FollowupAsync($"Week with number {weekNumber} already exists.");
+                return;
+            }
 
             await FollowupAsync($"Week created.");
         }
@@ -90,17 +73,10 @@ namespace WarLeague.Discord.Commands
         {
             await DeferAsync(ephemeral: false);
 
-            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-
-            Week? week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, season.Id);
-
-            if (week is null)
-            {
-                await FollowupAsync($"Week with number {weekNumber} does not exist.");
-                return;
-            }
+            
 
             // Parse provided dates (only when provided)
+            DateTime? startDate = null;
             if (startDateStr is not null)
             {
                 if (!DateTime.TryParse(startDateStr, out var parsedStart))
@@ -108,9 +84,10 @@ namespace WarLeague.Discord.Commands
                     await FollowupAsync("Invalid start date format. Use YYYY-MM-DD.", ephemeral: false);
                     return;
                 }
-                week.StartDate = parsedStart;
+                startDate = parsedStart;
             }
 
+            DateTime? endDate = null;
             if (endDateStr is not null)
             {
                 if (!DateTime.TryParse(endDateStr, out var parsedEnd))
@@ -118,9 +95,10 @@ namespace WarLeague.Discord.Commands
                     await FollowupAsync("Invalid end date format. Use YYYY-MM-DD.", ephemeral: false);
                     return;
                 }
-                week.EndDate = parsedEnd;
+                endDate = parsedEnd;
             }
 
+            DateTime? subCloseDate = null;
             if (subCloseDateStr is not null)
             {
                 if (!DateTime.TryParse(subCloseDateStr, out var parsedSubClose))
@@ -128,27 +106,25 @@ namespace WarLeague.Discord.Commands
                     await FollowupAsync("Invalid submissions close date format. Use YYYY-MM-DD.", ephemeral: false);
                     return;
                 }
-                week.SubmissionsClosedDate = parsedSubClose;
+                subCloseDate = parsedSubClose;
             }
 
             // Validate logical ordering
-            if (week.StartDate > week.EndDate)
+            if (startDate > endDate)
             {
                 await FollowupAsync("Start date must be before end date.", ephemeral: false);
                 return;
             }
 
-            if (status.HasValue)
-            {
-                week.Status = status.Value;
-            }
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            if (week.Status == WeekStatus.Open)
-            {
-                await _weekRepository.CloseOtherOpenWeeksAsync(season.Id, week.Id);
-            }
+            Week? week = await _weekService.UpdateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate, status);
 
-            await _weekRepository.UpdateAsync(week);
+            if (week is null)
+            {
+                await FollowupAsync($"Week with number {weekNumber} does not exist.");
+                return;
+            }
 
             await FollowupAsync($"Week {weekNumber} updated.", ephemeral: false);
         }
@@ -160,72 +136,9 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            Week? openWeek;
-            try
-            {
-                openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusAsync(season.Id, WeekStatus.Open);
-            }
-            catch (InvalidOperationException)
-            {
-                await FollowupAsync("There are multiple open weeks for the active season. Please fix week statuses first.");
-                return;
-            }
+            Result result = await _weekService.StartWeekAsync(season.Id, requiredDecksByTeams);
 
-            if (openWeek == null)
-            {
-                await FollowupAsync("There is no open week for the active season right now.");
-                return;
-            }
-
-            if (openWeek.Status != WeekStatus.Open)
-            {
-                await FollowupAsync("The current week is not open, so it cannot be started.");
-                return;
-            }
-
-            var teams = await _teamRepository.GetBySeasonAsync(season.Id);
-            if (teams.Count == 0)
-            {
-                await FollowupAsync("There are no teams in the active season.");
-                return;
-            }
-
-            var psts = await _playerSeasonTeamRepository.GetBySeasonAsync(season.Id);
-
-            var invalidTeams = new List<string>();
-
-            foreach (var team in teams.OrderBy(t => t.Name))
-            {
-                var teamPlayerIds = psts
-                    .Where(p => p.TeamId == team.Id)
-                    .Select(p => p.PlayerId)
-                    .Distinct()
-                    .ToList();
-
-                var submittedCount = openWeek.DeckSubmissions
-                    .Where(ds => teamPlayerIds.Contains(ds.PlayerId))
-                    .Select(ds => ds.PlayerId)
-                    .Distinct()
-                    .Count();
-
-                if (submittedCount != requiredDecksByTeams)
-                {
-                    invalidTeams.Add($"{team.Name} ({submittedCount}/{requiredDecksByTeams})");
-                }
-            }
-
-            if (invalidTeams.Count > 0)
-            {
-                await FollowupAsync(
-                    $"Cannot start week because not all teams have exactly {requiredDecksByTeams} submitted decks:\n" +
-                    string.Join("\n", invalidTeams));
-                return;
-            }
-
-            openWeek.Status = WeekStatus.SubmissionsClosed;
-            await _weekRepository.UpdateAsync(openWeek);
-
-            await FollowupAsync($"Week {openWeek.WeekNumber} submissions are now closed.");
+            await FollowupAsync(result.Message);
         }
     }
 }
