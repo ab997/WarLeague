@@ -21,16 +21,6 @@ builder.Configuration
     .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
     ;
 
-// Discord client
-var discordConfig = new DiscordSocketConfig
-{
-    GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMembers | GatewayIntents.MessageContent,
-    AlwaysDownloadUsers = true
-};
-
-var discordClient = new DiscordSocketClient(discordConfig);
-var interactionService = new InteractionService(discordClient);
-
 // Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<WarLeagueDbContext>(options =>
@@ -57,6 +47,13 @@ builder.Services.AddScoped<WeekService>();
 // Services (discord)
 builder.Services.AddScoped<DiscordApiHelperService>();
 builder.Services.AddScoped<DiscordPlayerService>();
+// Discord client
+var discordClient = new DiscordSocketClient(new DiscordSocketConfig
+{
+    GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMembers | GatewayIntents.MessageContent,
+    AlwaysDownloadUsers = true
+});
+var interactionService = new InteractionService(discordClient);
 builder.Services.AddSingleton(discordClient);
 builder.Services.AddSingleton(interactionService);
 
