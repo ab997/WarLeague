@@ -13,13 +13,13 @@ namespace WarLeague.Discord.Commands;
 [EnsureSingleActiveSeason]
 public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
 {
-    private readonly PlayerService _playerService;
+    private readonly DiscordPlayerService _playerService;
     private readonly MatchRepository _matchRepository;
     private readonly WeekRepository _weekRepository;
     private readonly DiscordApiHelperService _helperService;
 
     public ReportCommands(
-        PlayerService playerService,
+        DiscordPlayerService playerService,
         MatchRepository matchRepository,
         WeekRepository weekRepository,
         DiscordApiHelperService helperService)

@@ -56,7 +56,7 @@ builder.Services.AddScoped<WeekService>();
 
 // Services (discord)
 builder.Services.AddScoped<DiscordApiHelperService>();
-builder.Services.AddScoped<PlayerService>();
+builder.Services.AddScoped<DiscordPlayerService>();
 builder.Services.AddSingleton(discordClient);
 builder.Services.AddSingleton(interactionService);
 

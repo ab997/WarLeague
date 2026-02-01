@@ -19,7 +19,7 @@ namespace WarLeague.Discord.Commands
         private readonly TeamRepository _teamRepository;
         private readonly FormatRepository _formatRepository;
         private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
-        private readonly PlayerService _playerService;
+        private readonly DiscordPlayerService _playerService;
         private readonly DiscordApiHelperService _helperService;
 
         public PeepCommands(
@@ -27,7 +27,7 @@ namespace WarLeague.Discord.Commands
             WeekRepository weekRepository,
             TeamRepository teamRepository,
             PlayerSeasonTeamRepository playerSeasonTeamRepository,
-            PlayerService playerService,
+            DiscordPlayerService playerService,
             DiscordApiHelperService helperService,
             FormatRepository formatRepository)
         {

@@ -21,14 +21,14 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
     private const int MaxDeckFileBytes = 1_000_000; // 1MB safety limit
 
     private readonly DiscordApiHelperService _helperService;
-    private readonly PlayerService _playerService;
+    private readonly DiscordPlayerService _playerService;
     private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
     private readonly TeamRepository _teamRepository;
     private readonly DeckSubmissionService _deckSubmissionService;
 
     public DeckCommands(
         DiscordApiHelperService helperService,
-        PlayerService playerService,
+        DiscordPlayerService playerService,
         PlayerSeasonTeamRepository playerSeasonTeamRepository,
         TeamRepository teamRepository,
         DeckSubmissionService deckSubmissionService)
