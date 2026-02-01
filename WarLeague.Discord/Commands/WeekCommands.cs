@@ -140,5 +140,42 @@ namespace WarLeague.Discord.Commands
 
             await FollowupAsync(result.Message);
         }
+
+        [SlashCommand("close", "Closes the current week after all matches are confirmed")]
+        public async Task CloseAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+            Result result = await _weekService.CloseAsync(season.Id);
+
+            await FollowupAsync(result.Message);
+        }
+
+        [SlashCommand("ping-players", "Tags players who need to finish their matches for the current week")]
+        public async Task PingPlayersAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+            var players = await _weekService.GetPlayersNeedingToPlayAsync(season.Id);
+
+            if (players.Count == 0)
+            {
+                await FollowupAsync("All matches are confirmed. No players to ping.");
+                return;
+            }
+
+            var mentions = players
+                .Select(p => $"<@{p.DiscordUserId}>")
+                .Distinct()
+                .ToList();
+
+            var message = $"Players needing to finish matches: {string.Join(", ", mentions)}";
+
+            await FollowupAsync(message);
+        }
     }
 }
