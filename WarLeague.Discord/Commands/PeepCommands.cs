@@ -557,19 +557,7 @@ namespace WarLeague.Discord.Commands
 
         private async Task SendEmbedsInBatchesAsync(IReadOnlyList<Embed> embeds)
         {
-            if (embeds.Count == 0)
-            {
-                await FollowupAsync("Nothing to show.");
-                return;
-            }
-
-            // Discord allows up to 10 embeds per message.
-            const int batchSize = 10;
-            for (int i = 0; i < embeds.Count; i += batchSize)
-            {
-                var batch = embeds.Skip(i).Take(batchSize).ToArray();
-                await FollowupAsync(embeds: batch);
-            }
+            await _helperService.SendEmbedsInBatchesAsync(Context, embeds);
         }
 
         private async Task<string> BuildTeamDetailsAsync(Season season, Team team)

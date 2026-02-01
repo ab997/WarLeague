@@ -1,4 +1,5 @@
 ﻿using Discord.Interactions;
+using Discord;
 using Discord.WebSocket;
 using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Repositories;
@@ -14,7 +15,7 @@ namespace WarLeague.Discord.Services
             _formatRepository = formatRepository;
             _seasonRepository = seasonRepository;
         }
-        public async Task<Format> GetFormatByCategoryNameAsync(SocketInteractionContext context)
+        public async Task<WarLeague.Core.Data.Entities.Format> GetFormatByCategoryNameAsync(SocketInteractionContext context)
         {
             SocketTextChannel channel = (SocketTextChannel)context.Channel;
 
@@ -26,7 +27,7 @@ namespace WarLeague.Discord.Services
         /// assumes that category name is format name is ensured
         /// assumes that single active season per format is ensured
         /// </summary>
-        public async Task<Season> GetSeasonByCategoryNameAsync(SocketInteractionContext context)
+        public async Task<WarLeague.Core.Data.Entities.Season> GetSeasonByCategoryNameAsync(SocketInteractionContext context)
         {
             SocketTextChannel channel = (SocketTextChannel)context.Channel;
 
@@ -54,6 +55,64 @@ namespace WarLeague.Discord.Services
             if (string.IsNullOrWhiteSpace(replayUrl)) return false;
             if (!Uri.TryCreate(replayUrl, UriKind.Absolute, out var uri)) return false;
             return uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
+        }
+
+        /// <summary>
+        /// Sends embeds in batches to respect Discord's limit of up to 10 embeds per message.
+        /// </summary>
+        public async Task SendEmbedsInBatchesAsync(SocketInteractionContext context, IReadOnlyList<Embed> embeds)
+        {
+            if (embeds == null || embeds.Count == 0)
+            {
+                await context.Interaction.FollowupAsync("Nothing to show.");
+                return;
+            }
+
+            const int batchSize = 10;
+            for (int i = 0; i < embeds.Count; i += batchSize)
+            {
+                Embed[] batch = embeds.Skip(i).Take(batchSize).ToArray();
+                await context.Interaction.FollowupAsync(embeds: batch);
+            }
+        }
+
+        /// <summary>
+        /// Splits a long text into chunks and sends multiple follow-up messages to avoid message length limits.
+        /// </summary>
+        public async Task SendMessageInChunksAsync(SocketInteractionContext context, string text, int maxChunkSize = 1800)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                await context.Interaction.FollowupAsync("_<empty>_");
+                return;
+            }
+
+            // Discord max message length is ~2000; keep margin for safety
+            if (maxChunkSize < 500) maxChunkSize = 500;
+            if (maxChunkSize > 1900) maxChunkSize = 1900;
+
+            int start = 0;
+            while (start < text.Length)
+            {
+                int len = Math.Min(maxChunkSize, text.Length - start);
+                int end = start + len;
+
+                // Prefer to break on newline to keep structure
+                int lastNewLine = text.LastIndexOf('\n', end - 1, len);
+                if (lastNewLine > start)
+                {
+                    end = lastNewLine + 1;
+                }
+
+                var chunk = text.Substring(start, end - start).TrimEnd();
+                if (string.IsNullOrWhiteSpace(chunk))
+                {
+                    chunk = "…";
+                }
+
+                await context.Interaction.FollowupAsync(chunk);
+                start = end;
+            }
         }
     }
 }
