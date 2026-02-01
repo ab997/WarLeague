@@ -42,6 +42,9 @@ builder.Services.AddScoped<TeamService>();
 builder.Services.AddScoped<FormatService>();
 builder.Services.AddScoped<SeasonService>();
 builder.Services.AddScoped<WeekService>();
+builder.Services.AddScoped<DeckSubmissionService>();
+builder.Services.AddScoped<MatchService>();
+builder.Services.AddScoped<TeamService>();
 
 
 // Services (discord)
