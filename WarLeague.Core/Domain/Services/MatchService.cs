@@ -207,5 +207,56 @@ namespace WarLeague.Core.Domain.Services
                 (list[i], list[j]) = (list[j], list[i]);
             }
         }
+
+        public async Task<Result> ReportLossAsync(int seasonId, int loserId, string replayUrl)
+        {
+            Week? week;
+            try
+            {
+                week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
+            }
+            catch (InvalidOperationException)
+            {
+                return new Result { Success = false, Message = $"Multiple weeks with status '{WeekStatus.InProgress}' exist for the active season." };
+            }
+
+            // Only allow reporting for matches where the caller actually has a scheduled match.
+            var callerMatches = await _matchRepository.GetByPlayerAndWeekAsync(loserId, week!.Id);
+
+            var scheduledMatches = callerMatches
+                .Where(m => m.Status == MatchStatus.Scheduled)
+                .ToList();
+
+            if (scheduledMatches.Count == 0)
+            {
+                return new Result { Success = false, Message = "You do not have any scheduled matches that can be reported as a loss." };
+            }
+
+            if (scheduledMatches.Count > 1)
+            {
+                // Ambiguous which opponent this loss is against; require admins to resolve.
+                var opponents = scheduledMatches
+                    .Select(m => m.Player1Id == loserId ? m.Player2 : m.Player1)
+                    .DistinctBy(p => p.Id)
+                    .Select(p => $"<@{p.DiscordUserId}>")
+                    .ToList();
+
+                return new Result { Success = false, Message = "You have multiple scheduled matches pending; I can't determine which one you are reporting a loss for.\n" +
+                    "Pending opponents: " + string.Join(", ", opponents) };
+            }
+
+            var match = scheduledMatches.Single();
+            var opponentPlayer = match.Player1Id == loserId ? match.Player2 : match.Player1;
+
+            // Loser is the caller, so winner is the opponent.
+            match.WinnerId = opponentPlayer.Id;
+            match.Status = MatchStatus.Reported;
+            match.ReportedDate = DateTime.UtcNow;
+            match.ReplayUrl = replayUrl;
+
+            await _matchRepository.UpdateAsync(match);
+
+            return new Result { Success = true, Message = "Match loss reported successfully." };
+        }
     }
 }

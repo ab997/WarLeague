@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WarLeague.Core.Data;
 using WarLeague.Core.Data.Entities;
+using WarLeague.Core.Domain.Model;
 
 namespace WarLeague.Core.Repositories;
 
