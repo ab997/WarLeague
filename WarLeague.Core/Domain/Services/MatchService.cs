@@ -159,5 +159,55 @@ namespace WarLeague.Core.Domain.Services
 
             return new Result { Success = true, Message = "Match loss reported successfully." };
         }
+
+        public async Task<Result> UndoResultAsync(int seasonId, int loserId)
+        {
+            Week? week;
+            try
+            {
+                week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
+            }
+            catch (InvalidOperationException)
+            {
+                return new Result { Success = false, Message = $"Multiple weeks with status '{WeekStatus.InProgress}' exist for the active season." };
+            }
+
+            // Only allow undo when the caller has a reported match in this week.
+            var callerMatches = await _matchRepository.GetByPlayerAndWeekAsync(loserId, week!.Id);
+
+            var reportedMatches = callerMatches
+                .Where(m => m.Status == MatchStatus.Reported)
+                .ToList();
+
+            if (reportedMatches.Count == 0)
+            {
+                return new Result { Success = false, Message = "You do not have any reported matches to undo." };
+            }
+
+            if (reportedMatches.Count > 1)
+            {
+                // Ambiguous which match to undo; require admins to resolve.
+                var opponents = reportedMatches
+                    .Select(m => m.Player1Id == loserId ? m.Player2 : m.Player1)
+                    .DistinctBy(p => p.Id)
+                    .Select(p => $"<@{p.DiscordUserId}>")
+                    .ToList();
+
+                return new Result { Success = false, Message = "You have multiple reported matches; I can't determine which one to undo.\n" +
+                    "Reported against: " + string.Join(", ", opponents) };
+            }
+
+            var match = reportedMatches.Single();
+
+            // Reset match back to scheduled state.
+            match.WinnerId = null;
+            match.Status = MatchStatus.Scheduled;
+            match.ReportedDate = null;
+            match.ReplayUrl = null;
+
+            await _matchRepository.UpdateAsync(match);
+
+            return new Result { Success = true, Message = "Reported match has been undone and returned to scheduled state." };
+        }
     }
 }

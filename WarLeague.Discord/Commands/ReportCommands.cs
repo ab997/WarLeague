@@ -47,5 +47,19 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
 
         await FollowupAsync(result.Message);
     }
+
+    [SlashCommand("undo", "Undo a previously reported match result for this week")]
+    public async Task UndoAsync()
+    {
+        await DeferAsync(ephemeral: false);
+
+        // Ensure caller exists as Player in the system.
+        Player callerPlayer = await _playerService.EnsurePlayerExistsAsync(Context.User);
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+        Result result = await _matchService.UndoResultAsync(season.Id, callerPlayer.Id);
+
+        await FollowupAsync(result.Message);
+    }
 }
 
