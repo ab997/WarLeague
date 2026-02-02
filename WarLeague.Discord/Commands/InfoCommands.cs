@@ -28,7 +28,8 @@ namespace WarLeague.Discord.Commands
                 inline: false);
 
             eb.AddField("Formats",
-                "- Create a format first\n- Creating a format automatically provisions a category named after the format and an initial channel inside it\n- Perform all actions (seasons, weeks, matches) inside the format’s category; actions are scoped to that format",
+                "- Create a format first\n- Creating a format automatically provisions a category named after the format and an initial channel inside it\n- Perform all actions (seasons, weeks, matches) inside the format’s category; actions are scoped to that format" +
+                "\n- Alternatively, use a special command to designate a single format per server. Every command will be assume to reference only that format.",
                 inline: false);
 
             eb.AddField("Seasons",

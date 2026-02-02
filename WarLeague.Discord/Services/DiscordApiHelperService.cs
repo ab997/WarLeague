@@ -3,6 +3,7 @@ using Discord;
 using Discord.WebSocket;
 using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Repositories;
+using Format = WarLeague.Core.Data.Entities.Format;
 
 namespace WarLeague.Discord.Services
 {
@@ -15,9 +16,16 @@ namespace WarLeague.Discord.Services
             _formatRepository = formatRepository;
             _seasonRepository = seasonRepository;
         }
-        public async Task<WarLeague.Core.Data.Entities.Format> GetFormatByCategoryNameAsync(SocketInteractionContext context)
+        public async Task<Format> GetFormatByCategoryNameAsync(SocketInteractionContext context)
         {
             SocketTextChannel channel = (SocketTextChannel)context.Channel;
+
+            (bool isSingleFormatMode, Format? format) = await _formatRepository.GetSingleFormatModeFormatAsync();
+
+            if (isSingleFormatMode && format != null)
+            {
+                return format;
+            }
 
             string categoryName = channel.Category.Name;
 
@@ -27,11 +35,18 @@ namespace WarLeague.Discord.Services
         /// assumes that category name is format name is ensured
         /// assumes that single active season per format is ensured
         /// </summary>
-        public async Task<WarLeague.Core.Data.Entities.Season> GetSeasonByCategoryNameAsync(SocketInteractionContext context)
+        public async Task<Season> GetSeasonByCategoryNameAsync(SocketInteractionContext context)
         {
             SocketTextChannel channel = (SocketTextChannel)context.Channel;
 
             string categoryName = channel.Category.Name;
+
+            (bool isSingleFormatMode, Format? format) = await _formatRepository.GetSingleFormatModeFormatAsync();
+
+            if (isSingleFormatMode && format != null)
+            {
+                categoryName = format.Name;
+            }
 
             return (await _seasonRepository.GetSingleActiveSeasonByFormatNameAsync(categoryName))!;
         }
