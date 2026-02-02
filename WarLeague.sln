@@ -7,9 +7,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WarLeague.Core", "WarLeague
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WarLeague.Discord", "WarLeague.Discord\WarLeague.Discord.csproj", "{7F2B0FB3-789F-4F38-BDEA-7DE3851D3C03}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{9C067403-14D6-4173-8F26-10311FB2BC2C}"
 	ProjectSection(SolutionItems) = preProject
-		copilot-instructions.md = copilot-instructions.md
+		.github\copilot-instructions.md = .github\copilot-instructions.md
 	EndProjectSection
 EndProject
 Global
