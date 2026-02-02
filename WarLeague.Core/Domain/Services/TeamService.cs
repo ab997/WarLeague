@@ -119,7 +119,7 @@ namespace WarLeague.Core.Domain.Services
         }
 
         public async Task<Result> AddMemberAsync(int seasonId, int playerId, int teamId)
-        {
+     {
             bool notMember = await _playerSeasonTeamRepository.EnsurePlayerIsNotMemberOfTeamInSeasonAsync(playerId, seasonId);
 
             if (!notMember)
