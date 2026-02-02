@@ -159,7 +159,7 @@ namespace WarLeague.Core.Domain.Services
             if (!allConfirmed)
             {
                 var pendingCount = matches.Count(m => m.Status != MatchStatus.Reported);
-                return new Result { Success = false, Message = $"Cannot close week: {pendingCount} match(es) not confirmed." };
+                return new Result { Success = false, Message = $"Cannot close week: {pendingCount} match(es) not reported." };
             }
 
             activeWeek.Status = WeekStatus.Completed;

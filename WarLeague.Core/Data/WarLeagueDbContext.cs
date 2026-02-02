@@ -68,6 +68,11 @@ public class WarLeagueDbContext : DbContext
             .HasIndex(f => f.Name)
             .IsUnique();
 
+        modelBuilder.Entity<Format>()
+          .HasIndex(w => w.SingleFormatMode)
+          .IsUnique()
+          .HasFilter("[SingleFormatMode] = 1");
+
         modelBuilder.Entity<Player>()
             .HasIndex(p => p.DiscordUserId)
             .IsUnique();
@@ -97,16 +102,6 @@ public class WarLeagueDbContext : DbContext
         modelBuilder.Entity<PlayerSeasonTeam>()
             .HasIndex(x => new { x.PlayerId, x.SeasonId })
             .IsUnique();
-
-
-
-
-        //--------------------------------------
-        // global query filters
-        //--------------------------------------
-
-        modelBuilder.Entity<Week>()
-        .HasQueryFilter(w => w.Season.Active);
 
         //--------------------------------------
         // disable cascade delete

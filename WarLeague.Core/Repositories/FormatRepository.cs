@@ -47,4 +47,15 @@ public class FormatRepository
         _context.Formats.Remove(format);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<(bool isSingleFormatMode, Format? format)> GetSingleFormatModeFormatAsync()
+    {
+        var formats = await GetAllAsync();
+
+        Format? format = formats.SingleOrDefault(x => x.SingleFormatMode);
+
+        if (format is null) return (false, null);
+
+        return (true, format);
+    }
 }

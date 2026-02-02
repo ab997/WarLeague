@@ -139,7 +139,7 @@ namespace WarLeague.Discord.Commands
         }
 
 
-        [SlashCommand("close", "Closes the current week after all matches are confirmed  (Status: InProgress -> Completed)")]
+        [SlashCommand("close", "5 -> Closes the current week after all matches are confirmed  (Status: InProgress -> Completed)")]
         public async Task CloseAsync()
         {
             await DeferAsync(ephemeral: false);

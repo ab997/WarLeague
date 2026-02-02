@@ -25,6 +25,17 @@ namespace WarLeague.Discord.Preconditions
 
             FormatRepository formatRepository = services.GetRequiredService<FormatRepository>();
 
+            // check if there is Single Format Mode enabled
+
+            (bool isSingleFormatMode, _) = await formatRepository.GetSingleFormatModeFormatAsync();
+
+            if (isSingleFormatMode)
+            {
+                return PreconditionResult.FromSuccess();
+            }
+
+            // else proceed to check if the channel category name matches any format name
+
             var hs = (await formatRepository.GetAllAsync())
                 .Select(f => f.Name)
                 .ToHashSet();

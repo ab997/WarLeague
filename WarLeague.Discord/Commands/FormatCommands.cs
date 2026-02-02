@@ -38,7 +38,25 @@ namespace WarLeague.Discord.Commands
             await CreateFormatCategoryAndChannelAsync(formatName, Context.Guild);
         }
 
-       
+        [SlashCommand("single-format-mode", "Enable single format mode for entire server.")]
+        public async Task SingleFormatModeAsync(string formatName)
+        {
+            await DeferAsync(ephemeral: false);
+
+            Format? format = await _formatService.GetFormatAsync(formatName);
+
+            if (format is null)
+            {
+                await FollowupAsync($"Format with name {formatName} does not exists.");
+                return;
+            }
+
+            await _formatService.SetSingleFormatModeAsync(format.Id);
+
+            await FollowupAsync("Done.");
+        }
+
+
 
         [SlashCommand("delete", "Deletes format")]
         public async Task DeleteAsync(string formatName)
