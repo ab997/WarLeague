@@ -1,75 +1,72 @@
-﻿# GitHub Copilot Instructions for WarLeague
+﻿# GitHub Copilot Instructions — WarLeague
 
-Purpose
-- Guide Copilot to generate code that fits this solution’s architecture, naming, and practices.
-- Prefer minimal, composable changes that integrate cleanly with existing layers.
+## Purpose
+- Generate code aligned with solution architecture, naming, and practices.
+- Prefer minimal, composable changes.
 
-Scope
-- Language: C# targeting .NET 10
-- Solution: `WarLeague.Core`, `WarLeague.Discord`
+## Architecture
+### WarLeague.Core
+- `Data/Entities/*`: EF Core POCOs only. No logic. Init navigations or `= null!;`.
+- `Data/Enums/*`: Domain enums. Persist as strings.
+- `Repositories/*`: Thin async data access. No business logic.
+- `Domain/Services/*`: Business rules/workflows. Coordinate repos. Return `Result`-like models.
 
-Architecture and responsibilities
-- `WarLeague.Core`
-  - `Data/Entities/*`: EF Core entities (POCOs). No business logic. Initialize required navigations or use `= null!;`.
-  - `Data/Enums/*`: Domain enums. Persist as strings via conversions.
-  - `Repositories/*`: Thin data access over `WarLeagueDbContext`. No business logic, always async.
-  - `Domain/Services/*`: Business rules and workflows. Coordinate repositories. Return `Result`-like models.
-- `WarLeague.Discord`
-  - `Commands/*`: Thin shell for Discord. Parse inputs, call services, format responses/embeds.
-  - Preconditions and helpers live in dedicated classes/services.
+### WarLeague.Discord
+- `Commands/*`: Thin Discord shell. Parse inputs, call services, format output.
+- Preconditions/helpers in dedicated classes.
 
-General conventions
-- Use `async`/`await` end-to-end; never block.
-- Suffix async methods with `Async`.
-- Keep command handlers short; move rules and validation into services.
-- Use `DateTime.UtcNow` for server timestamps; parse dates from inputs using `DateTime.TryParse` and validate ordering.
-- Avoid adding dependencies unless necessary.
-- Favor immutability and explicit initialization for collections.
+## General Conventions
+- Async/await end-to-end; no blocking.
+- Async methods end with `Async`.
+- Keep commands short; move rules/validation to services.
+- Use `DateTime.UtcNow`.
+- Parse dates with `DateTime.TryParse`; validate ordering.
+- Avoid new dependencies.
+- Favor immutability and explicit collection init.
 
-Entity Framework Core
-- `WarLeagueDbContext`
-  - Configure enums as strings: `Property(x => x.Status).HasConversion<string>();`
-  - Define explicit relationships for non-conventional navigations (e.g., `Match.Player1`, `Match.Player2`, `Match.Winner`).
-  - Create unique and filtered indexes to enforce invariants (e.g., only one active week per season for certain statuses).
-  - Disable cascade delete globally by setting `DeleteBehavior.Restrict` on all FKs.
-- Queries
-  - Use `SingleOrDefaultAsync` when expecting 0..1. Catch `InvalidOperationException` in services and return a failure `Result` with a clear message.
-  - Include needed navigations in repositories when services depend on them (e.g., include `DeckSubmissions` for week checks).
+## Entity Framework Core
+- Enums as strings: `HasConversion<string>()`.
+- Explicit relationships for non-conventional navs.
+- Use unique/filtered indexes for invariants.
+- Disable cascade delete globally (`DeleteBehavior.Restrict`).
 
-Repositories
-- Only CRUD and query composition; no business logic.
-- Always use async EF APIs (`AddAsync`, `ToListAsync`, `SingleOrDefaultAsync`).
-- Mutators save inside the repository (`SaveChangesAsync`).
-- Do not return `IQueryable` from repositories; return concrete results (`T?`, `List<T>`).
+### Queries
+- Use `SingleOrDefaultAsync` for 0..1.
+- Catch `InvalidOperationException` in services; return failure `Result`.
+- Repos include required navigations.
 
-Domain services
-- Return `Result`/custom result models with `Success`, `Message`, and payload as needed.
-- Convert data inconsistencies (e.g., duplicates) into safe user messages; do not leak exceptions to commands.
-- Use transactions for multi-entity workflows (e.g., pairing generation) and commit once.
+## Repositories
+- CRUD/query composition only.
+- Always async EF APIs.
+- Save inside repository.
+- Return concrete results, not `IQueryable`.
 
-Discord commands
-- Derive from `InteractionModuleBase<SocketInteractionContext>`.
-- Apply preconditions: `[RequireRole("Admin")]`, `[EnsureSingleActiveSeason]`, `[EnsureChannelIsInFormatCategory]` if appropriate.
+## Domain Services
+- Return `Result` with `Success`, `Message`, payload.
+- Convert inconsistencies to user-safe messages.
+- Use transactions for multi-entity workflows; single commit.
+
+## Discord Commands
+- Inherit `InteractionModuleBase<SocketInteractionContext>`.
+- Apply preconditions where relevant.
 - Pattern:
   - `await DeferAsync(ephemeral: false);`
-  - Parse and validate inputs quickly (dates, ranges, enums).
-  - Delegate to services; `await FollowupAsync(result.Message);`
-- Embeds and output:
-  - Max 25 fields per embed, 10 embeds per message; send in batches.
-  - Truncate field values to Discord limits.
+  - Fast input validation.
+  - Call service.
+  - `await FollowupAsync(result.Message);`
+- Embeds: ≤25 fields/embed, ≤10 embeds/message; batch if needed.
+- Truncate to Discord limits.
 
-Error handling and messages
-- Prefer returning `Result` to represent expected failures; exceptions are for truly exceptional states.
-- Keep Discord responses short and actionable; avoid exceeding platform limits.
+## Error Handling
+- Use `Result` for expected failures.
+- Exceptions only for exceptional states.
+- Responses short and actionable.
 
-Add a new command
-- Group under an existing module when possible; otherwise create a new `[Group]`.
-- `DeferAsync` then `FollowupAsync`.
-- Validate inputs early; delegate to services.
+## Adding Commands
+- Group with existing module when possible.
+- `DeferAsync` → `FollowupAsync`.
+- Validate early; delegate to services.
 
-Do / Don’t
-- Do keep command methods small and declarative.
-- Do use EF async methods everywhere.
-- Do avoid cascade deletes and respect filtered indexes.
-- Don’t add business logic to repositories or commands.
-- Don’t generate pairings if matches already exist for the week.
+## Do / Don’t
+- Do: keep commands declarative; async everywhere; respect indexes; avoid cascades.
+- Don’t: add business logic to repos/commands; generate pairings if matches exist.
