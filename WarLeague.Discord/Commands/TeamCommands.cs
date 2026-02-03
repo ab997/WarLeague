@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using System.Linq;
 using System.Numerics;
 using WarLeague.Core.Data;
 using WarLeague.Core.Data.Entities;
@@ -412,10 +413,53 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         await DeferAsync(ephemeral: false);
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+        Team? team = await _teamRepository.GetByNameAndSeasonAsync(teamName, season.Id);
+
+        if (team == null)
+        {
+            await FollowupAsync(Stringify($"Team with name '{teamName}' not found."));
+            return;
+        }
+
+        Player oldCaptainPlayer = team.Captain;
         Player newCaptainPlayer = await _playerService.EnsurePlayerExistsAsync(newCaptain);
 
         BaseResult result = await _teamService.TransferCaptainshipAsync(season.Id, newCaptainPlayer.Id, teamName);
 
-        await FollowupAsync(result.Message);
+        if (!result.Success)
+        {
+            await FollowupAsync(Stringify(result));
+            return;
+        }
+
+        SocketRole? captainRole = Context.Guild.Roles.FirstOrDefault(r => r.Name == "Captain");
+        if (captainRole == null)
+        {
+            await FollowupAsync(Stringify(result.Message, "Warning: Captain role not found in guild."));
+            return;
+        }
+
+        bool oldRoleRemoved = await _roleService.RemoveCaptainRoleAsync(Context.Guild, oldCaptainPlayer, captainRole);
+        bool newRoleAssigned = await _roleService.AssignCaptainRoleAsync(Context.Guild, newCaptainPlayer, captainRole);
+
+        if (!oldRoleRemoved && !newRoleAssigned)
+        {
+            await FollowupAsync(Stringify(result.Message, "Warning: Failed to remove old Captain role and assign new Captain role."));
+            return;
+        }
+
+        if (!oldRoleRemoved)
+        {
+            await FollowupAsync(Stringify(result.Message, "Warning: Failed to remove old Captain role, but new role was assigned."));
+            return;
+        }
+
+        if (!newRoleAssigned)
+        {
+            await FollowupAsync(Stringify(result.Message, "Warning: Failed to assign new Captain role."));
+            return;
+        }
+
+        await FollowupAsync(Stringify(result.Message, "Captain role updated."));
     }
 }

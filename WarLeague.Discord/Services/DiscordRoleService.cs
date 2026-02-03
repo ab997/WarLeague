@@ -126,6 +126,46 @@ namespace WarLeague.Discord.Services
         }
 
         /// <summary>
+        /// Assigns the Captain role to a player (guild member).
+        /// </summary>
+        public async Task<bool> AssignCaptainRoleAsync(SocketGuild guild, Player player, SocketRole captainRole)
+        {
+            if (guild == null || player == null || captainRole == null)
+            {
+                return false;
+            }
+
+            SocketGuildUser? user = guild.GetUser(player.DiscordUserId);
+            if (user == null)
+            {
+                return false;
+            }
+
+            await user.AddRoleAsync(captainRole);
+            return true;
+        }
+
+        /// <summary>
+        /// Removes the Captain role from a player (guild member).
+        /// </summary>
+        public async Task<bool> RemoveCaptainRoleAsync(SocketGuild guild, Player player, SocketRole captainRole)
+        {
+            if (guild == null || player == null || captainRole == null)
+            {
+                return false;
+            }
+
+            SocketGuildUser? user = guild.GetUser(player.DiscordUserId);
+            if (user == null)
+            {
+                return false;
+            }
+
+            await user.RemoveRoleAsync(captainRole);
+            return true;
+        }
+
+        /// <summary>
         /// Generates a random Discord color for team roles.
         /// </summary>
         private static Color GenerateRandomColor()
