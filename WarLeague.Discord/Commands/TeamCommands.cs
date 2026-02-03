@@ -1,13 +1,16 @@
 using Discord;
 using Discord.Interactions;
+using Discord.WebSocket;
 using System.Numerics;
 using WarLeague.Core.Data;
 using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Domain.Model;
 using WarLeague.Core.Domain.Services;
 using WarLeague.Core.Repositories;
+using WarLeague.Discord.Model;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
+using static WarLeague.Discord.Helpers.ResultHelper;
 
 namespace WarLeague.Discord.Commands;
 
@@ -23,13 +26,15 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     private readonly DiscordPlayerService _playerService;
     private readonly DiscordApiHelperService _helperService;
     private readonly TeamRepository _teamRepository;
-    public TeamCommands(DiscordPlayerService playerService, DiscordApiHelperService helperService, TeamRepository teamRepository, WarLeagueDbContext dbContext, TeamService teamService)
+    private readonly DiscordRoleService _roleService;
+    public TeamCommands(DiscordPlayerService playerService, DiscordApiHelperService helperService, TeamRepository teamRepository, WarLeagueDbContext dbContext, TeamService teamService, DiscordRoleService roleService)
     {
         _playerService = playerService;
         _helperService = helperService;
         _teamRepository = teamRepository;
         _context = dbContext;
         _teamService = teamService;
+        _roleService = roleService;
     }
 
 
@@ -42,10 +47,28 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         Player player = await _playerService.EnsurePlayerExistsAsync(Context.User);
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-        Result result = await _teamService.CreateAsync(season.Id, teamName, player.Id);
+        BaseResult result = await _teamService.CreateAsync(season.Id, teamName, player.Id);
 
-        await FollowupAsync(result.Message);
+        if (!result.Success)
+        {
+            await FollowupAsync(Stringify(result));
+            return;
+        }
+
+        SocketRoleResult roleResult = await _roleService.CreateAndAssignTeamRoleAsync(Context.Guild, teamName, player);
+
+        if (!roleResult.Success)
+        {
+            await FollowupAsync(Stringify(result, roleResult));
+            return;
+        }
+       
+        BaseResult assignRoleResult = await _teamService.AssignDiscordRoleIdAsync(season.Id, teamName, roleResult.Role!.Id);
+
+        await FollowupAsync(Stringify(result, roleResult, assignRoleResult));
     }
+
+    
 
     [SlashCommand("admin-create", "Creates a team and assigns the specified user as captain (Admin only)")]
     [RequireRole("Admin")]
@@ -58,7 +81,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
         Player captainPlayer = await _playerService.EnsurePlayerExistsAsync(captain);
 
-        Result result = await _teamService.CreateAsync(season.Id, teamName, captainPlayer.Id);
+        BaseResult result = await _teamService.CreateAsync(season.Id, teamName, captainPlayer.Id);
 
         await FollowupAsync(result.Message);
     }
@@ -120,7 +143,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         // Ensure target player exists
         Player targetPlayer = await _playerService.EnsurePlayerExistsAsync(user);
 
-        Result result = await _teamService.CaptainAddMemberAsync(season.Id, caller.Id, targetPlayer.Id);
+        BaseResult result = await _teamService.CaptainAddMemberAsync(season.Id, caller.Id, targetPlayer.Id);
 
         await FollowupAsync(result.Message);
     }
@@ -146,7 +169,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         // Ensure target player exists
         Player targetPlayer = await _playerService.EnsurePlayerExistsAsync(user);
 
-        Result result = await _teamService.CaptainRemoveMemberAsync(season.Id, caller.Id, targetPlayer.Id);
+        BaseResult result = await _teamService.CaptainRemoveMemberAsync(season.Id, caller.Id, targetPlayer.Id);
 
         await FollowupAsync(result.Message);
     }
@@ -164,7 +187,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         // Ensure target player exists
         Player targetPlayer = await _playerService.EnsurePlayerExistsAsync(user);
 
-        Result result = await _teamService.AddMemberAsync(season.Id, targetPlayer.Id, teamName);
+        BaseResult result = await _teamService.AddMemberAsync(season.Id, targetPlayer.Id, teamName);
 
         await FollowupAsync(result.Message);
     }
@@ -185,7 +208,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         // Ensure target player exists
         Player targetPlayer = await _playerService.EnsurePlayerExistsAsync(user);
 
-        Result result = await _teamService.RemoveMemberAsync(season.Id, targetPlayer.Id);
+        BaseResult result = await _teamService.RemoveMemberAsync(season.Id, targetPlayer.Id);
 
         await FollowupAsync(result.Message);
     }
@@ -204,7 +227,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         Player player = await _playerService.EnsurePlayerExistsAsync(user);
 
-        Result result = await _teamService.TransferMemberAsync(season.Id, player.Id, teamName);
+        BaseResult result = await _teamService.TransferMemberAsync(season.Id, player.Id, teamName);
 
         await FollowupAsync(result.Message);
     }
@@ -220,7 +243,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
         Player newCaptainPlayer = await _playerService.EnsurePlayerExistsAsync(newCaptain);
 
-        Result result = await _teamService.TransferCaptainshipAsync(season.Id, newCaptainPlayer.Id, teamName);
+        BaseResult result = await _teamService.TransferCaptainshipAsync(season.Id, newCaptainPlayer.Id, teamName);
 
         await FollowupAsync(result.Message);
     }

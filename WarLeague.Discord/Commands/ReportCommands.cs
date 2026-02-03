@@ -43,7 +43,7 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
         Player callerPlayer = await _playerService.EnsurePlayerExistsAsync(Context.User);
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-        Result result = await _matchService.ReportLossAsync(season.Id, callerPlayer.Id, replayUrl);
+        BaseResult result = await _matchService.ReportLossAsync(season.Id, callerPlayer.Id, replayUrl);
 
         await FollowupAsync(result.Message);
     }
@@ -61,7 +61,7 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
         Player p2 = await _playerService.EnsurePlayerExistsAsync(player2);
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-        Result result = await _matchService.UndoResultAsync(season.Id, p1.Id, p2.Id);
+        BaseResult result = await _matchService.UndoResultAsync(season.Id, p1.Id, p2.Id);
 
         await FollowupAsync(result.Message);
     }
@@ -95,7 +95,7 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        Result result = await _matchService.ReportResultAsync(season.Id, w.Id, l.Id, replayUrl);
+        BaseResult result = await _matchService.ReportResultAsync(season.Id, w.Id, l.Id, replayUrl);
         await FollowupAsync(result.Message);
     }
 }

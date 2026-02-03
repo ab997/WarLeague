@@ -1,6 +1,6 @@
 ﻿# TODO
 
-- [ ] Make notes about team in InfoCommands
+- [x] Make notes about team in InfoCommands
 - [ ] Bot should handle roles and colours for teams
 - [ ] Add command for Captain to update team color
 - [ ] Before season starts, validate that all teams have a minimum amount of members

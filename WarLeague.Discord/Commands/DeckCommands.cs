@@ -87,7 +87,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        Result result = await _deckSubmissionService.SubmitAsync(season.Id, targetPlayer.Id, deckContent);
+        BaseResult result = await _deckSubmissionService.SubmitAsync(season.Id, targetPlayer.Id, deckContent);
 
         await FollowupAsync(result.Message);
     }
@@ -110,7 +110,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        Result result = await _deckSubmissionService.DeleteSubmissionAsync(season.Id, targetPlayer.Id);
+        BaseResult result = await _deckSubmissionService.DeleteSubmissionAsync(season.Id, targetPlayer.Id);
 
         await FollowupAsync(result.Message);
     }

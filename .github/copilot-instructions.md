@@ -47,15 +47,7 @@
 - Use transactions for multi-entity workflows; single commit.
 
 ## Discord Commands
-- Inherit `InteractionModuleBase<SocketInteractionContext>`.
-- Apply preconditions where relevant.
-- Pattern:
-  - `await DeferAsync(ephemeral: false);`
-  - Fast input validation.
-  - Call service.
-  - `await FollowupAsync(result.Message);`
-- Embeds: ≤25 fields/embed, ≤10 embeds/message; batch if needed.
-- Truncate to Discord limits.
+- NEVER place business logic here directly to command file, ALWAYS delegate to services.
 
 ## Error Handling
 - Use `Result` for expected failures.

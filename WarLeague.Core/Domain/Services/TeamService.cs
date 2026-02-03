@@ -26,7 +26,7 @@ namespace WarLeague.Core.Domain.Services
             _playerRepository = playerRepository;
         }
 
-        public async Task<Result> CreateAsync(int seasonId, string teamName, int captainId)
+        public async Task<BaseResult> CreateAsync(int seasonId, string teamName, int captainId, ulong? discordRoleId = null)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -34,14 +34,14 @@ namespace WarLeague.Core.Domain.Services
 
             if (season is null)
             {
-                return new Result { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
+                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
             }
 
             Team? check = await _teamRepository.GetByNameAsync(teamName);
 
             if (check is not null)
             {
-                return new Result { Success = false, Message = $"A team with the name '{teamName}' already exists." };
+                return new BaseResult { Success = false, Message = $"A team with the name '{teamName}' already exists." };
             }
 
             Player player = await _playerRepository.GetByIdAsync(captainId);
@@ -50,7 +50,7 @@ namespace WarLeague.Core.Domain.Services
 
             if (!success)
             {
-                return new Result { Success = false, Message = $"Player {player.UserName} already a member of another team." };
+                return new BaseResult { Success = false, Message = $"Player {player.UserName} already a member of another team." };
             }
 
             Team team = new Team
@@ -59,6 +59,7 @@ namespace WarLeague.Core.Domain.Services
                 Captain = player,
                 CreatedDate = DateTime.UtcNow,
                 Season = season,
+                DiscordRoleId = discordRoleId
             };
 
             await _teamRepository.AddAsync(team);
@@ -74,7 +75,7 @@ namespace WarLeague.Core.Domain.Services
 
             await transaction.CommitAsync();
 
-            return new Result { Success = true, Message = $"Team created successfully with {player.UserName} as captain." };
+            return new BaseResult { Success = true, Message = $"Team created successfully with {player.UserName} as captain." };
         }
 
         public async Task<Team?> DeleteAsync(int seasonId, string teamName)
@@ -96,35 +97,35 @@ namespace WarLeague.Core.Domain.Services
         /// <param name="teamName"></param>
         /// <param name="playerId"></param>
         /// <returns></returns>
-        public async Task<Result> CaptainAddMemberAsync(int seasonId, int captainId, int playerId)
+        public async Task<BaseResult> CaptainAddMemberAsync(int seasonId, int captainId, int playerId)
         {
             Team? team = await _teamRepository.GetByCaptainAndSeasonAsync(captainId, seasonId);
 
             if (team is null)
             {
-                return new Result { Success = false, Message = $"Player with id {captainId} is not captain of any team in this season." };
+                return new BaseResult { Success = false, Message = $"Player with id {captainId} is not captain of any team in this season." };
             }
 
             return await AddMemberAsync(seasonId, playerId, team.Id);
         }
 
-        public async Task<Result> AddMemberAsync(int seasonId, int playerId, string teamName)
+        public async Task<BaseResult> AddMemberAsync(int seasonId, int playerId, string teamName)
         {
             Team? team = await _teamRepository.GetByNameAndSeasonAsync(teamName, seasonId);
             if (team is null)
             {
-                return new Result { Success = false, Message = $"Team with name '{teamName}' does not exist in this season." };
+                return new BaseResult { Success = false, Message = $"Team with name '{teamName}' does not exist in this season." };
             }
             return await AddMemberAsync(seasonId, playerId, team.Id);
         }
 
-        public async Task<Result> AddMemberAsync(int seasonId, int playerId, int teamId)
+        public async Task<BaseResult> AddMemberAsync(int seasonId, int playerId, int teamId)
      {
             bool notMember = await _playerSeasonTeamRepository.EnsurePlayerIsNotMemberOfTeamInSeasonAsync(playerId, seasonId);
 
             if (!notMember)
             {
-                return new Result { Success = false, Message = $"Player with id {playerId} is already a member of another team in this season." };
+                return new BaseResult { Success = false, Message = $"Player with id {playerId} is already a member of another team in this season." };
             }
 
             PlayerSeasonTeam pst = new PlayerSeasonTeam
@@ -136,27 +137,27 @@ namespace WarLeague.Core.Domain.Services
 
             await _playerSeasonTeamRepository.AddAsync(pst);
 
-            return new Result { Success = true, Message = $"Added player to team." };
+            return new BaseResult { Success = true, Message = $"Added player to team." };
         }
 
-        public async Task<Result> CaptainRemoveMemberAsync(int seasonId, int captainId, int playerId)
+        public async Task<BaseResult> CaptainRemoveMemberAsync(int seasonId, int captainId, int playerId)
         {
             Team? team = await _teamRepository.GetByCaptainAndSeasonAsync(captainId, seasonId);
 
             if (team is null)
             {
-                return new Result { Success = false, Message = $"Player with id {captainId} is not captain of any team in this season." };
+                return new BaseResult { Success = false, Message = $"Player with id {captainId} is not captain of any team in this season." };
             }
 
             return await RemoveMemberFromTeamAsync(seasonId, playerId, team);
         }
 
-        public async Task<Result> RemoveMemberFromTeamAsync(int seasonId, int playerId, Team team)
+        public async Task<BaseResult> RemoveMemberFromTeamAsync(int seasonId, int playerId, Team team)
         {
             // Prevent dropping the captain
             if (team.CaptainId == playerId)
             {
-                return new Result { Success = false, Message = "The team captain cannot be removed. Transfer captainship first if needed." };
+                return new BaseResult { Success = false, Message = "The team captain cannot be removed. Transfer captainship first if needed." };
             }
 
             // Ensure the user is a member of this team in the current season
@@ -168,15 +169,15 @@ namespace WarLeague.Core.Domain.Services
 
             if (pst == null)
             {
-                return new Result { Success = false, Message = $"Player with id {playerId} is not a member of team '{team.Name}'." };
+                return new BaseResult { Success = false, Message = $"Player with id {playerId} is not a member of team '{team.Name}'." };
             }
 
             await _playerSeasonTeamRepository.DeleteAsync(pst);
 
-            return new Result { Success = true, Message = $"Removed player from team '{team.Name}'." };
+            return new BaseResult { Success = true, Message = $"Removed player from team '{team.Name}'." };
         }
 
-        public async Task<Result> RemoveMemberAsync(int seasonId, int playerId)
+        public async Task<BaseResult> RemoveMemberAsync(int seasonId, int playerId)
         {
             // Ensure the user is a member of this team in the current season
             PlayerSeasonTeam? pst =
@@ -186,7 +187,7 @@ namespace WarLeague.Core.Domain.Services
 
             if (pst == null)
             {
-                return new Result { Success = false, Message = $"Player with id {playerId} is not a member of any team." };
+                return new BaseResult { Success = false, Message = $"Player with id {playerId} is not a member of any team." };
             }
 
             Team team = pst.Team;
@@ -194,41 +195,41 @@ namespace WarLeague.Core.Domain.Services
             // Prevent dropping the captain
             if (team.CaptainId == playerId)
             {
-                return new Result { Success = false, Message = "The team captain cannot be removed. Transfer captainship first if needed." };
+                return new BaseResult { Success = false, Message = "The team captain cannot be removed. Transfer captainship first if needed." };
             }
 
             await _playerSeasonTeamRepository.DeleteAsync(pst);
 
-            return new Result { Success = true, Message = $"Removed player from team '{team.Name}'." };
+            return new BaseResult { Success = true, Message = $"Removed player from team '{team.Name}'." };
         }
-        public async Task<Result> TransferMemberAsync(int seasonId, int playerId, string teamName)
+        public async Task<BaseResult> TransferMemberAsync(int seasonId, int playerId, string teamName)
         {
             Team? team = await _teamRepository.GetByNameAndSeasonAsync(teamName, seasonId);
             if (team == null)
             {
-                return new Result { Success = false, Message = $"Team with name '{teamName}' does not exist in this season." };
+                return new BaseResult { Success = false, Message = $"Team with name '{teamName}' does not exist in this season." };
             }
             return await TransferMemberAsync(seasonId, playerId, team.Id);
         }
-        public async Task<Result> TransferMemberAsync(int seasonId, int playerId, int teamId)
+        public async Task<BaseResult> TransferMemberAsync(int seasonId, int playerId, int teamId)
         {
             // Captains cannot be transferred
             bool canTransfer = await _playerSeasonTeamRepository.EnsurePlayerIsNotCaptainOfTeamInSeasonAsync(playerId, seasonId);
             if (!canTransfer)
             {
-                return new Result { Success = false, Message = "Captains cannot be transferred." };
+                return new BaseResult { Success = false, Message = "Captains cannot be transferred." };
             }
 
             using var transaction = await _context.Database.BeginTransactionAsync();
 
-            Result result1 = await RemoveMemberAsync(seasonId, playerId);
+            BaseResult result1 = await RemoveMemberAsync(seasonId, playerId);
 
             if (!result1.Success)
             {
                 return result1;
             }
 
-            Result result2 = await AddMemberAsync(seasonId, playerId, teamId);
+            BaseResult result2 = await AddMemberAsync(seasonId, playerId, teamId);
 
             if (!result2.Success)
             {
@@ -237,15 +238,15 @@ namespace WarLeague.Core.Domain.Services
 
             await transaction.CommitAsync();
 
-            return new Result { Success = true, Message = "Player transferred successfully." };
+            return new BaseResult { Success = true, Message = "Player transferred successfully." };
         }
 
-        public async Task<Result> TransferCaptainshipAsync(int seasonId, int newCaptainId, string teamName)
+        public async Task<BaseResult> TransferCaptainshipAsync(int seasonId, int newCaptainId, string teamName)
         {
             Team? team = await _teamRepository.GetByNameAndSeasonAsync(teamName, seasonId);
             if (team == null)
             {
-                return new Result { Success = false, Message = $"Team with name '{teamName}' does not exist in this season." };
+                return new BaseResult { Success = false, Message = $"Team with name '{teamName}' does not exist in this season." };
             }
 
             // Ensure the user is already a member of the team
@@ -257,14 +258,29 @@ namespace WarLeague.Core.Domain.Services
 
             if (pst == null)
             {
-                return new Result { Success = false, Message = $"Player with id {newCaptainId} is not a member of team '{team.Name}'. Captainship transfer is supported only among existing members." };
+                return new BaseResult { Success = false, Message = $"Player with id {newCaptainId} is not a member of team '{team.Name}'. Captainship transfer is supported only among existing members." };
             }
 
             team.CaptainId = newCaptainId;
 
             await _teamRepository.UpdateAsync(team);
 
-            return new Result { Success = true, Message = "Captainship transferred successfully." };
+            return new BaseResult { Success = true, Message = "Captainship transferred successfully." };
+        }
+
+        public async Task<BaseResult> AssignDiscordRoleIdAsync(int seasonId, string teamName, ulong discordRoleId)
+        {
+            Team? team = await _teamRepository.GetByNameAndSeasonAsync(teamName, seasonId);
+            if (team == null)
+            {
+                return new BaseResult { Success = false, Message = $"Team with name '{teamName}' does not exist in this season." };
+            }
+
+            team.DiscordRoleId = discordRoleId;
+
+            await _teamRepository.UpdateAsync(team);
+
+            return new BaseResult { Success = true, Message = $"Discord role assigned to team '{teamName}' successfully." };
         }
     }
 }

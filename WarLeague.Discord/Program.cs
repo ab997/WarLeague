@@ -50,6 +50,7 @@ builder.Services.AddScoped<TeamService>();
 // Services (discord)
 builder.Services.AddScoped<DiscordApiHelperService>();
 builder.Services.AddScoped<DiscordPlayerService>();
+builder.Services.AddScoped<DiscordRoleService>();
 // Discord client
 var discordClient = new DiscordSocketClient(new DiscordSocketConfig
 {

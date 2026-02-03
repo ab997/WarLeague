@@ -9,6 +9,7 @@ using WarLeague.Core.Domain.Services;
 using WarLeague.Core.Repositories;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
+using static WarLeague.Discord.Helpers.ResultHelper;
 
 namespace WarLeague.Discord.Commands
 {
@@ -113,7 +114,7 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            Result result = await _weekService.StartWeekAsync(season.Id, requiredDecksByTeams);
+            BaseResult result = await _weekService.StartWeekAsync(season.Id, requiredDecksByTeams);
 
             await FollowupAsync(result.Message);
         }
@@ -146,7 +147,7 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            Result result = await _weekService.CloseAsync(season.Id);
+            BaseResult result = await _weekService.CloseAsync(season.Id);
 
             await FollowupAsync(result.Message);
         }
