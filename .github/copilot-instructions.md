@@ -1,2 +1,3 @@
 ﻿- NEVER place business logic here directly to command file, ALWAYS delegate to services.
 - ALWAYS use ResultHelper.Stringify to return strings from commands.
+- ALWAYS use guard clauses, NEVER nested ifs.

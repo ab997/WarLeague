@@ -23,5 +23,32 @@ namespace WarLeague.Discord.Helpers
 
             return sb.ToString().TrimEnd();
         }
+
+        public static string Stringify(params object[] items)
+        {
+            if (items == null || items.Length == 0)
+                return string.Empty;
+
+            var sb = new StringBuilder();
+            foreach (var item in items)
+            {
+                if (item is BaseResult result)
+                {
+                    if (!string.IsNullOrWhiteSpace(result.Message))
+                    {
+                        sb.AppendLine(result.Message);
+                    }
+                }
+                else if (item is string str)
+                {
+                    if (!string.IsNullOrWhiteSpace(str))
+                    {
+                        sb.AppendLine(str);
+                    }
+                }
+            }
+
+            return sb.ToString().TrimEnd();
+        }
     }
 }
