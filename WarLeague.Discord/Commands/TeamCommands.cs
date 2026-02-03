@@ -27,7 +27,8 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     private readonly DiscordApiHelperService _helperService;
     private readonly TeamRepository _teamRepository;
     private readonly DiscordRoleService _roleService;
-    public TeamCommands(DiscordPlayerService playerService, DiscordApiHelperService helperService, TeamRepository teamRepository, WarLeagueDbContext dbContext, TeamService teamService, DiscordRoleService roleService)
+    private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
+    public TeamCommands(DiscordPlayerService playerService, DiscordApiHelperService helperService, TeamRepository teamRepository, WarLeagueDbContext dbContext, TeamService teamService, DiscordRoleService roleService, PlayerSeasonTeamRepository playerSeasonTeamRepository)
     {
         _playerService = playerService;
         _helperService = helperService;
@@ -35,6 +36,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         _context = dbContext;
         _teamService = teamService;
         _roleService = roleService;
+        _playerSeasonTeamRepository = playerSeasonTeamRepository;
     }
 
 
@@ -301,12 +303,35 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-        // Ensure target player exists
         Player targetPlayer = await _playerService.EnsurePlayerExistsAsync(user);
+
+        PlayerSeasonTeam? playerSeasonTeam = await _playerSeasonTeamRepository.GetByPlayerAndSeasonAsync(targetPlayer.Id, season.Id);
+
+        Team? team = playerSeasonTeam?.Team;
+        ulong? discordRoleId = team?.DiscordRoleId;
 
         BaseResult result = await _teamService.RemoveMemberAsync(season.Id, targetPlayer.Id);
 
-        await FollowupAsync(result.Message);
+        if (!result.Success)
+        {
+            await FollowupAsync(Stringify(result));
+            return;
+        }
+
+        if (team == null || !discordRoleId.HasValue)
+        {
+            await FollowupAsync(Stringify(result, $"Player was not on a team or team does not have a Discord role assigned."));
+            return;
+        }
+
+        bool roleRemoved = await _roleService.RemoveRoleFromPlayerAsync(Context.Guild, targetPlayer, team);
+        if (!roleRemoved)
+        {
+            await FollowupAsync(Stringify(result.Message, "Warning: Failed to remove Discord role."));
+            return;
+        }
+
+        await FollowupAsync(Stringify(result.Message, "Discord role removed."));
     }
 
     [SlashCommand("admin-transfer-member", "Transfers a member to another team (Admin only)")]
