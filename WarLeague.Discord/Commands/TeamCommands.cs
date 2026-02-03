@@ -236,7 +236,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        bool roleRemoved = await _roleService.RemoveRoleFromPlayerAsync(Context.Guild, targetPlayer, team);
+        bool roleRemoved = await _roleService.RemoveTeamRoleFromPlayerAsync(Context.Guild, targetPlayer, team);
         if (!roleRemoved)
         {
             await FollowupAsync(Stringify(result.Message, "Warning: Failed to remove Discord role."));
@@ -325,7 +325,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        bool roleRemoved = await _roleService.RemoveRoleFromPlayerAsync(Context.Guild, targetPlayer, team);
+        bool roleRemoved = await _roleService.RemoveTeamRoleFromPlayerAsync(Context.Guild, targetPlayer, team);
         if (!roleRemoved)
         {
             await FollowupAsync(Stringify(result.Message, "Warning: Failed to remove Discord role."));
@@ -378,7 +378,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         bool oldRoleRemoved = true;
         if (oldTeam != null && oldDiscordRoleId.HasValue)
         {
-            oldRoleRemoved = await _roleService.RemoveRoleFromPlayerAsync(Context.Guild, player, oldTeam);
+            oldRoleRemoved = await _roleService.RemoveTeamRoleFromPlayerAsync(Context.Guild, player, oldTeam);
         }
 
         bool newRoleAssigned = await _roleService.AssignRoleToPlayerAsync(Context.Guild, player, newRole);
@@ -439,8 +439,8 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        bool oldRoleRemoved = await _roleService.RemoveCaptainRoleAsync(Context.Guild, oldCaptainPlayer, captainRole);
-        bool newRoleAssigned = await _roleService.AssignCaptainRoleAsync(Context.Guild, newCaptainPlayer, captainRole);
+        bool oldRoleRemoved = await _roleService.RemoveRoleFromPlayerAsync(Context.Guild, oldCaptainPlayer, captainRole);
+        bool newRoleAssigned = await _roleService.AssignRoleToPlayerAsync(Context.Guild, newCaptainPlayer, captainRole);
 
         if (!oldRoleRemoved && !newRoleAssigned)
         {

@@ -102,7 +102,7 @@ namespace WarLeague.Discord.Services
         /// <summary>
         /// Removes a team role from a player (guild member).
         /// </summary>
-        public async Task<bool> RemoveRoleFromPlayerAsync(SocketGuild guild, Player player, Team team)
+        public async Task<bool> RemoveTeamRoleFromPlayerAsync(SocketGuild guild, Player player, Team team)
         {
             if (guild == null || player == null || team?.DiscordRoleId == null)
             {
@@ -124,13 +124,9 @@ namespace WarLeague.Discord.Services
             await user.RemoveRoleAsync(role);
             return true;
         }
-
-        /// <summary>
-        /// Assigns the Captain role to a player (guild member).
-        /// </summary>
-        public async Task<bool> AssignCaptainRoleAsync(SocketGuild guild, Player player, SocketRole captainRole)
+        public async Task<bool> RemoveRoleFromPlayerAsync(SocketGuild guild, Player player, SocketRole role)
         {
-            if (guild == null || player == null || captainRole == null)
+            if (guild == null || player == null)
             {
                 return false;
             }
@@ -141,27 +137,7 @@ namespace WarLeague.Discord.Services
                 return false;
             }
 
-            await user.AddRoleAsync(captainRole);
-            return true;
-        }
-
-        /// <summary>
-        /// Removes the Captain role from a player (guild member).
-        /// </summary>
-        public async Task<bool> RemoveCaptainRoleAsync(SocketGuild guild, Player player, SocketRole captainRole)
-        {
-            if (guild == null || player == null || captainRole == null)
-            {
-                return false;
-            }
-
-            SocketGuildUser? user = guild.GetUser(player.DiscordUserId);
-            if (user == null)
-            {
-                return false;
-            }
-
-            await user.RemoveRoleAsync(captainRole);
+            await user.RemoveRoleAsync(role);
             return true;
         }
 
