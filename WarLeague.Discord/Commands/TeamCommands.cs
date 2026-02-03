@@ -208,22 +208,39 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-        // Block captain modifications if disabled for the season (Admins bypass)
         if (season.DisableTeamModification && !_helperService.IsUserAdmin(Context))
         {
             await FollowupAsync("Team modifications are currently disabled for this season.");
             return;
         }
 
-        // Ensure caller is a player
         Player caller = await _playerService.EnsurePlayerExistsAsync(Context.User);
-
-        // Ensure target player exists
         Player targetPlayer = await _playerService.EnsurePlayerExistsAsync(user);
 
         BaseResult result = await _teamService.CaptainRemoveMemberAsync(season.Id, caller.Id, targetPlayer.Id);
 
-        await FollowupAsync(result.Message);
+        if (!result.Success)
+        {
+            await FollowupAsync(Stringify(result));
+            return;
+        }
+
+        Team? team = await _teamRepository.GetByCaptainAndSeasonAsync(caller.Id, season.Id);
+
+        if (team?.DiscordRoleId.HasValue != true)
+        {
+            await FollowupAsync(Stringify(result, $"Team '{team?.Name}' was not found or does not have a Discord role assigned."));
+            return;
+        }
+
+        bool roleRemoved = await _roleService.RemoveRoleFromPlayerAsync(Context.Guild, targetPlayer, team);
+        if (!roleRemoved)
+        {
+            await FollowupAsync(Stringify(result.Message, "Warning: Failed to remove Discord role."));
+            return;
+        }
+
+        await FollowupAsync(Stringify(result.Message, "Discord role removed."));
     }
 
     [SlashCommand("admin-add-member", "Adds a member to any team (Admin only)")]
