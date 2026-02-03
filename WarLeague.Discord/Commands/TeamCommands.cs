@@ -83,7 +83,23 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         BaseResult result = await _teamService.CreateAsync(season.Id, teamName, captainPlayer.Id);
 
-        await FollowupAsync(result.Message);
+        if (!result.Success)
+        {
+            await FollowupAsync(Stringify(result));
+            return;
+        }
+
+        SocketRoleResult roleResult = await _roleService.CreateAndAssignTeamRoleAsync(Context.Guild, teamName, captainPlayer);
+
+        if (!roleResult.Success)
+        {
+            await FollowupAsync(Stringify(result, roleResult));
+            return;
+        }
+       
+        BaseResult assignRoleResult = await _teamService.AssignDiscordRoleIdAsync(season.Id, teamName, roleResult.Role!.Id);
+
+        await FollowupAsync(Stringify(result, roleResult, assignRoleResult));
     }
 
     [SlashCommand("delete", "Deletes team")]
