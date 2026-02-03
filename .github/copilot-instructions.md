@@ -1,3 +1,5 @@
 ﻿- NEVER place business logic here directly to command file, ALWAYS delegate to services.
 - ALWAYS use ResultHelper.Stringify to return strings from commands.
 - ALWAYS use guard clauses, NEVER nested ifs.
+- ALWAYS treat warnings as errors.
+- NEVER use two FollowupAsync in the same command.

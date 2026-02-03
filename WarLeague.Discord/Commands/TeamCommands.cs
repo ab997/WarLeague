@@ -342,15 +342,65 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     {
         await DeferAsync(ephemeral: false);
 
-        using var transaction = await _context.Database.BeginTransactionAsync();
-
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
         Player player = await _playerService.EnsurePlayerExistsAsync(user);
 
+        PlayerSeasonTeam? oldPlayerSeasonTeam = await _playerSeasonTeamRepository.GetByPlayerAndSeasonAsync(player.Id, season.Id);
+
+        Team? oldTeam = oldPlayerSeasonTeam?.Team;
+        ulong? oldDiscordRoleId = oldTeam?.DiscordRoleId;
+
         BaseResult result = await _teamService.TransferMemberAsync(season.Id, player.Id, teamName);
 
-        await FollowupAsync(result.Message);
+        if (!result.Success)
+        {
+            await FollowupAsync(Stringify(result));
+            return;
+        }
+
+        Team? newTeam = await _teamRepository.GetByNameAndSeasonAsync(teamName, season.Id);
+
+        if (newTeam?.DiscordRoleId.HasValue != true)
+        {
+            await FollowupAsync(Stringify(result, $"Target team '{teamName}' was not found or does not have a Discord role assigned."));
+            return;
+        }
+
+        SocketRole? newRole = Context.Guild.GetRole(newTeam.DiscordRoleId.Value);
+        if (newRole == null)
+        {
+            await FollowupAsync(Stringify(result.Message, $"Target team '{teamName}' does not have a Discord role assigned."));
+            return;
+        }
+
+        bool oldRoleRemoved = true;
+        if (oldTeam != null && oldDiscordRoleId.HasValue)
+        {
+            oldRoleRemoved = await _roleService.RemoveRoleFromPlayerAsync(Context.Guild, player, oldTeam);
+        }
+
+        bool newRoleAssigned = await _roleService.AssignRoleToPlayerAsync(Context.Guild, player, newRole);
+
+        if (!oldRoleRemoved && !newRoleAssigned)
+        {
+            await FollowupAsync(Stringify(result.Message, "Warning: Failed to remove old Discord role and assign new Discord role."));
+            return;
+        }
+
+        if (!oldRoleRemoved)
+        {
+            await FollowupAsync(Stringify(result.Message, "Warning: Failed to remove old Discord role, but new role was assigned."));
+            return;
+        }
+
+        if (!newRoleAssigned)
+        {
+            await FollowupAsync(Stringify(result.Message, "Warning: Failed to assign new Discord role."));
+            return;
+        }
+
+        await FollowupAsync(Stringify(result.Message, "Discord roles updated."));
     }
 
     [SlashCommand("admin-transfer-captainship", "Transfers captainship to another team member (Admin only)")]
