@@ -1,8 +1,6 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using System.Linq;
-using System.Numerics;
 using WarLeague.Core.Data;
 using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Domain.Model;
@@ -240,11 +238,11 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         bool roleRemoved = await _roleService.RemoveTeamRoleFromPlayerAsync(Context.Guild, targetPlayer, team);
         if (!roleRemoved)
         {
-            await FollowupAsync(Stringify(result.Message, "Warning: Failed to remove Discord role."));
+            await FollowupAsync(Stringify(result.Message, "Warning: Failed to remove Discord role from player."));
             return;
         }
 
-        await FollowupAsync(Stringify(result.Message, "Discord role removed."));
+        await FollowupAsync(Stringify(result.Message, "Discord role removed from player."));
     }
 
     [SlashCommand("admin-add-member", "Adds a member to any team (Admin only)")]
@@ -329,11 +327,11 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         bool roleRemoved = await _roleService.RemoveTeamRoleFromPlayerAsync(Context.Guild, targetPlayer, team);
         if (!roleRemoved)
         {
-            await FollowupAsync(Stringify(result.Message, "Warning: Failed to remove Discord role."));
+            await FollowupAsync(Stringify(result.Message, "Warning: Failed to remove Discord role from player."));
             return;
         }
 
-        await FollowupAsync(Stringify(result.Message, "Discord role removed."));
+        await FollowupAsync(Stringify(result.Message, "Discord role removed from player."));
     }
 
     [SlashCommand("admin-transfer-member", "Transfers a member to another team (Admin only)")]
@@ -369,7 +367,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        SocketRole? newRole = Context.Guild.GetRole(newTeam.DiscordRoleId.Value);
+        SocketRole? newRole = Context.Guild.GetRole(newTeam.DiscordRoleId!.Value);
         if (newRole == null)
         {
             await FollowupAsync(Stringify(result.Message, $"Target team '{teamName}' does not have a Discord role assigned."));
