@@ -253,12 +253,39 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-        // Ensure target player exists
         Player targetPlayer = await _playerService.EnsurePlayerExistsAsync(user);
 
         BaseResult result = await _teamService.AddMemberAsync(season.Id, targetPlayer.Id, teamName);
 
-        await FollowupAsync(result.Message);
+        if (!result.Success)
+        {
+            await FollowupAsync(Stringify(result));
+            return;
+        }
+
+        Team? team = await _teamRepository.GetByNameAndSeasonAsync(teamName, season.Id);
+
+        if (team?.DiscordRoleId.HasValue != true)
+        {
+            await FollowupAsync(Stringify(result, $"Team '{teamName}' was not found or does not have a Discord role assigned."));
+            return;
+        }
+
+        SocketRole? role = Context.Guild.GetRole(team.DiscordRoleId!.Value);
+        if (role == null)
+        {
+            await FollowupAsync(Stringify(result.Message, $"Team '{teamName}' does not have a Discord role assigned."));
+            return;
+        }
+
+        bool roleAssigned = await _roleService.AssignRoleToPlayerAsync(Context.Guild, targetPlayer, role);
+        if (!roleAssigned)
+        {
+            await FollowupAsync(Stringify(result.Message, "Warning: Failed to assign Discord role."));
+            return;
+        }
+
+        await FollowupAsync(Stringify(result.Message, "Discord role assigned."));
     }
     [SlashCommand("admin-drop-member", "Removes a member from any team (Admin only)")]
     public async Task AdminDropMemberAsync(
