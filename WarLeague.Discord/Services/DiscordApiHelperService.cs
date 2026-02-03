@@ -3,6 +3,7 @@ using Discord;
 using Discord.WebSocket;
 using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Repositories;
+using WarLeague.Discord.Constants;
 using Format = WarLeague.Core.Data.Entities.Format;
 
 namespace WarLeague.Discord.Services
@@ -59,7 +60,7 @@ namespace WarLeague.Discord.Services
             var guildUser = context.User as SocketGuildUser;
             if (guildUser == null) return false;
 
-            return guildUser.Roles.Any(r => string.Equals(r.Name, "Admin", StringComparison.OrdinalIgnoreCase));
+            return guildUser.Roles.Any(r => string.Equals(r.Name, DiscordRoleConstants.Admin, StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>

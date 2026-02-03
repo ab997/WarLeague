@@ -8,6 +8,7 @@ using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Domain.Model;
 using WarLeague.Core.Domain.Services;
 using WarLeague.Core.Repositories;
+using WarLeague.Discord.Constants;
 using WarLeague.Discord.Model;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
@@ -16,8 +17,8 @@ using static WarLeague.Discord.Helpers.ResultHelper;
 namespace WarLeague.Discord.Commands;
 
 [Group("team", "Team management commands")]
-[RequireRole("Admin", Group = "Permission")]
-[RequireRole("Captain", Group = "Permission")]
+[RequireRole(DiscordRoleConstants.Admin, Group = "Permission")]
+[RequireRole(DiscordRoleConstants.Captain, Group = "Permission")]
 [EnsureSingleActiveSeason]
 [EnsureChannelIsInFormatCategory]
 public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
@@ -74,7 +75,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     
 
     [SlashCommand("admin-create", "Creates a team and assigns the specified user as captain (Admin only)")]
-    [RequireRole("Admin")]
+    [RequireRole(DiscordRoleConstants.Admin)]
     public async Task AdminCreateAsync(
        [Summary("team-name", "Name of the team")] string teamName,
        [Summary("captain", "User to set as captain")] IUser captain)
@@ -247,7 +248,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     }
 
     [SlashCommand("admin-add-member", "Adds a member to any team (Admin only)")]
-    [RequireRole("Admin")]
+    [RequireRole(DiscordRoleConstants.Admin)]
     public async Task AdminAddMemberAsync(
       [Summary("team-name", "Name of the team")] string teamName,
       [Summary("member", "User to add")] IUser user)
@@ -336,7 +337,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     }
 
     [SlashCommand("admin-transfer-member", "Transfers a member to another team (Admin only)")]
-    [RequireRole("Admin")]
+    [RequireRole(DiscordRoleConstants.Admin)]
     public async Task AdminTransferMemberAsync(
     [Summary("member", "User to transfer")] IUser user,
     [Summary("team-name", "Target team name")] string teamName)
@@ -405,7 +406,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     }
 
     [SlashCommand("admin-transfer-captainship", "Transfers captainship to another team member (Admin only)")]
-    [RequireRole("Admin")]
+    [RequireRole(DiscordRoleConstants.Admin)]
     public async Task AdminTransferCaptainshipAsync(
     [Summary("team-name", "Name of the team")] string teamName,
     [Summary("new-captain", "User to become captain")] IUser newCaptain)
@@ -432,7 +433,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        SocketRole? captainRole = Context.Guild.Roles.FirstOrDefault(r => r.Name == "Captain");
+        SocketRole? captainRole = Context.Guild.Roles.FirstOrDefault(r => r.Name == DiscordRoleConstants.Captain);
         if (captainRole == null)
         {
             await FollowupAsync(Stringify(result.Message, "Warning: Captain role not found in guild."));

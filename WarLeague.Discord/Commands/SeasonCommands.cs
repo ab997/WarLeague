@@ -1,15 +1,17 @@
 ﻿
+
 using Discord.Interactions;
 using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Domain.Services;
 using WarLeague.Core.Repositories;
+using WarLeague.Discord.Constants;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 
 namespace WarLeague.Discord.Commands
 {
     [Group("season", "Season commands")]
-    [RequireRole("Admin")]
+    [RequireRole(DiscordRoleConstants.Admin)]
     [EnsureChannelIsInFormatCategory]
     public class SeasonCommands : InteractionModuleBase<SocketInteractionContext>
     {

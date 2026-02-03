@@ -7,6 +7,7 @@ using WarLeague.Core.Data.Enums;
 using WarLeague.Core.Domain.Model;
 using WarLeague.Core.Domain.Services;
 using WarLeague.Core.Repositories;
+using WarLeague.Discord.Constants;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 using static WarLeague.Discord.Helpers.ResultHelper;
@@ -14,7 +15,7 @@ using static WarLeague.Discord.Helpers.ResultHelper;
 namespace WarLeague.Discord.Commands
 {
     [Group("week", "Week commands")]
-    [RequireRole("Admin")]
+    [RequireRole(DiscordRoleConstants.Admin)]
     [EnsureSingleActiveSeason]
     [EnsureChannelIsInFormatCategory]
     public class WeekCommands : InteractionModuleBase<SocketInteractionContext>

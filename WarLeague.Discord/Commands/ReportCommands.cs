@@ -3,6 +3,7 @@ using Discord;
 using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Domain.Model;
 using WarLeague.Core.Domain.Services;
+using WarLeague.Discord.Constants;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 
@@ -49,7 +50,7 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
     }
 
     [SlashCommand("undo", "Undo a previously reported match result between two players")]
-    [RequireRole("Admin")]
+    [RequireRole(DiscordRoleConstants.Admin)]
     public async Task UndoAsync(
         [Summary("player1", "First player")] IUser player1,
         [Summary("player2", "Second player")] IUser player2)
@@ -67,7 +68,7 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
     }
 
     [SlashCommand("result", "Admin: Report a result for a scheduled match between two players")]
-    [RequireRole("Admin")]
+    [RequireRole(DiscordRoleConstants.Admin)]
     public async Task ReportResultAsync(
         [Summary("winner", "Winner player")] IUser winner,
         [Summary("loser", "Loser player")] IUser loser,

@@ -7,6 +7,7 @@ using WarLeague.Core.Data.Enums;
 using WarLeague.Core.Domain.Model;
 using WarLeague.Core.Domain.Services;
 using WarLeague.Core.Repositories;
+using WarLeague.Discord.Constants;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 
@@ -15,8 +16,8 @@ namespace WarLeague.Discord.Commands;
 [Group("deck", "Deck submission commands")]
 [EnsureChannelIsInFormatCategory]
 [EnsureSingleActiveSeason]
-[RequireRole("Admin", Group = "Permission")]
-[RequireRole("Captain", Group = "Permission")]
+[RequireRole(DiscordRoleConstants.Admin, Group = "Permission")]
+[RequireRole(DiscordRoleConstants.Captain, Group = "Permission")]
 public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
 {
     private const int MaxDeckFileBytes = 1_000_000; // 1MB safety limit
