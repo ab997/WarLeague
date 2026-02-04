@@ -1,11 +1,12 @@
 using Discord.Interactions;
 using Discord;
 using WarLeague.Discord.Preconditions;
+using WarLeague.Discord.Constants;
 
 namespace WarLeague.Discord.Commands
 {
     [Group("info", "Information commands")]
-    [RequireRole("Admin")]
+    [RequireRole(DiscordRoleConstants.Admin)]
     public class InfoCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly WarLeague.Discord.Services.DiscordApiHelperService _helperService;

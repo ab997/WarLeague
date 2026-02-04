@@ -1,4 +1,5 @@
 ﻿
+
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -7,12 +8,13 @@ using System.Net.Http;
 using System.Text.Json;
 using WarLeague.Core.Domain.Services;
 using WarLeague.Core.Repositories;
+using WarLeague.Discord.Constants;
 using Format = WarLeague.Core.Data.Entities.Format;
 
 namespace WarLeague.Discord.Commands
 {
     [Group("format", "Format commands")]
-    [RequireRole("Admin")]
+    [RequireRole(DiscordRoleConstants.Admin)]
     public class FormatCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly FormatService _formatService;

@@ -45,11 +45,13 @@ builder.Services.AddScoped<WeekService>();
 builder.Services.AddScoped<DeckSubmissionService>();
 builder.Services.AddScoped<MatchService>();
 builder.Services.AddScoped<TeamService>();
+builder.Services.AddScoped<TeamValidationService>();
 
 
 // Services (discord)
 builder.Services.AddScoped<DiscordApiHelperService>();
 builder.Services.AddScoped<DiscordPlayerService>();
+builder.Services.AddScoped<DiscordRoleService>();
 // Discord client
 var discordClient = new DiscordSocketClient(new DiscordSocketConfig
 {

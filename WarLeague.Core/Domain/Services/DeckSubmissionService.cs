@@ -22,9 +22,9 @@ namespace WarLeague.Core.Domain.Services
             _weekRepository = weekRepository;
             _deckSubmissionRepository = deckSubmissionRepository;
         }
-        public async Task<Result> SubmitAsync(int seasonId, int playerId, string deckContent)
+        public async Task<BaseResult> SubmitAsync(int seasonId, int playerId, string deckContent)
         {
-            (Result value, Week? openWeek) = await EnsureSingleValidOpenWeekAsync(seasonId);
+            (BaseResult value, Week? openWeek) = await EnsureSingleValidOpenWeekAsync(seasonId);
             if (!value.Success || openWeek is null)
             {
                 return value;
@@ -33,7 +33,7 @@ namespace WarLeague.Core.Domain.Services
             var pst = await _playerSeasonTeamRepository.GetByPlayerAndSeasonAsync(playerId, seasonId);
             if (pst is null)
             {
-                return new Result { Success = false, Message = "Player is not on any team for the active season." };
+                return new BaseResult { Success = false, Message = "Player is not on any team for the active season." };
             }
 
             // Upsert submission for (player, week).
@@ -57,12 +57,12 @@ namespace WarLeague.Core.Domain.Services
                 });
             }
 
-            return new Result { Success = true, Message = $"Deck submitted for {pst.Player.UserName} for week {openWeek.WeekNumber} (season {pst.Season.SeasonNumber})." };
+            return new BaseResult { Success = true, Message = $"Deck submitted for {pst.Player.UserName} for week {openWeek.WeekNumber} (season {pst.Season.SeasonNumber})." };
         }
 
-        public async Task<Result> DeleteSubmissionAsync(int seasonId, int playerId)
+        public async Task<BaseResult> DeleteSubmissionAsync(int seasonId, int playerId)
         {
-            (Result value, Week? openWeek) = await EnsureSingleValidOpenWeekAsync(seasonId);
+            (BaseResult value, Week? openWeek) = await EnsureSingleValidOpenWeekAsync(seasonId);
             if (!value.Success || openWeek is null)
             {
                 return value;
@@ -71,25 +71,25 @@ namespace WarLeague.Core.Domain.Services
             bool deleted = await _deckSubmissionRepository.DeleteByPlayerAndWeekAsync(playerId, openWeek.Id);
             if (!deleted)
             {
-                return new Result { Success = false, Message = $"No existing deck submission found to delete for player on week {openWeek.WeekNumber}." };
+                return new BaseResult { Success = false, Message = $"No existing deck submission found to delete for player on week {openWeek.WeekNumber}." };
             }
 
-            return new Result { Success = true, Message = $"Deck submission deleted for player for week {openWeek.WeekNumber}." };
+            return new BaseResult { Success = true, Message = $"Deck submission deleted for player for week {openWeek.WeekNumber}." };
         }
 
-        private async Task<(Result value, Week? openWeek)> EnsureSingleValidOpenWeekAsync(int seasonId)
+        private async Task<(BaseResult value, Week? openWeek)> EnsureSingleValidOpenWeekAsync(int seasonId)
         {
             Week? openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.Open);
             if (openWeek is null)
             {
                 return (
-                    value: new Result { Success = false, Message = "No open week found for the season." },
+                    value: new BaseResult { Success = false, Message = "No open week found for the season." },
                     openWeek: null);
             }
             if (openWeek.Status != WeekStatus.Open)
             {
                 return (
-                    value: new Result { Success = false, Message = "Deck submissions are not open for the current week." },
+                    value: new BaseResult { Success = false, Message = "Deck submissions are not open for the current week." },
                     openWeek: null);
             }
 
@@ -97,12 +97,12 @@ namespace WarLeague.Core.Domain.Services
             if (openWeek.SubmissionsClosedDate.HasValue && openWeek.SubmissionsClosedDate.Value <= now)
             {
                 return (
-                    value: new Result { Success = false, Message = "Deck submissions are closed for the current week." },
+                    value: new BaseResult { Success = false, Message = "Deck submissions are closed for the current week." },
                     openWeek: null);
             }
 
             return (
-                value: new Result { Success = true, Message = "Valid single open week."},
+                value: new BaseResult { Success = true, Message = "Valid single open week."},
                 openWeek: openWeek);
         }
     }

@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WarLeague.Discord.Services
+namespace WarLeague.Discord.Helpers
 {
     public static class LogHelper
     {

@@ -10,7 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using WarLeague.Discord.Services;
+using WarLeague.Discord.Helpers;
 
 namespace WarLeague.Discord.HostedService
 {

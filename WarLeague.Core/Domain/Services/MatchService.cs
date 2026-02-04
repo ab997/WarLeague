@@ -100,17 +100,17 @@ namespace WarLeague.Core.Domain.Services
             await transaction.CommitAsync();
 
             return new GeneratePairingsResult(
-                Success: true,
-                Message: "Pairings generated successfully.",
-                Week: week,
-                CreatedMatches: createdMatches,
-                WeeklyMatchups: matchupOutputs
+                true,
+                "Pairings generated successfully.",
+                week,
+                createdMatches,
+                matchupOutputs
                 );
         }
 
         
 
-        public async Task<Result> ReportLossAsync(int seasonId, int loserId, string replayUrl)
+        public async Task<BaseResult> ReportLossAsync(int seasonId, int loserId, string replayUrl)
         {
             Week? week;
             try
@@ -119,7 +119,7 @@ namespace WarLeague.Core.Domain.Services
             }
             catch (InvalidOperationException)
             {
-                return new Result { Success = false, Message = $"Multiple weeks with status '{WeekStatus.InProgress}' exist for the active season." };
+                return new BaseResult { Success = false, Message = $"Multiple weeks with status '{WeekStatus.InProgress}' exist for the active season." };
             }
 
             // Only allow reporting for matches where the caller actually has a scheduled match.
@@ -131,7 +131,7 @@ namespace WarLeague.Core.Domain.Services
 
             if (scheduledMatches.Count == 0)
             {
-                return new Result { Success = false, Message = "You do not have any scheduled matches that can be reported as a loss." };
+                return new BaseResult { Success = false, Message = "You do not have any scheduled matches that can be reported as a loss." };
             }
 
             if (scheduledMatches.Count > 1)
@@ -143,7 +143,7 @@ namespace WarLeague.Core.Domain.Services
                     .Select(p => $"<@{p.DiscordUserId}>")
                     .ToList();
 
-                return new Result { Success = false, Message = "You have multiple scheduled matches pending; I can't determine which one you are reporting a loss for.\n" +
+                return new BaseResult { Success = false, Message = "You have multiple scheduled matches pending; I can't determine which one you are reporting a loss for.\n" +
                     "Pending opponents: " + string.Join(", ", opponents) };
             }
 
@@ -158,10 +158,10 @@ namespace WarLeague.Core.Domain.Services
 
             await _matchRepository.UpdateAsync(match);
 
-            return new Result { Success = true, Message = "Match loss reported successfully." };
+            return new BaseResult { Success = true, Message = "Match loss reported successfully." };
         }
 
-        public async Task<Result> UndoResultAsync(int seasonId, int loserId)
+        public async Task<BaseResult> UndoResultAsync(int seasonId, int loserId)
         {
             Week? week;
             try
@@ -170,7 +170,7 @@ namespace WarLeague.Core.Domain.Services
             }
             catch (InvalidOperationException)
             {
-                return new Result { Success = false, Message = $"Multiple weeks with status '{WeekStatus.InProgress}' exist for the active season." };
+                return new BaseResult { Success = false, Message = $"Multiple weeks with status '{WeekStatus.InProgress}' exist for the active season." };
             }
 
             // Only allow undo when the caller has a reported match in this week.
@@ -182,7 +182,7 @@ namespace WarLeague.Core.Domain.Services
 
             if (reportedMatches.Count == 0)
             {
-                return new Result { Success = false, Message = "You do not have any reported matches to undo." };
+                return new BaseResult { Success = false, Message = "You do not have any reported matches to undo." };
             }
 
             if (reportedMatches.Count > 1)
@@ -194,7 +194,7 @@ namespace WarLeague.Core.Domain.Services
                     .Select(p => $"<@{p.DiscordUserId}>")
                     .ToList();
 
-                return new Result { Success = false, Message = "You have multiple reported matches; I can't determine which one to undo.\n" +
+                return new BaseResult { Success = false, Message = "You have multiple reported matches; I can't determine which one to undo.\n" +
                     "Reported against: " + string.Join(", ", opponents) };
             }
 
@@ -208,7 +208,7 @@ namespace WarLeague.Core.Domain.Services
 
             await _matchRepository.UpdateAsync(match);
 
-            return new Result { Success = true, Message = "Reported match has been undone and returned to scheduled state." };
+            return new BaseResult { Success = true, Message = "Reported match has been undone and returned to scheduled state." };
         }
 
         /// <summary>
@@ -219,7 +219,7 @@ namespace WarLeague.Core.Domain.Services
         /// <param name="player1Id">First player's id.</param>
         /// <param name="player2Id">Second player's id.</param>
         /// <returns>Result indicating success or error message.</returns>
-        public async Task<Result> UndoResultAsync(int seasonId, int player1Id, int player2Id)
+        public async Task<BaseResult> UndoResultAsync(int seasonId, int player1Id, int player2Id)
         {
             Week? week;
             try
@@ -228,12 +228,12 @@ namespace WarLeague.Core.Domain.Services
             }
             catch (InvalidOperationException)
             {
-                return new Result { Success = false, Message = $"Multiple weeks with status '{WeekStatus.InProgress}' exist for the active season." };
+                return new BaseResult { Success = false, Message = $"Multiple weeks with status '{WeekStatus.InProgress}' exist for the active season." };
             }
 
             if (week is null)
             {
-                return new Result { Success = false, Message = $"There is no week with status '{WeekStatus.InProgress}' for the active season." };
+                return new BaseResult { Success = false, Message = $"There is no week with status '{WeekStatus.InProgress}' for the active season." };
             }
 
             // Find reported match between the two players for this week.
@@ -246,12 +246,12 @@ namespace WarLeague.Core.Domain.Services
 
             if (candidateMatches.Count == 0)
             {
-                return new Result { Success = false, Message = "No reported match found between the specified players for the current week." };
+                return new BaseResult { Success = false, Message = "No reported match found between the specified players for the current week." };
             }
 
             if (candidateMatches.Count > 1)
             {
-                return new Result { Success = false, Message = "Multiple reported matches found between these players; unable to determine which one to undo." };
+                return new BaseResult { Success = false, Message = "Multiple reported matches found between these players; unable to determine which one to undo." };
             }
 
             var match = candidateMatches.Single();
@@ -264,7 +264,7 @@ namespace WarLeague.Core.Domain.Services
 
             await _matchRepository.UpdateAsync(match);
 
-            return new Result { Success = true, Message = "Reported match has been undone and returned to scheduled state." };
+            return new BaseResult { Success = true, Message = "Reported match has been undone and returned to scheduled state." };
         }
 
         /// <summary>
@@ -275,7 +275,7 @@ namespace WarLeague.Core.Domain.Services
         /// <param name="loserId">Loser player's id.</param>
         /// <param name="replayUrl">Replay URL to attach.</param>
         /// <returns>Result indicating success or error message.</returns>
-        public async Task<Result> ReportResultAsync(int seasonId, int winnerId, int loserId, string replayUrl)
+        public async Task<BaseResult> ReportResultAsync(int seasonId, int winnerId, int loserId, string replayUrl)
         {
             Week? week;
             try
@@ -284,12 +284,12 @@ namespace WarLeague.Core.Domain.Services
             }
             catch (InvalidOperationException)
             {
-                return new Result { Success = false, Message = $"Multiple weeks with status '{WeekStatus.InProgress}' exist for the active season." };
+                return new BaseResult { Success = false, Message = $"Multiple weeks with status '{WeekStatus.InProgress}' exist for the active season." };
             }
 
             if (week is null)
             {
-                return new Result { Success = false, Message = $"There is no week with status '{WeekStatus.InProgress}' for the active season." };
+                return new BaseResult { Success = false, Message = $"There is no week with status '{WeekStatus.InProgress}' for the active season." };
             }
 
             // Find the scheduled match between the specified winner and loser for this week.
@@ -302,12 +302,12 @@ namespace WarLeague.Core.Domain.Services
 
             if (candidateMatches.Count == 0)
             {
-                return new Result { Success = false, Message = "No scheduled match found between the specified players for the current week." };
+                return new BaseResult { Success = false, Message = "No scheduled match found between the specified players for the current week." };
             }
 
             if (candidateMatches.Count > 1)
             {
-                return new Result { Success = false, Message = "Multiple scheduled matches found between these players; unable to determine which one to report." };
+                return new BaseResult { Success = false, Message = "Multiple scheduled matches found between these players; unable to determine which one to report." };
             }
 
             var match = candidateMatches.Single();
@@ -318,7 +318,7 @@ namespace WarLeague.Core.Domain.Services
 
             await _matchRepository.UpdateAsync(match);
 
-            return new Result { Success = true, Message = "Match result reported successfully." };
+            return new BaseResult { Success = true, Message = "Match result reported successfully." };
         }
     }
 }

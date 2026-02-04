@@ -76,20 +76,20 @@ namespace WarLeague.Core.Domain.Services
 
             return week;
         }
-        public async Task<Result> StartWeekAsync(int seasonId, int requiredDecksByTeams)
+        public async Task<BaseResult> StartWeekAsync(int seasonId, int requiredDecksByTeams)
         {
             Week? openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.Open);
 
             if (openWeek is null)
             {
-                return new Result { Success = false, Message = "No open week found to start." };
+                return new BaseResult { Success = false, Message = "No open week found to start." };
             }
 
             var teams = await _teamRepository.GetBySeasonAsync(seasonId);
 
             if (teams.Count < 2)
             {
-                return new Result { Success = false, Message = "Not enough teams to start the week." };
+                return new BaseResult { Success = false, Message = "Not enough teams to start the week." };
             }
 
             var psts = await _playerSeasonTeamRepository.GetBySeasonAsync(seasonId);
@@ -118,7 +118,7 @@ namespace WarLeague.Core.Domain.Services
 
             if (invalidTeams.Count > 0)
             {
-                return new Result
+                return new BaseResult
                 {
                     Success = false,
                     Message = $"Cannot start week because not all teams have exactly {requiredDecksByTeams} submitted decks:\n" +
@@ -129,10 +129,10 @@ namespace WarLeague.Core.Domain.Services
             openWeek.Status = WeekStatus.SubmissionsClosed;
             await _weekRepository.UpdateAsync(openWeek);
 
-            return new Result { Success = true, Message = "Week started successfully. Submission are now closed." };
+            return new BaseResult { Success = true, Message = "Week started successfully. Submission are now closed." };
         }
 
-        public async Task<Result> CloseAsync(int seasonId)
+        public async Task<BaseResult> CloseAsync(int seasonId)
         {
             // Try to find a week that is currently ongoing (in progress) or has submissions closed
             Week? activeWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
@@ -144,14 +144,14 @@ namespace WarLeague.Core.Domain.Services
 
             if (activeWeek is null)
             {
-                return new Result { Success = false, Message = "No active week found to close." };
+                return new BaseResult { Success = false, Message = "No active week found to close." };
             }
 
             var matches = await _matchRepository.GetByWeekIdAsync(activeWeek.Id);
 
             if (matches.Count == 0)
             {
-                return new Result { Success = false, Message = "No matches found for the active week." };
+                return new BaseResult { Success = false, Message = "No matches found for the active week." };
             }
 
             bool allConfirmed = matches.All(m => m.Status == MatchStatus.Reported);
@@ -159,13 +159,13 @@ namespace WarLeague.Core.Domain.Services
             if (!allConfirmed)
             {
                 var pendingCount = matches.Count(m => m.Status != MatchStatus.Reported);
-                return new Result { Success = false, Message = $"Cannot close week: {pendingCount} match(es) not reported." };
+                return new BaseResult { Success = false, Message = $"Cannot close week: {pendingCount} match(es) not reported." };
             }
 
             activeWeek.Status = WeekStatus.Completed;
             await _weekRepository.UpdateAsync(activeWeek);
 
-            return new Result { Success = true, Message = "Week closed successfully." };
+            return new BaseResult { Success = true, Message = "Week closed successfully." };
         }
 
         public async Task<List<Player>> GetPlayersNeedingToPlayAsync(int seasonId)
