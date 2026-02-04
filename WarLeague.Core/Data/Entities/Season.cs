@@ -1,4 +1,6 @@
-﻿namespace WarLeague.Core.Data.Entities;
+﻿using WarLeague.Core.Data.Enums;
+
+namespace WarLeague.Core.Data.Entities;
 
 public class Season
 {
@@ -10,4 +12,5 @@ public class Season
     public IEnumerable<Team> Teams { get; set; } = null!;
     public bool Active { get; set; }
     public bool DisableTeamModification { get; set; }
+    public int MinimumTeamMembers { get; set; }
 }

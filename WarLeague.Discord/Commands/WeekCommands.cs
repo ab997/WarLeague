@@ -16,24 +16,28 @@ namespace WarLeague.Discord.Commands
 {
     [Group("week", "Week commands")]
     [RequireRole(DiscordRoleConstants.Admin)]
-    [EnsureSingleActiveSeason]
     [EnsureChannelIsInFormatCategory]
+    [EnsureSingleActiveSeason]
+    [EnsureValidTeams]
     public class WeekCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly WeekService _weekService;
         private readonly DiscordApiHelperService _helperService;
         private readonly WeekRepository _weekRepository;
         private readonly MatchService _matchService;
+        private readonly SeasonService _seasonService;
         public WeekCommands(
             DiscordApiHelperService helperService,
             WeekService weekService,
             WeekRepository weekRepository,
-            MatchService matchService)
+            MatchService matchService,
+            SeasonService seasonService)
         {
             _helperService = helperService;
             _weekService = weekService;
             _weekRepository = weekRepository;
             _matchService = matchService;
+            _seasonService = seasonService;
         }
         [SlashCommand("create", "1 -> Creates a week (Status: null -> NotOpenYet)")]
         public async Task Create(int weekNumber,
@@ -106,7 +110,15 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            await FollowupAsync($"Week {weekNumber} set to Open.");
+            // at this point we close team modifications for the season
+            string additionalMessage = string.Empty;
+            if (!season.DisableTeamModification)
+            {
+                await _seasonService.SetTeamModificationsAsync(season.Id, false);
+                additionalMessage = "\nTeam modifications have been automatically disabled for the season.";
+            }
+
+            await FollowupAsync(Stringify($"Week {weekNumber} set to Open.", additionalMessage));
         }
         [SlashCommand("start", "3 -> Starts the current week by closing submissions -> (Status: Open -> SubmissionsClosed)")]
         public async Task StartAsync(int requiredDecksByTeams = 5)
