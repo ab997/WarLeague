@@ -11,11 +11,11 @@
   - [x] Stored as a column on the week
 - [x] `admin-transfer-captain`: add message  
       “Please remember to manually change the role”
-- [ ] Replace error  
+- [x] Replace error  
       `"Module precondition group Permission failed."`  
       with a clearer message (e.g. “You must be a captain to use this command”)
-- [ ] Admin must be able to manage week status
-- [ ] Remove all logic for week start / end / submission  
+- [x] Admin must be able to manage week status
+- [x] Remove all logic for week start / end / submission  
       Week dates are display-only; rely **solely on week status** for logic
 - [ ] Match: `no-show` command → no replay
 - [ ] Week delete command is missing
