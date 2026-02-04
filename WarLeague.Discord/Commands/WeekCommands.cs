@@ -127,7 +127,7 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            BaseResult result = await _weekService.StartWeekAsync(season.Id, requiredDecksByTeams);
+            BaseResult result = await _weekService.StartWeekAsync(season.Id);
 
             await FollowupAsync(result.Message);
         }
