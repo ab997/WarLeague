@@ -2,7 +2,7 @@
 
 - [x] Make notes about team in InfoCommands
 - [x] Bot should handle roles and colours for teams
-- [ ] Add command for Captain to update team color
+- [x] Add command for Captain to update team color
 - [ ] Before season starts, validate that all teams have a minimum amount of members
 - [ ] Disable team creation when season starts (when first week is opened for submissions)
 - [ ] Add a system for reporting messages in a separate channel

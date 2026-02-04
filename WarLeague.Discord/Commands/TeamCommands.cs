@@ -7,6 +7,8 @@ using WarLeague.Core.Domain.Model;
 using WarLeague.Core.Domain.Services;
 using WarLeague.Core.Repositories;
 using WarLeague.Discord.Constants;
+using WarLeague.Discord.Enums;
+using WarLeague.Discord.Helpers;
 using WarLeague.Discord.Model;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
@@ -460,5 +462,41 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         }
 
         await FollowupAsync(Stringify(result.Message, "Captain role updated."));
+    }
+
+    [SlashCommand("update-color", "Updates your team's Discord role color (captain only)")]
+    [RequireRole(DiscordRoleConstants.Captain)]
+    public async Task UpdateColorAsync(
+        [Summary("color", "Color to set for your team")] TeamColor color)
+    {
+        await DeferAsync(ephemeral: false);
+
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+        Player caller = await _playerService.EnsurePlayerExistsAsync(Context.User);
+
+        Team? team = await _teamRepository.GetByCaptainAndSeasonAsync(caller.Id, season.Id);
+
+        if (team == null)
+        {
+            await FollowupAsync("You are not the captain of any team in this season.");
+            return;
+        }
+
+        if (!team.DiscordRoleId.HasValue)
+        {
+            await FollowupAsync($"Team '{team.Name}' does not have a Discord role assigned.");
+            return;
+        }
+
+        Color discordColor = color.ToDiscordColor();
+        bool colorUpdated = await _roleService.ChangeRoleColorAsync(Context.Guild, team, discordColor);
+
+        if (!colorUpdated)
+        {
+            await FollowupAsync("Failed to update team color. The Discord role might not exist.");
+            return;
+        }
+
+        await FollowupAsync($"Team color updated to {color}.");
     }
 }
