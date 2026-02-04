@@ -51,6 +51,12 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         Player player = await _playerService.EnsurePlayerExistsAsync(Context.User);
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
+        if (season.DisableTeamModification && !_helperService.IsUserAdmin(Context))
+        {
+            await FollowupAsync("Team modifications are currently disabled for this season.");
+            return;
+        }
+
         BaseResult result = await _teamService.CreateAsync(season.Id, teamName, player.Id);
 
         if (!result.Success)
