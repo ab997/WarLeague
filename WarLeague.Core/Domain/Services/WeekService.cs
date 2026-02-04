@@ -76,7 +76,7 @@ namespace WarLeague.Core.Domain.Services
 
             return week;
         }
-        public async Task<BaseResult> StartWeekAsync(int seasonId, int requiredDecksByTeams)
+        public async Task<BaseResult> StartWeekAsync(int seasonId)
         {
             Week? openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.Open);
 
@@ -94,8 +94,27 @@ namespace WarLeague.Core.Domain.Services
 
             var psts = await _playerSeasonTeamRepository.GetBySeasonAsync(seasonId);
 
-            var invalidTeams = new List<string>();
+            var invalidTeams = ValidateTeamDeckSubmissions(openWeek, teams, psts);
 
+            if (invalidTeams.Count > 0)
+            {
+                return new BaseResult
+                {
+                    Success = false,
+                    Message = $"Cannot start week because not all teams have exactly {openWeek.SubmissionsRequired} submitted decks:\n" +
+                    string.Join("\n", invalidTeams)
+                };
+            }
+
+            openWeek.Status = WeekStatus.SubmissionsClosed;
+            await _weekRepository.UpdateAsync(openWeek);
+
+            return new BaseResult { Success = true, Message = "Week started successfully. Submission are now closed." };
+        }
+
+        private static List<string> ValidateTeamDeckSubmissions(Week openWeek, List<Team> teams, List<PlayerSeasonTeam> psts)
+        {
+            List<string> invalidTeams = [];
             foreach (var team in teams.OrderBy(t => t.Name))
             {
                 var teamPlayerIds = psts
@@ -110,26 +129,12 @@ namespace WarLeague.Core.Domain.Services
                     .Distinct()
                     .Count();
 
-                if (submittedCount != requiredDecksByTeams)
+                if (submittedCount != openWeek.SubmissionsRequired)
                 {
-                    invalidTeams.Add($"{team.Name} ({submittedCount}/{requiredDecksByTeams})");
+                    invalidTeams.Add($"{team.Name} ({submittedCount}/{openWeek.SubmissionsRequired})");
                 }
             }
-
-            if (invalidTeams.Count > 0)
-            {
-                return new BaseResult
-                {
-                    Success = false,
-                    Message = $"Cannot start week because not all teams have exactly {requiredDecksByTeams} submitted decks:\n" +
-                    string.Join("\n", invalidTeams)
-                };
-            }
-
-            openWeek.Status = WeekStatus.SubmissionsClosed;
-            await _weekRepository.UpdateAsync(openWeek);
-
-            return new BaseResult { Success = true, Message = "Week started successfully. Submission are now closed." };
+            return invalidTeams;
         }
 
         public async Task<BaseResult> CloseAsync(int seasonId)

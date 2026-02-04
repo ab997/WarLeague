@@ -87,6 +87,13 @@ namespace WarLeague.Discord.HostedService
             {
                 case InteractionCommandError.UnmetPrecondition:
                     message = result.ErrorReason;
+                    // when we use out-of-the-box RequireRole attribute we get this message if we use the "Group" property of RequireRole to apply "OR" logic
+                    // but the message is not very friendly
+                    // so here's a little hack
+                    if (message == "Module precondition group Permission failed.")
+                    {
+                        message = "You don't have the right, O you don't have the right.";
+                    }
                     _logger.LogInformation($"Unmet precondition - {result.Error}");
                     break;
 

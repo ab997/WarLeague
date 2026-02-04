@@ -4,19 +4,18 @@
 - [x] Bot should handle roles and colours for teams
 - [x] Add command for Captain to update team color
 - [x] Before season starts, validate that all teams have a minimum amount of members
-- [ ] Disable team creation when season starts (when first week is opened for submissions)
+- [x] Disable team creation when season starts (when first week is opened for submissions)
 - [ ] Add a system for reporting messages in a separate channel
-- [ ] Number of submissions per week:
-  - [ ] Not a command parameter
-  - [ ] Stored as a column on the week
-- [ ] When team modifications are disabled, run validations that all teams are OK
-- [ ] `admin-transfer-captain`: add message  
+- [x] Number of submissions per week:
+  - [x] Not a command parameter
+  - [x] Stored as a column on the week
+- [x] `admin-transfer-captain`: add message  
       “Please remember to manually change the role”
-- [ ] Replace error  
+- [x] Replace error  
       `"Module precondition group Permission failed."`  
       with a clearer message (e.g. “You must be a captain to use this command”)
-- [ ] Admin must be able to manage week status
-- [ ] Remove all logic for week start / end / submission  
+- [x] Admin must be able to manage week status
+- [x] Remove all logic for week start / end / submission  
       Week dates are display-only; rely **solely on week status** for logic
 - [ ] Match: `no-show` command → no replay
 - [ ] Week delete command is missing

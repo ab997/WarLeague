@@ -93,14 +93,6 @@ namespace WarLeague.Core.Domain.Services
                     openWeek: null);
             }
 
-            var now = DateTime.UtcNow;
-            if (openWeek.SubmissionsClosedDate.HasValue && openWeek.SubmissionsClosedDate.Value <= now)
-            {
-                return (
-                    value: new BaseResult { Success = false, Message = "Deck submissions are closed for the current week." },
-                    openWeek: null);
-            }
-
             return (
                 value: new BaseResult { Success = true, Message = "Valid single open week."},
                 openWeek: openWeek);
