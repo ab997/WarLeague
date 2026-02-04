@@ -21,7 +21,7 @@ namespace WarLeague.Core.Domain.Services
         /// <param name="format"></param>
         /// <param name="seasonNumber"></param>
         /// <returns></returns>
-        public async Task<Season?> CreateAsync(int formatId, int seasonNumber)
+        public async Task<Season?> CreateAsync(int formatId, int seasonNumber, int minTeamMembers)
         {
             var format = await _formatRepository.GetByIdAsync(formatId);
             var existing = format.Seasons.SingleOrDefault(s => s.SeasonNumber == seasonNumber);
@@ -35,6 +35,7 @@ namespace WarLeague.Core.Domain.Services
             {
                 SeasonNumber = seasonNumber,
                 Format = format,
+                MinimumTeamMembers = minTeamMembers,
                 Active = false
             };
 

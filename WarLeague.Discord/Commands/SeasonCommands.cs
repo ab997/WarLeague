@@ -23,13 +23,13 @@ namespace WarLeague.Discord.Commands
             _helperService = helperService;
         }
         [SlashCommand("create", "Creates a new season")]
-        public async Task CreateAsync(int seasonNumber)
+        public async Task CreateAsync(int seasonNumber, int minimumTeamMembers)
         {
             await DeferAsync(ephemeral: false);
 
             Format format = await _helperService.GetFormatByCategoryNameAsync(Context);
 
-            var season = _seasonService.CreateAsync(format.Id, seasonNumber);
+            var season = _seasonService.CreateAsync(format.Id, seasonNumber, minimumTeamMembers);
 
             if (season is null)
             {

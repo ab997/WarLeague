@@ -67,7 +67,6 @@ namespace WarLeague.Core.Repositories
         public async Task<List<PlayerSeasonTeam>> GetBySeasonAsync(int seasonId)
         {
             return await _context.PlayerSeasonTeams
-                        .AsNoTracking()
                         .Where(pst => pst.Season.Id == seasonId)
                         .Include(pst => pst.Team)
                         .Include(pst => pst.Player)
