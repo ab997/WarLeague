@@ -19,8 +19,8 @@ namespace WarLeague.Discord.Commands;
 [Group("team", "Team management commands")]
 [RequireRole(DiscordRoleConstants.Admin, Group = "Permission")]
 [RequireRole(DiscordRoleConstants.Captain, Group = "Permission")]
-[EnsureSingleActiveSeason]
 [EnsureChannelIsInFormatCategory]
+[EnsureSingleActiveSeason]
 public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly TeamService _teamService;
@@ -498,5 +498,69 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         }
 
         await FollowupAsync($"Team color updated to {color}.");
+    }
+
+    [SlashCommand("update-color-hex", "Updates your team's Discord role color using a hex code (captain only)")]
+    [RequireRole(DiscordRoleConstants.Captain)]
+    public async Task UpdateColorHexAsync(
+        [Summary("hex-code", "Hex color code (e.g., #FF5733 or FF5733)")] string hexCode)
+    {
+        await DeferAsync(ephemeral: false);
+
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+        Player caller = await _playerService.EnsurePlayerExistsAsync(Context.User);
+
+        Team? team = await _teamRepository.GetByCaptainAndSeasonAsync(caller.Id, season.Id);
+
+        if (team == null)
+        {
+            await FollowupAsync("You are not the captain of any team in this season.");
+            return;
+        }
+
+        if (!team.DiscordRoleId.HasValue)
+        {
+            await FollowupAsync($"Team '{team.Name}' does not have a Discord role assigned.");
+            return;
+        }
+
+        Color? discordColor = TryParseHexColor(hexCode);
+
+        if (!discordColor.HasValue)
+        {
+            await FollowupAsync("Invalid hex code. Please provide a valid 6-character hex code (e.g., #FF5733 or FF5733).");
+            return;
+        }
+
+        bool colorUpdated = await _roleService.ChangeRoleColorAsync(Context.Guild, team, discordColor.Value);
+
+        if (!colorUpdated)
+        {
+            await FollowupAsync("Failed to update team color. The Discord role might not exist.");
+            return;
+        }
+
+        await FollowupAsync($"Team color updated to {hexCode}.");
+    }
+
+    private static Color? TryParseHexColor(string hexCode)
+    {
+        string hexInput = hexCode.StartsWith('#') ? hexCode[1..] : hexCode;
+
+        if (hexInput.Length != 6)
+        {
+            return null;
+        }
+
+        if (!uint.TryParse(hexInput, System.Globalization.NumberStyles.HexNumber, null, out uint hexValue))
+        {
+            return null;
+        }
+
+        byte r = (byte)((hexValue >> 16) & 0xFF);
+        byte g = (byte)((hexValue >> 8) & 0xFF);
+        byte b = (byte)(hexValue & 0xFF);
+
+        return new Color(r, g, b);
     }
 }
