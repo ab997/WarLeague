@@ -14,4 +14,5 @@ public class Week
     public DateTime? SubmissionsClosedDate { get; set; }
     public List<Match> Matches { get; set; } = null!;
     public List<DeckSubmission> DeckSubmissions { get; set; } = null!;
+    public int SubmissionsRequired { get; set; }
 }

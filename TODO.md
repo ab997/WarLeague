@@ -6,9 +6,9 @@
 - [x] Before season starts, validate that all teams have a minimum amount of members
 - [ ] Disable team creation when season starts (when first week is opened for submissions)
 - [ ] Add a system for reporting messages in a separate channel
-- [ ] Number of submissions per week:
-  - [ ] Not a command parameter
-  - [ ] Stored as a column on the week
+- [x] Number of submissions per week:
+  - [x] Not a command parameter
+  - [x] Stored as a column on the week
 - [ ] When team modifications are disabled, run validations that all teams are OK
 - [ ] `admin-transfer-captain`: add message  
       “Please remember to manually change the role”

@@ -121,7 +121,7 @@ namespace WarLeague.Discord.Commands
             await FollowupAsync(Stringify($"Week {weekNumber} set to Open.", additionalMessage));
         }
         [SlashCommand("start", "3 -> Starts the current week by closing submissions -> (Status: Open -> SubmissionsClosed)")]
-        public async Task StartAsync(int requiredDecksByTeams = 5)
+        public async Task StartAsync()
         {
             await DeferAsync(ephemeral: false);
 
