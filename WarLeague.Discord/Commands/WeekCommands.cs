@@ -16,8 +16,9 @@ namespace WarLeague.Discord.Commands
 {
     [Group("week", "Week commands")]
     [RequireRole(DiscordRoleConstants.Admin)]
-    [EnsureSingleActiveSeason]
     [EnsureChannelIsInFormatCategory]
+    [EnsureSingleActiveSeason]
+    [EnsureValidTeams]
     public class WeekCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly WeekService _weekService;
