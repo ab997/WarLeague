@@ -67,6 +67,24 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
         await FollowupAsync(result.Message);
     }
 
+    [SlashCommand("no-show", "Mark a match as no show")]
+    [RequireRole(DiscordRoleConstants.Admin)]
+    public async Task NoShowAsync(
+       [Summary("player-winmer", "Winner player")] IUser playerWinner,
+       [Summary("player-no-show", "No show player")] IUser playerNoShow)
+    {
+        await DeferAsync(ephemeral: false);
+
+        // Ensure players exist as Player in the system.
+        Player p1 = await _playerService.EnsurePlayerExistsAsync(playerWinner);
+        Player p2 = await _playerService.EnsurePlayerExistsAsync(playerNoShow);
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+        BaseResult result = await _matchService.NoShowAsync(season.Id, p1.Id, p2.Id);
+
+        await FollowupAsync(result.Message);
+    }
+
     [SlashCommand("result", "Admin: Report a result for a scheduled match between two players")]
     [RequireRole(DiscordRoleConstants.Admin)]
     public async Task ReportResultAsync(

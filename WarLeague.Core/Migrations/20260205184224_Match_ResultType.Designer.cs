@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WarLeague.Core.Data;
 
@@ -11,9 +12,11 @@ using WarLeague.Core.Data;
 namespace WarLeague.Core.Migrations
 {
     [DbContext(typeof(WarLeagueDbContext))]
-    partial class WarLeagueDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260205184224_Match_ResultType")]
+    partial class Match_ResultType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -270,7 +273,7 @@ namespace WarLeague.Core.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("SubmissionsClosedDate")
                         .HasColumnType("datetime2");
@@ -283,7 +286,7 @@ namespace WarLeague.Core.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SeasonId", "Status")
+                    b.HasIndex("SeasonId")
                         .IsUnique()
                         .HasFilter("[Status] <> 'Completed' and [Status] <> 'NotOpenYet'");
 

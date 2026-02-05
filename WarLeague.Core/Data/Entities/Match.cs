@@ -16,4 +16,5 @@ public class Match
     public MatchStatus Status { get; set; } = MatchStatus.Scheduled;
     public DateTime? ReportedDate { get; set; }
     public string? ReplayUrl { get; set; }
+    public MatchResultType? MatchResultType { get; set; }
 }
