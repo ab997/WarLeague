@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Interactions;
+using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Text;
 using WarLeague.Core.Data.Entities;
@@ -102,19 +103,10 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            // Prevent multiple open weeks in the same season
-            try
+            var existingOpen = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(season.Id, WeekStatus.Open);
+            if (existingOpen is not null && existingOpen.WeekNumber != weekNumber)
             {
-                var existingOpen = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(season.Id, WeekStatus.Open);
-                if (existingOpen is not null && existingOpen.WeekNumber != weekNumber)
-                {
-                    await FollowupAsync($"Week {existingOpen.WeekNumber} is already Open. Close or update it before opening another week.");
-                    return;
-                }
-            }
-            catch (InvalidOperationException)
-            {
-                await FollowupAsync("Multiple weeks are marked Open. Resolve this before opening another week.");
+                await FollowupAsync($"Week {existingOpen.WeekNumber} is already Open. Close or update it before opening another week.");
                 return;
             }
 
@@ -127,7 +119,7 @@ namespace WarLeague.Discord.Commands
             }
 
             // at this point we close team modifications for the season
-            string additionalMessage = string.Empty;
+            string additionalMessage = "\nTeam modifications have already been disabled for the season.";
             if (!season.DisableTeamModification)
             {
                 await _seasonService.SetTeamModificationsAsync(season.Id, false);
@@ -136,14 +128,14 @@ namespace WarLeague.Discord.Commands
 
             await FollowupAsync(Stringify($"Week {weekNumber} set to Open.", additionalMessage));
         }
-        [SlashCommand("start", "3 -> Starts the current week by closing submissions -> (Status: Open -> SubmissionsClosed)")]
-        public async Task StartAsync()
+        [SlashCommand("close-submissions", "3 -> Closes submissions for the week (Status: Open -> SubmissionsClosed)")]
+        public async Task CloseSubmissionsAsync()
         {
             await DeferAsync(ephemeral: false);
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            BaseResult result = await _weekService.StartWeekAsync(season.Id);
+            BaseResult result = await _weekService.CloseSubmissionsAsync(season.Id);
 
             await FollowupAsync(result.Message);
         }
@@ -169,7 +161,7 @@ namespace WarLeague.Discord.Commands
         }
 
 
-        [SlashCommand("close", "5 -> Closes the current week after all matches are confirmed  (Status: InProgress -> Completed)")]
+        [SlashCommand("close", "5 -> Closes the current week after all matches are reported (Status: InProgress -> Completed)")]
         public async Task CloseAsync()
         {
             await DeferAsync(ephemeral: false);
@@ -209,62 +201,70 @@ namespace WarLeague.Discord.Commands
            [Summary("status")] WeekStatus? status = null
            )
         {
-            await DeferAsync(ephemeral: false);
-
-
-
-            // Parse provided dates (only when provided)
-            DateTime? startDate = null;
-            if (startDateStr is not null)
+            try
             {
-                if (!DateTime.TryParse(startDateStr, out var parsedStart))
+                await DeferAsync(ephemeral: false);
+
+
+
+                // Parse provided dates (only when provided)
+                DateTime? startDate = null;
+                if (startDateStr is not null)
                 {
-                    await FollowupAsync("Invalid start date format. Use YYYY-MM-DD.", ephemeral: false);
+                    if (!DateTime.TryParse(startDateStr, out var parsedStart))
+                    {
+                        await FollowupAsync("Invalid start date format. Use YYYY-MM-DD.", ephemeral: false);
+                        return;
+                    }
+                    startDate = parsedStart;
+                }
+
+                DateTime? endDate = null;
+                if (endDateStr is not null)
+                {
+                    if (!DateTime.TryParse(endDateStr, out var parsedEnd))
+                    {
+                        await FollowupAsync("Invalid end date format. Use YYYY-MM-DD.", ephemeral: false);
+                        return;
+                    }
+                    endDate = parsedEnd;
+                }
+
+                DateTime? subCloseDate = null;
+                if (subCloseDateStr is not null)
+                {
+                    if (!DateTime.TryParse(subCloseDateStr, out var parsedSubClose))
+                    {
+                        await FollowupAsync("Invalid submissions close date format. Use YYYY-MM-DD.", ephemeral: false);
+                        return;
+                    }
+                    subCloseDate = parsedSubClose;
+                }
+
+                // Validate logical ordering
+                if (startDate > endDate)
+                {
+                    await FollowupAsync("Start date must be before end date.", ephemeral: false);
                     return;
                 }
-                startDate = parsedStart;
-            }
 
-            DateTime? endDate = null;
-            if (endDateStr is not null)
-            {
-                if (!DateTime.TryParse(endDateStr, out var parsedEnd))
+                Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+                Week? week = await _weekService.UpdateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate, status);
+
+                if (week is null)
                 {
-                    await FollowupAsync("Invalid end date format. Use YYYY-MM-DD.", ephemeral: false);
+                    await FollowupAsync($"Week with number {weekNumber} does not exist.");
                     return;
                 }
-                endDate = parsedEnd;
-            }
 
-            DateTime? subCloseDate = null;
-            if (subCloseDateStr is not null)
+                await FollowupAsync($"Week {weekNumber} updated.", ephemeral: false);
+            }
+            catch (DbUpdateException ex)
             {
-                if (!DateTime.TryParse(subCloseDateStr, out var parsedSubClose))
-                {
-                    await FollowupAsync("Invalid submissions close date format. Use YYYY-MM-DD.", ephemeral: false);
-                    return;
-                }
-                subCloseDate = parsedSubClose;
+                await FollowupAsync($"No but seriously, you are not allowed to put two different weeks of a single season to same status, " +
+                    $"unless the status is {WeekStatus.Completed} or {WeekStatus.NotOpenYet}. Use /peep overview to get some help.");
             }
-
-            // Validate logical ordering
-            if (startDate > endDate)
-            {
-                await FollowupAsync("Start date must be before end date.", ephemeral: false);
-                return;
-            }
-
-            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-
-            Week? week = await _weekService.UpdateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate, status);
-
-            if (week is null)
-            {
-                await FollowupAsync($"Week with number {weekNumber} does not exist.");
-                return;
-            }
-
-            await FollowupAsync($"Week {weekNumber} updated.", ephemeral: false);
         }
 
 

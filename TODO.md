@@ -19,10 +19,10 @@
       Week dates are display-only; rely **solely on week status** for logic
 - [x] Match: `no-show` command → no replay
 - [x] Week delete command is missing
-- [ ] Week: add nice errors when week is updated to a status that is prevented by a unique constraint
-- [ ] Week rules:
-  - [ ] One week may be `InProgress`
-  - [ ] One `InProgress` week may coexist with another week that is `Open` **or** `SubmissionClosed`
+- [x] Week: add nice errors when week is updated to a status that is prevented by a unique constraint
+- [x] Week rules:
+  - [x] One week may be `InProgress`
+  - [x] One `InProgress` week may coexist with another week that is `Open` **or** `SubmissionClosed`
 - [ ] Decide which commands should be ephemeral (private)
 - [ ] Deck submission:
   - [ ] Seat number is a parameter
