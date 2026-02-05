@@ -63,19 +63,11 @@ namespace WarLeague.Core.Domain.Services
                 .GroupBy(m => m.PlayerId)
                 .ToDictionary(g => g.Key, g => g.First());
 
-            // Determine which players submitted for this week, then group those by team.
-            var submittedPlayerIds = week.DeckSubmissions
-                .Select(ds => ds.PlayerId)
-                .Distinct()
-                .ToHashSet();
-
-            var submittedMemberships = memberships
-                .Where(m => submittedPlayerIds.Contains(m.PlayerId))
-                .ToList();
-
-            var submittedByTeamId = submittedMemberships
-                .GroupBy(m => m.TeamId)
-                .ToDictionary(g => g.Key, g => g.Select(x => x.Player).ToList());
+            // Group deck submissions by team, preserving SeatNumber.
+            var submissionsByTeamId = week.DeckSubmissions
+                .Where(ds => membershipByPlayerId.ContainsKey(ds.PlayerId))
+                .GroupBy(ds => membershipByPlayerId[ds.PlayerId].TeamId)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
             // Safety: don't generate duplicates if matches already exist for this week.
             var existingMatches = await _matchRepository.GetByWeekIdAsync(week.Id);
@@ -84,7 +76,7 @@ namespace WarLeague.Core.Domain.Services
                 return new GeneratePairingsResult { Success = false, Message = $"Matches already exist for week {week.WeekNumber}. Refusing to generate new pairings to avoid duplicates." };
             }
 
-            var (createdMatches, matchupOutputs) = RoundRobin.Run(week, teamMatchups, submittedByTeamId);
+            var (createdMatches, matchupOutputs) = RoundRobin.Run(week, teamMatchups, submissionsByTeamId);
 
             if (createdMatches.Count == 0)
             {
