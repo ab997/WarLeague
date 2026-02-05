@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WarLeague.Core.Data;
 using WarLeague.Core.Data.Entities;
+using WarLeague.Core.Data.Enums;
 using WarLeague.Core.Domain.Model;
 
 namespace WarLeague.Core.Repositories;
@@ -45,5 +46,16 @@ public class MatchRepository
             .Include(m => m.Winner)
             .Where(m => (m.Player1Id == playerId || m.Player2Id == playerId) && m.WeekId == weekId)
             .ToListAsync();
+    }
+
+    public async Task<List<Match>> GetScheduledMatchesAsync(int winnerId, int loserId, Week week)
+    {
+        var matches = await GetByWeekIdAsync(week.Id);
+        var candidateMatches = matches
+            .Where(m => m.Status == MatchStatus.Scheduled &&
+                        ((m.Player1Id == winnerId && m.Player2Id == loserId) ||
+                         (m.Player1Id == loserId && m.Player2Id == winnerId)))
+            .ToList();
+        return candidateMatches;
     }
 }

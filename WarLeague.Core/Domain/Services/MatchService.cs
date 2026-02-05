@@ -153,6 +153,7 @@ namespace WarLeague.Core.Domain.Services
             // Loser is the caller, so winner is the opponent.
             match.WinnerId = opponentPlayer.Id;
             match.Status = MatchStatus.Reported;
+            match.MatchResultType = MatchResultType.Normal;
             match.ReportedDate = DateTime.UtcNow;
             match.ReplayUrl = replayUrl;
 
@@ -161,55 +162,7 @@ namespace WarLeague.Core.Domain.Services
             return new BaseResult { Success = true, Message = "Match loss reported successfully." };
         }
 
-        public async Task<BaseResult> UndoResultAsync(int seasonId, int loserId)
-        {
-            Week? week;
-            try
-            {
-                week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
-            }
-            catch (InvalidOperationException)
-            {
-                return new BaseResult { Success = false, Message = $"Multiple weeks with status '{WeekStatus.InProgress}' exist for the active season." };
-            }
-
-            // Only allow undo when the caller has a reported match in this week.
-            var callerMatches = await _matchRepository.GetByPlayerAndWeekAsync(loserId, week!.Id);
-
-            var reportedMatches = callerMatches
-                .Where(m => m.Status == MatchStatus.Reported)
-                .ToList();
-
-            if (reportedMatches.Count == 0)
-            {
-                return new BaseResult { Success = false, Message = "You do not have any reported matches to undo." };
-            }
-
-            if (reportedMatches.Count > 1)
-            {
-                // Ambiguous which match to undo; require admins to resolve.
-                var opponents = reportedMatches
-                    .Select(m => m.Player1Id == loserId ? m.Player2 : m.Player1)
-                    .DistinctBy(p => p.Id)
-                    .Select(p => $"<@{p.DiscordUserId}>")
-                    .ToList();
-
-                return new BaseResult { Success = false, Message = "You have multiple reported matches; I can't determine which one to undo.\n" +
-                    "Reported against: " + string.Join(", ", opponents) };
-            }
-
-            var match = reportedMatches.Single();
-
-            // Reset match back to scheduled state.
-            match.WinnerId = null;
-            match.Status = MatchStatus.Scheduled;
-            match.ReportedDate = null;
-            match.ReplayUrl = null;
-
-            await _matchRepository.UpdateAsync(match);
-
-            return new BaseResult { Success = true, Message = "Reported match has been undone and returned to scheduled state." };
-        }
+      
 
         /// <summary>
         /// Undoes a previously reported match result between two specified players for the current in-progress week.
@@ -293,12 +246,7 @@ namespace WarLeague.Core.Domain.Services
             }
 
             // Find the scheduled match between the specified winner and loser for this week.
-            var matches = await _matchRepository.GetByWeekIdAsync(week.Id);
-            var candidateMatches = matches
-                .Where(m => m.Status == MatchStatus.Scheduled &&
-                            ((m.Player1Id == winnerId && m.Player2Id == loserId) ||
-                             (m.Player1Id == loserId && m.Player2Id == winnerId)))
-                .ToList();
+            List<Match> candidateMatches = await _matchRepository.GetScheduledMatchesAsync(winnerId, loserId, week);
 
             if (candidateMatches.Count == 0)
             {
@@ -313,6 +261,7 @@ namespace WarLeague.Core.Domain.Services
             var match = candidateMatches.Single();
             match.WinnerId = winnerId;
             match.Status = MatchStatus.Reported;
+            match.MatchResultType = MatchResultType.Normal;
             match.ReportedDate = DateTime.UtcNow;
             match.ReplayUrl = replayUrl;
 
@@ -320,5 +269,50 @@ namespace WarLeague.Core.Domain.Services
 
             return new BaseResult { Success = true, Message = "Match result reported successfully." };
         }
+
+       
+
+        public async Task<BaseResult> NoShowAsync(int seasonId, int winnerId, int loserId)
+        {
+            Week? week;
+            try
+            {
+                week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
+            }
+            catch (InvalidOperationException)
+            {
+                return new BaseResult { Success = false, Message = $"Multiple weeks with status '{WeekStatus.InProgress}' exist for the active season." };
+            }
+
+            if (week is null)
+            {
+                return new BaseResult { Success = false, Message = $"There is no week with status '{WeekStatus.InProgress}' for the active season." };
+            }
+
+            // Find the scheduled match between the specified winner and loser for this week.
+            List<Match> candidateMatches = await _matchRepository.GetScheduledMatchesAsync(winnerId, loserId, week);
+
+            if (candidateMatches.Count == 0)
+            {
+                return new BaseResult { Success = false, Message = "No scheduled match found between the specified players for the current week." };
+            }
+
+            if (candidateMatches.Count > 1)
+            {
+                return new BaseResult { Success = false, Message = "Multiple scheduled matches found between these players; unable to determine which one to report." };
+            }
+
+            var match = candidateMatches.Single();
+            match.WinnerId = winnerId;
+            match.Status = MatchStatus.Reported;
+            match.MatchResultType = MatchResultType.NoShow;
+            match.ReportedDate = DateTime.UtcNow;
+
+            await _matchRepository.UpdateAsync(match);
+
+            return new BaseResult { Success = true, Message = "Match result reported successfully." };
+        }
+
+        
     }
 }
