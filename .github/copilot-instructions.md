@@ -3,4 +3,3 @@
 - ALWAYS make sure that a command has at least one FollowupAsync that is always reached.
 - ALWAYS use guard clauses, NEVER nested ifs.
 - ALWAYS treat warnings as errors.
-- NEVER use two FollowupAsync in the same command.
