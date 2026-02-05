@@ -76,7 +76,7 @@ namespace WarLeague.Core.Domain.Services
 
             return week;
         }
-        public async Task<BaseResult> StartWeekAsync(int seasonId)
+        public async Task<BaseResult> CloseSubmissionsAsync(int seasonId)
         {
             Week? openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.Open);
 
@@ -109,7 +109,7 @@ namespace WarLeague.Core.Domain.Services
             openWeek.Status = WeekStatus.SubmissionsClosed;
             await _weekRepository.UpdateAsync(openWeek);
 
-            return new BaseResult { Success = true, Message = "Week started successfully. Submission are now closed." };
+            return new BaseResult { Success = true, Message = "Week started successfully, all submissions are valid. Submission are now closed." };
         }
 
         private static List<string> ValidateTeamDeckSubmissions(Week openWeek, List<Team> teams, List<PlayerSeasonTeam> psts)
@@ -139,17 +139,11 @@ namespace WarLeague.Core.Domain.Services
 
         public async Task<BaseResult> CloseAsync(int seasonId)
         {
-            // Try to find a week that is currently ongoing (in progress) or has submissions closed
             Week? activeWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
-
-            //if (activeWeek is null)
-            //{
-            //    activeWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.SubmissionsClosed);
-            //}
 
             if (activeWeek is null)
             {
-                return new BaseResult { Success = false, Message = "No active week found to close." };
+                return new BaseResult { Success = false, Message = "No InProgress week found to close." };
             }
 
             var matches = await _matchRepository.GetByWeekIdAsync(activeWeek.Id);
@@ -159,9 +153,9 @@ namespace WarLeague.Core.Domain.Services
                 return new BaseResult { Success = false, Message = "No matches found for the active week." };
             }
 
-            bool allConfirmed = matches.All(m => m.Status == MatchStatus.Reported);
+            bool allReported = matches.All(m => m.Status == MatchStatus.Reported);
 
-            if (!allConfirmed)
+            if (!allReported)
             {
                 var pendingCount = matches.Count(m => m.Status != MatchStatus.Reported);
                 return new BaseResult { Success = false, Message = $"Cannot close week: {pendingCount} match(es) not reported." };
@@ -171,34 +165,6 @@ namespace WarLeague.Core.Domain.Services
             await _weekRepository.UpdateAsync(activeWeek);
 
             return new BaseResult { Success = true, Message = "Week closed successfully." };
-        }
-
-        public async Task<List<Player>> GetPlayersNeedingToPlayAsync(int seasonId)
-        {
-            // Find active week (prefer InProgress, fallback to SubmissionsClosed)
-            Week? activeWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
-            //if (activeWeek is null)
-            //{
-            //    activeWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.SubmissionsClosed);
-            //}
-
-            if (activeWeek is null)
-            {
-                return new List<Player>();
-            }
-
-            var matches = await _matchRepository.GetByWeekIdAsync(activeWeek.Id);
-
-            var pendingPlayers = matches
-                .Where(m => m.Status != MatchStatus.Reported)
-                .SelectMany(m => new[] { m.Player1, m.Player2 })
-                .Where(p => p != null)
-                .GroupBy(p => p!.Id)
-                .Select(g => g.First()!)
-                .OrderBy(p => p.UserName)
-                .ToList();
-
-            return pendingPlayers;
         }
 
         public async Task<List<string>> GetPendingMatchPairsAsync(int seasonId)
@@ -226,6 +192,20 @@ namespace WarLeague.Core.Domain.Services
                 .ToList();
 
             return lines;
+        }
+
+        public async Task<Week?> DeleteAsync(int seasonId, int weekNumber)
+        {
+            Week? week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, seasonId);
+
+            if (week is null)
+            {
+                return null;
+            }
+
+            await _weekRepository.DeleteAsync(week);
+
+            return week;
         }
     }
 }

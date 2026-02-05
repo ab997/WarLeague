@@ -94,7 +94,7 @@ public class WarLeagueDbContext : DbContext
         // Week: only one non-Completed and non-NotOpenYet per SeasonId
         // Status is stored as string via HasConversion<string>() above, so we filter on string values
         modelBuilder.Entity<Week>()
-            .HasIndex(w => w.SeasonId)
+            .HasIndex(w => new { w.SeasonId, w.Status })
             .IsUnique()
             .HasFilter("[Status] <> 'Completed' and [Status] <> 'NotOpenYet'");
 
