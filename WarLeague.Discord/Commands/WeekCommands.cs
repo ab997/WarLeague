@@ -75,9 +75,25 @@ namespace WarLeague.Discord.Commands
 
             await FollowupAsync($"Week created.");
         }
+        [SlashCommand("delete", "Deletes a week")]
+        public async Task DeleteAsync(int weekNumber)
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+            Week? week = await _weekService.DeleteAsync(season.Id, weekNumber);
+
+            if (week is null)
+            {
+                await FollowupAsync($"Week with number {weekNumber} does not exists.");
+                return;
+            }
+
+            await FollowupAsync($"Week deleted.");
+        }
 
 
-      
 
         [SlashCommand("open", "2 -> Opens the current week by allowing deck submissions (Status: NotOpenYet -> Open)")]
         public async Task OpenAsync(int weekNumber)

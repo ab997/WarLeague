@@ -227,5 +227,19 @@ namespace WarLeague.Core.Domain.Services
 
             return lines;
         }
+
+        public async Task<Week?> DeleteAsync(int seasonId, int weekNumber)
+        {
+            Week? week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, seasonId);
+
+            if (week is null)
+            {
+                return null;
+            }
+
+            await _weekRepository.DeleteAsync(week);
+
+            return week;
+        }
     }
 }

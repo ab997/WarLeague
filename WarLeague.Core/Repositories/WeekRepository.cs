@@ -51,4 +51,10 @@ public class WeekRepository
             .Where(w => w.SeasonId == seasonId && w.Status == status)
             .SingleOrDefaultAsync();
     }
+
+    public async Task DeleteAsync(Week week)
+    {
+        _context.Weeks.Remove(week);
+        await _context.SaveChangesAsync();
+    }
 }
