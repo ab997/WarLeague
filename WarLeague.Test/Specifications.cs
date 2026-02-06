@@ -8,19 +8,13 @@ using WarLeague.Core.Repositories;
 
 namespace WarLeague.Test
 {
-    
-
-    /// <summary>
-    /// Format Management Specifications
-    /// These tests describe what users should expect when managing formats in the War League system.
-    /// </summary>
-    public class FormatManagementSpecifications : TransactionalTestBase
+    public class Specifications : TransactionalTestBase
     {
         private readonly FormatService _formatService;
         private readonly FormatRepository _formatRepository;
         private readonly SeasonService _seasonService;
         private readonly SeasonRepository _seasonRepository;
-        public FormatManagementSpecifications(DatabaseFixtureSeeded fixture) : base(fixture)
+        public Specifications(DatabaseFixtureSeeded fixture) : base(fixture)
         {
             _formatRepository = new FormatRepository(Context);
             _formatService = new FormatService(_formatRepository, Context);
