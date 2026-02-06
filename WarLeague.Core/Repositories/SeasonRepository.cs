@@ -67,7 +67,7 @@ namespace WarLeague.Core.Repositories
               .SingleAsync(s => s.Active);
         }
 
-        internal async Task<Season?> GetByIdOrDefault(int seasonId)
+        public async Task<Season?> GetByIdOrDefault(int seasonId)
         {
             return await _context.Seasons
                 .SingleOrDefaultAsync(s => s.Id == seasonId);
