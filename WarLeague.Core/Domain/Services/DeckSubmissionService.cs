@@ -22,12 +22,21 @@ namespace WarLeague.Core.Domain.Services
             _weekRepository = weekRepository;
             _deckSubmissionRepository = deckSubmissionRepository;
         }
-        public async Task<BaseResult> SubmitAsync(int seasonId, int playerId, string deckContent)
+        public async Task<BaseResult> SubmitAsync(int seasonId, int playerId, string deckContent, int seatNumber)
         {
             (BaseResult value, Week? openWeek) = await EnsureSingleValidOpenWeekAsync(seasonId);
             if (!value.Success || openWeek is null)
             {
                 return value;
+            }
+
+            if (seatNumber < 1 || seatNumber > openWeek.SubmissionsRequired)
+            {
+                return new BaseResult 
+                { 
+                    Success = false, 
+                    Message = $"Seat number must be between 1 and {openWeek.SubmissionsRequired} for this week." 
+                };
             }
 
             var pst = await _playerSeasonTeamRepository.GetByPlayerAndSeasonAsync(playerId, seasonId);
@@ -36,28 +45,38 @@ namespace WarLeague.Core.Domain.Services
                 return new BaseResult { Success = false, Message = "Player is not on any team for the active season." };
             }
 
-            // Upsert submission for (player, week).
+            // Check if seat is already taken by a different player
+            var seatTaken = await _deckSubmissionRepository.GetBySeatAndWeekAsync(seatNumber, openWeek.Id);
+            if (seatTaken != null && seatTaken.PlayerId != playerId)
+            {
+                return new BaseResult 
+                { 
+                    Success = false, 
+                    Message = $"Seat {seatNumber} is already taken by {seatTaken.Player.UserName}. Please delete their submission first or choose a different seat." 
+                };
+            }
+
+            // Upsert submission for (player, week)
             var existing = await _deckSubmissionRepository.GetByPlayerAndWeekAsync(playerId, openWeek.Id);
             if (existing != null)
             {
                 existing.DeckFile = deckContent;
                 existing.SubmittedDate = DateTime.UtcNow;
-                existing.IsValidated = false;
+                existing.SeatNumber = seatNumber;
                 await _deckSubmissionRepository.UpdateAsync(existing);
-            }
-            else
-            {
-                await _deckSubmissionRepository.AddAsync(new DeckSubmission
-                {
-                    PlayerId = playerId,
-                    WeekId = openWeek.Id,
-                    DeckFile = deckContent,
-                    SubmittedDate = DateTime.UtcNow,
-                    IsValidated = false
-                });
+                return new BaseResult { Success = true, Message = $"Deck **updated** for {pst.Player.UserName} for week {openWeek.WeekNumber} (season {pst.Season.SeasonNumber}) at seat {seatNumber}." };
             }
 
-            return new BaseResult { Success = true, Message = $"Deck submitted for {pst.Player.UserName} for week {openWeek.WeekNumber} (season {pst.Season.SeasonNumber})." };
+            await _deckSubmissionRepository.AddAsync(new DeckSubmission
+            {
+                PlayerId = playerId,
+                WeekId = openWeek.Id,
+                DeckFile = deckContent,
+                SubmittedDate = DateTime.UtcNow,
+                SeatNumber = seatNumber
+            });
+
+            return new BaseResult { Success = true, Message = $"Deck submitted for {pst.Player.UserName} for week {openWeek.WeekNumber} (season {pst.Season.SeasonNumber}) at seat {seatNumber}." };
         }
 
         public async Task<BaseResult> DeleteSubmissionAsync(int seasonId, int playerId)

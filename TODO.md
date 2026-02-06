@@ -24,14 +24,14 @@
   - [x] One week may be `InProgress`
   - [x] One `InProgress` week may coexist with another week that is `Open` **or** `SubmissionClosed`
 - [ ] Decide which commands should be ephemeral (private)
-- [ ] Deck submission:
-  - [ ] Seat number is a parameter
-  - [ ] Do not randomize pairings
-  - [ ] Pair strictly by seat number
-- [ ] Deck submissions:
-  - [ ] Update commands to explicitly handle seats and players
-- [ ] Deck submission validation:
-  - [ ] A player can only be submitted once per week
+- [x] Deck submission:
+  - [x] Seat number is a parameter
+  - [x] Do not randomize pairings
+  - [x] Pair strictly by seat number
+- [x] Deck submissions:
+  - [x] Update commands to explicitly handle seats and players
+- [X] Deck submission validation:
+  - [x] A player can only be submitted once per week
 - [ ] Substitution command:
   - [ ] Mid-week admin can substitute a player
   - [ ] Replacement must be from the same team

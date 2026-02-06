@@ -9,28 +9,28 @@ namespace WarLeague.Core.Domain.Helpers
 {
     public static class RoundRobin
     {
-        public static (List<Match> createdMatches, List<WeeklyMatchup> matchupOutputs) Run(Week week, List<(Team a, Team b)> teamMatchups, Dictionary<int, List<Player>> submittedByTeamId)
+        public static (List<Match> createdMatches, List<WeeklyMatchup> matchupOutputs) Run(Week week, List<(Team a, Team b)> teamMatchups, Dictionary<int, List<DeckSubmission>> submissionsByTeamId)
         {
-            var rng = new Random();
             var createdMatches = new List<Match>();
 
             // We will also build output per matchup.
             var matchupOutputs = new List<WeeklyMatchup>();
             foreach (var (teamA, teamB) in teamMatchups)
             {
-                var listA = submittedByTeamId.TryGetValue(teamA.Id, out var aPlayers) ? aPlayers.ToList() : new List<Player>();
-                var listB = submittedByTeamId.TryGetValue(teamB.Id, out var bPlayers) ? bPlayers.ToList() : new List<Player>();
+                var submissionsA = submissionsByTeamId.TryGetValue(teamA.Id, out var aSubmissions) ? aSubmissions : new List<DeckSubmission>();
+                var submissionsB = submissionsByTeamId.TryGetValue(teamB.Id, out var bSubmissions) ? bSubmissions : new List<DeckSubmission>();
 
-                ShuffleInPlace(listA, rng);
-                ShuffleInPlace(listB, rng);
+                // Sort by SeatNumber instead of randomizing
+                var sortedA = submissionsA.OrderBy(ds => ds.SeatNumber).Select(ds => ds.Player).ToList();
+                var sortedB = submissionsB.OrderBy(ds => ds.SeatNumber).Select(ds => ds.Player).ToList();
 
-                int pairCount = Math.Min(listA.Count, listB.Count);
+                int pairCount = Math.Min(sortedA.Count, sortedB.Count);
                 var pairs = new List<(Player, Player)>(capacity: pairCount);
 
                 for (int i = 0; i < pairCount; i++)
                 {
-                    var p1 = listA[i];
-                    var p2 = listB[i];
+                    var p1 = sortedA[i];
+                    var p2 = sortedB[i];
                     pairs.Add((p1, p2));
 
                     createdMatches.Add(new Match
@@ -42,8 +42,8 @@ namespace WarLeague.Core.Domain.Helpers
                     });
                 }
 
-                var unpairedA = listA.Skip(pairCount).ToList();
-                var unpairedB = listB.Skip(pairCount).ToList();
+                var unpairedA = sortedA.Skip(pairCount).ToList();
+                var unpairedB = sortedB.Skip(pairCount).ToList();
 
                 matchupOutputs.Add(new WeeklyMatchup(teamA, teamB, pairs, unpairedA, unpairedB));
             }

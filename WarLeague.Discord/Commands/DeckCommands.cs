@@ -48,21 +48,26 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("submit", "Submit a .ydk file")]
     public async Task SubmitAsync(
         [Summary("player", "The team member whose deck is being submitted")] IUser player,
-        [Summary("deck-file", "The .ydk file to submit")] IAttachment deckFile)
+        [Summary("deck-file", "The .ydk file to submit")] IAttachment deckFile,
+        [Summary("seat-number", "The seat number for this deck submission")] int seatNumber)
     {
         await DeferAsync(ephemeral: false);
 
-        if (!await ValidateDeckAttachmentAsync(deckFile)) return;
+        string? attachmentError = ValidateDeckAttachment(deckFile);
+        if (attachmentError is not null)
+        {
+            await FollowupAsync(attachmentError);
+            return;
+        }
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-
         Player callerPlayer = await _playerService.EnsurePlayerExistsAsync(Context.User);
-
         Player targetPlayer = await _playerService.EnsurePlayerExistsAsync(player);
 
-        bool flowControl = await ValidateDeckSubmissionRequest(season, callerPlayer, targetPlayer);
-        if (!flowControl)
+        string? permissionError = await ValidateDeckSubmissionPermission(season, callerPlayer, targetPlayer);
+        if (permissionError is not null)
         {
+            await FollowupAsync(permissionError);
             return;
         }
 
@@ -88,7 +93,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        BaseResult result = await _deckSubmissionService.SubmitAsync(season.Id, targetPlayer.Id, deckContent);
+        BaseResult result = await _deckSubmissionService.SubmitAsync(season.Id, targetPlayer.Id, deckContent, seatNumber);
 
         await FollowupAsync(result.Message);
     }
@@ -100,14 +105,13 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         await DeferAsync(ephemeral: false);
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-
         Player callerPlayer = await _playerService.EnsurePlayerExistsAsync(Context.User);
-
         Player targetPlayer = await _playerService.EnsurePlayerExistsAsync(player);
 
-        bool flowControl = await ValidateDeckSubmissionRequest(season, callerPlayer, targetPlayer);
-        if (!flowControl)
+        string? permissionError = await ValidateDeckSubmissionPermission(season, callerPlayer, targetPlayer);
+        if (permissionError is not null)
         {
+            await FollowupAsync(permissionError);
             return;
         }
 
@@ -116,56 +120,50 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         await FollowupAsync(result.Message);
     }
 
-    private async Task<bool> ValidateDeckSubmissionRequest(Season season, Player callerPlayer, Player targetPlayer)
+    private async Task<string?> ValidateDeckSubmissionPermission(Season season, Player callerPlayer, Player targetPlayer)
     {
         bool isAdmin = _helperService.IsUserAdmin(Context);
 
         var callerCaptainTeam = await _teamRepository.GetByCaptainAndSeasonAsync(callerPlayer.Id, season.Id);
         if (!isAdmin && callerCaptainTeam is null)
         {
-            await FollowupAsync("Only Admins or team captains for the active season can submit or modify decks.");
-            return false;
+            return "Only Admins or team captains for the active season can submit or modify decks.";
         }
 
         var pst = await _playerSeasonTeamRepository.GetByPlayerAndSeasonAsync(targetPlayer.Id, season.Id);
         if (pst is null)
         {
-            await FollowupAsync("Player is not on any team for the active season.");
-            return false;
+            return "Player is not on any team for the active season.";
         }
 
         int targetTeamId = pst.TeamId;
 
         if (!isAdmin && targetTeamId != callerCaptainTeam!.Id)
         {
-            await FollowupAsync($"{targetPlayer.UserName} is not on your team for the active season.");
-            return false;
+            return $"{targetPlayer.UserName} is not on your team for the active season.";
         }
 
-        return true;
+        return null;
     }
 
-    private async Task<bool> ValidateDeckAttachmentAsync(IAttachment? deckFile)
+    private string? ValidateDeckAttachment(IAttachment? deckFile)
     {
         if (deckFile is null)
         {
-            await FollowupAsync("No file provided. Please attach a `.ydk` file.");
-            return false;
+            return "No file provided. Please attach a `.ydk` file.";
         }
 
         if (!deckFile.Filename.EndsWith(".ydk", StringComparison.OrdinalIgnoreCase))
         {
-            await FollowupAsync("Please upload a file with a `.ydk` extension.");
-            return false;
+            return "Please upload a file with a `.ydk` extension.";
         }
 
         if (deckFile.Size > MaxDeckFileBytes)
         {
-            await FollowupAsync($"That file is too large. Max size is {MaxDeckFileBytes / 1_000_000.0:0.#}MB.");
-            return false;
+            return $"That file is too large. Max size is {MaxDeckFileBytes / 1_000_000.0:0.#}MB.";
         }
 
-        return true;
+        return null;
     }
 }
 

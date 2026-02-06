@@ -1,5 +1,9 @@
-﻿- NEVER place business logic here directly to command file, ALWAYS delegate to services.
+﻿- Use BaseResult (or derived types) as the return type when appropriate to display messages to Discord.
 - ALWAYS use ResultHelper.Stringify to return strings from commands.
-- ALWAYS make sure that a command has at least one FollowupAsync that is always reached.
 - ALWAYS use guard clauses, NEVER nested ifs.
 - ALWAYS treat warnings as errors.
+- NEVER put any logic regarding authorization or permissions in the Core project (Domain, Services), handle it in commands or preconditions.
+- NEVER return from a command without also calling FollowupAsync with a meaningful message.
+- NEVER place business logic here directly to command file, ALWAYS delegate to services.
+- NEVER call FollowupAsync in private helper methods, ALWAYS call it in the main command method for clarity.
+- NEVER break this dependency rule: Commands -> Services -> Repositories -> Database. Services can call other services, repositories can call other repositories.

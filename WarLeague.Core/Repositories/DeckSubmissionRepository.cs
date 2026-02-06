@@ -21,6 +21,13 @@ public class DeckSubmissionRepository
             .SingleOrDefaultAsync(ds => ds.PlayerId == playerId && ds.WeekId == weekId);
     }
 
+    public async Task<DeckSubmission?> GetBySeatAndWeekAsync(int seatNumber, int weekId)
+    {
+        return await _context.DeckSubmissions
+            .Include(ds => ds.Player)
+            .SingleOrDefaultAsync(ds => ds.SeatNumber == seatNumber && ds.WeekId == weekId);
+    }
+
     public async Task<DeckSubmission> AddAsync(DeckSubmission submission)
     {
         await _context.DeckSubmissions.AddAsync(submission);

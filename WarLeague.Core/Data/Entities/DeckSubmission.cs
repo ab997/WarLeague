@@ -9,5 +9,5 @@ public class DeckSubmission
     public Player Player { get; set; } = null!;
     public string DeckFile { get; set; } = string.Empty;
     public DateTime SubmittedDate { get; set; } = DateTime.UtcNow;
-    public bool IsValidated { get; set; } = false; // TODO: Implement legality check
+    public int SeatNumber { get; set; }
 }
