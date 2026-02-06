@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using WarLeague.Core.Data;
 using WarLeague.Core.Data.Entities;
@@ -10,16 +11,26 @@ namespace WarLeague.Test
 {
     public class Specifications : TransactionalTestBase
     {
+        private readonly IServiceProvider _serviceProvider;
         private readonly FormatService _formatService;
         private readonly FormatRepository _formatRepository;
         private readonly SeasonService _seasonService;
         private readonly SeasonRepository _seasonRepository;
+        private readonly WeekService _weekService;
+        private readonly WeekRepository _weekRepository;
+        private readonly TeamService _teamService;
+
         public Specifications(DatabaseFixtureSeeded fixture) : base(fixture)
         {
-            _formatRepository = new FormatRepository(Context);
-            _formatService = new FormatService(_formatRepository, Context);
-            _seasonRepository = new SeasonRepository(Context);
-            _seasonService = new SeasonService(_seasonRepository, _formatRepository);
+            _serviceProvider = TestServiceProvider.CreateServiceProvider(Context);
+            
+            _formatService = _serviceProvider.GetRequiredService<FormatService>();
+            _formatRepository = _serviceProvider.GetRequiredService<FormatRepository>();
+            _seasonService = _serviceProvider.GetRequiredService<SeasonService>();
+            _seasonRepository = _serviceProvider.GetRequiredService<SeasonRepository>();
+            _weekService = _serviceProvider.GetRequiredService<WeekService>();
+            _weekRepository = _serviceProvider.GetRequiredService<WeekRepository>();
+            _teamService = _serviceProvider.GetRequiredService<TeamService>();
         }
 
         [Fact]
@@ -184,6 +195,259 @@ namespace WarLeague.Test
 
             var updatedSeason = await _seasonRepository.GetByIdOrDefault(season.Id);
             updatedSeason!.DisableTeamModification.ShouldBeFalse();
+        }
+
+        [Fact]
+        public async Task Season_WhenTeamModificationsAreDisabled_CannotAddMembersToTeam()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatRepository.GetByNameAsync("HAT");
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(1, format!.Id);
+            await _seasonService.SetTeamModificationsAsync(season!.Id, enabled: false);
+
+            // assert that below call should throw exception because team modifications are disabled for the season
+             await Should.ThrowAsync<Exception>(async () =>
+             {
+                 await _teamService.AddMemberAsync(season.Id, 1, "Team Alpha");
+             });
+        }
+
+
+
+
+
+
+
+
+
+        [Fact]
+        public async Task Week_CanCreateANewWeek()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatRepository.GetByNameAsync("HAT");
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(1, format!.Id);
+            var startDate = DateTime.Parse("2025-01-01");
+            var endDate = DateTime.Parse("2025-01-07");
+            var subCloseDate = DateTime.Parse("2025-01-05");
+
+            var week = await _weekService.CreateAsync(season!.Id, 5, startDate, endDate, subCloseDate);
+
+            week.ShouldNotBeNull();
+            week.WeekNumber.ShouldBe(5);
+            week.StartDate.ShouldBe(startDate);
+            week.EndDate.ShouldBe(endDate);
+            week.SubmissionsClosedDate.ShouldBe(subCloseDate);
+        }
+
+        [Fact]
+        public async Task Week_CannotCreateTwoWeeksWithSameNumberInSameSeason()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatRepository.GetByNameAsync("HAT");
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(1, format!.Id);
+            var startDate = DateTime.Parse("2025-01-01");
+            var endDate = DateTime.Parse("2025-01-07");
+            await _weekService.CreateAsync(season!.Id, 1, startDate, endDate, null);
+
+            var result = await _weekService.CreateAsync(season.Id, 1, startDate, endDate, null);
+
+            result.ShouldBeNull();
+        }
+
+        [Fact]
+        public async Task Week_NewlyCreatedWeeksShouldHaveNotOpenYetStatus()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatRepository.GetByNameAsync("HAT");
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(1, format!.Id);
+            var startDate = DateTime.Parse("2025-01-01");
+            var endDate = DateTime.Parse("2025-01-07");
+
+            var week = await _weekService.CreateAsync(season!.Id, 5, startDate, endDate, null);
+
+            week!.Status.ShouldBe(WeekStatus.NotOpenYet);
+        }
+
+        [Fact]
+        public async Task Week_CanDeleteAWeek()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatRepository.GetByNameAsync("HAT");
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(1, format!.Id);
+            var startDate = DateTime.Parse("2025-01-01");
+            var endDate = DateTime.Parse("2025-01-07");
+            await _weekService.CreateAsync(season!.Id, 5, startDate, endDate, null);
+
+            var deletedWeek = await _weekService.DeleteAsync(season.Id, 5);
+
+            deletedWeek.ShouldNotBeNull();
+            var checkWeek = await _weekRepository.GetByWeekNumberAndSeasonAsync(5, season.Id);
+            checkWeek.ShouldBeNull();
+        }
+
+        [Fact]
+        public async Task Week_CanUpdateWeekDates()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatRepository.GetByNameAsync("HAT");
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(1, format!.Id);
+            var startDate = DateTime.Parse("2025-01-01");
+            var endDate = DateTime.Parse("2025-01-07");
+            await _weekService.CreateAsync(season!.Id, 5, startDate, endDate, null);
+            var newStartDate = DateTime.Parse("2025-02-01");
+            var newEndDate = DateTime.Parse("2025-02-07");
+
+            var updatedWeek = await _weekService.UpdateAsync(season.Id, 5, newStartDate, newEndDate, null, null);
+
+            updatedWeek.ShouldNotBeNull();
+            updatedWeek.StartDate.ShouldBe(newStartDate);
+            updatedWeek.EndDate.ShouldBe(newEndDate);
+        }
+
+        [Fact]
+        public async Task Week_CanUpdateWeekStatus()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatRepository.GetByNameAsync("HAT");
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(1, format!.Id);
+            var startDate = DateTime.Parse("2025-01-01");
+            var endDate = DateTime.Parse("2025-01-07");
+            await _weekService.CreateAsync(season!.Id, 5, startDate, endDate, null);
+
+            var updatedWeek = await _weekService.UpdateAsync(season.Id, 5, null, null, null, WeekStatus.Open);
+
+            updatedWeek.ShouldNotBeNull();
+            updatedWeek.Status.ShouldBe(WeekStatus.Open);
+        }
+
+        [Fact]
+        public async Task Week_CanHaveMultipleWeeksInNotOpenYetStatus()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatRepository.GetByNameAsync("HAT");
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(1, format!.Id);
+            var startDate = DateTime.Parse("2025-01-01");
+            var endDate = DateTime.Parse("2025-01-07");
+            await _weekService.CreateAsync(season!.Id, 5, startDate, endDate, null);
+            await _weekService.CreateAsync(season.Id, 6, startDate, endDate, null);
+
+            var weeks = await _weekRepository.GetBySeasonAsync(season.Id);
+            var notOpenYetWeeks = weeks.Where(w => w.Status == WeekStatus.NotOpenYet).ToList();
+
+            notOpenYetWeeks.Count.ShouldBeGreaterThanOrEqualTo(2);
+        }
+
+        [Fact]
+        public async Task Week_CanHaveMultipleWeeksInCompletedStatus()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatRepository.GetByNameAsync("HAT");
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(1, format!.Id);
+            var startDate = DateTime.Parse("2025-01-01");
+            var endDate = DateTime.Parse("2025-01-07");
+            await _weekService.CreateAsync(season!.Id, 5, startDate, endDate, null);
+            await _weekService.CreateAsync(season.Id, 6, startDate, endDate, null);
+            await _weekService.UpdateAsync(season.Id, 5, null, null, null, WeekStatus.Completed);
+            await _weekService.UpdateAsync(season.Id, 6, null, null, null, WeekStatus.Completed);
+
+            var weeks = await _weekRepository.GetBySeasonAsync(season.Id);
+            var completedWeeks = weeks.Where(w => w.Status == WeekStatus.Completed).ToList();
+
+            completedWeeks.Count.ShouldBeGreaterThanOrEqualTo(2);
+        }
+
+        [Fact]
+        public async Task Week_CanTransitionFromNotOpenYetToOpen()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatRepository.GetByNameAsync("HAT");
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(1, format!.Id);
+            var startDate = DateTime.Parse("2025-01-01");
+            var endDate = DateTime.Parse("2025-01-07");
+            var week = await _weekService.CreateAsync(season!.Id, 5, startDate, endDate, null);
+            week!.Status.ShouldBe(WeekStatus.NotOpenYet);
+
+            var updatedWeek = await _weekService.UpdateAsync(season.Id, 5, null, null, null, WeekStatus.Open);
+
+            updatedWeek.ShouldNotBeNull();
+            updatedWeek.Status.ShouldBe(WeekStatus.Open);
+        }
+
+        [Fact]
+        public async Task Week_CanTransitionFromOpenToSubmissionsClosed()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatRepository.GetByNameAsync("HAT");
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(1, format!.Id);
+            var startDate = DateTime.Parse("2025-01-01");
+            var endDate = DateTime.Parse("2025-01-07");
+            await _weekService.CreateAsync(season!.Id, 5, startDate, endDate, null);
+            await _weekService.UpdateAsync(season.Id, 5, null, null, null, WeekStatus.Open);
+
+            var updatedWeek = await _weekService.UpdateAsync(season.Id, 5, null, null, null, WeekStatus.SubmissionsClosed);
+
+            updatedWeek.ShouldNotBeNull();
+            updatedWeek.Status.ShouldBe(WeekStatus.SubmissionsClosed);
+        }
+
+        [Fact]
+        public async Task Week_CanTransitionFromSubmissionsClosedToInProgress()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatRepository.GetByNameAsync("HAT");
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(1, format!.Id);
+            var startDate = DateTime.Parse("2025-01-01");
+            var endDate = DateTime.Parse("2025-01-07");
+            await _weekService.CreateAsync(season!.Id, 5, startDate, endDate, null);
+            await _weekService.UpdateAsync(season.Id, 5, null, null, null, WeekStatus.SubmissionsClosed);
+
+            var updatedWeek = await _weekService.UpdateAsync(season.Id, 5, null, null, null, WeekStatus.InProgress);
+
+            updatedWeek.ShouldNotBeNull();
+            updatedWeek.Status.ShouldBe(WeekStatus.InProgress);
+        }
+
+        [Fact]
+        public async Task Week_CanTransitionFromInProgressToCompleted()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatRepository.GetByNameAsync("HAT");
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(1, format!.Id);
+            var startDate = DateTime.Parse("2025-01-01");
+            var endDate = DateTime.Parse("2025-01-07");
+            await _weekService.CreateAsync(season!.Id, 5, startDate, endDate, null);
+            await _weekService.UpdateAsync(season.Id, 5, null, null, null, WeekStatus.InProgress);
+
+            var updatedWeek = await _weekService.UpdateAsync(season.Id, 5, null, null, null, WeekStatus.Completed);
+
+            updatedWeek.ShouldNotBeNull();
+            updatedWeek.Status.ShouldBe(WeekStatus.Completed);
+        }
+
+        [Fact]
+        public async Task Week_CloseSubmissionsReturnsErrorWhenNoOpenWeekExists()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatRepository.GetByNameAsync("HAT");
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(1, format!.Id);
+
+            var result = await _weekService.CloseSubmissionsAsync(season!.Id);
+
+            result.Success.ShouldBeFalse();
+            result.Message.ShouldContain("No open week");
+        }
+
+        [Fact]
+        public async Task Week_CloseWeekReturnsErrorWhenNoInProgressWeekExists()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatRepository.GetByNameAsync("HAT");
+            var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(1, format!.Id);
+
+            var result = await _weekService.CloseAsync(season!.Id);
+
+            result.Success.ShouldBeFalse();
+            result.Message.ShouldContain("No InProgress week");
         }
     }
 
