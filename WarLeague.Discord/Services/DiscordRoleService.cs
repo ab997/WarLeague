@@ -1,6 +1,6 @@
 using Discord;
 using Discord.WebSocket;
-using WarLeague.Core.Data.Entities;
+using WarLeague.Data.Entities;
 using WarLeague.Discord.Model;
 
 namespace WarLeague.Discord.Services

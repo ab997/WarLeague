@@ -1,11 +1,11 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using WarLeague.Core.Data;
-using WarLeague.Core.Data.Entities;
-using WarLeague.Core.Domain.Model;
-using WarLeague.Core.Domain.Services;
+using WarLeague.Data;
+using WarLeague.Data.Entities;
+using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
+using WarLeague.Core.Services;
 using WarLeague.Discord.Constants;
 using WarLeague.Discord.Enums;
 using WarLeague.Discord.Helpers;

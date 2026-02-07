@@ -3,9 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using WarLeague.Core.Data;
-using WarLeague.Core.Data.Entities;
-using WarLeague.Core.Data.Enums;
+using WarLeague.Data;
+using WarLeague.Data.Entities;
+using WarLeague.Data.Enums;
 using WarLeague.Discord.Constants;
 
 namespace WarLeague.Discord.Commands

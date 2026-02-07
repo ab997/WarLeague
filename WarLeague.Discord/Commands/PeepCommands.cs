@@ -3,11 +3,12 @@ using Discord;
 using Discord.Interactions;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
-using WarLeague.Core.Data.Entities;
+using WarLeague.Data.Entities;
 using WarLeague.Core.Repositories;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
-using Format = WarLeague.Core.Data.Entities.Format;
+using Format = WarLeague.Data.Entities.Format;
+using WarLeague.Data.Enums;
 
 namespace WarLeague.Discord.Commands
 {
@@ -445,8 +446,8 @@ namespace WarLeague.Discord.Commands
                 return $"Week {weekNumber} results:\n\nNo matches scheduled for week {weekNumber}.";
             }
 
-            var played = matches.Where(m => m.Status == Core.Data.Enums.MatchStatus.Reported).ToList();
-            var pending = matches.Where(m => m.Status != Core.Data.Enums.MatchStatus.Reported).ToList();
+            var played = matches.Where(m => m.Status == MatchStatus.Reported).ToList();
+            var pending = matches.Where(m => m.Status != MatchStatus.Reported).ToList();
 
             var sb = new StringBuilder();
             sb.AppendLine($"Week {weekNumber} results:");
@@ -494,7 +495,7 @@ namespace WarLeague.Discord.Commands
             Week? week;
             try
             {
-                week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, Core.Data.Enums.WeekStatus.InProgress);
+                week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
             }
             catch (InvalidOperationException)
             {
@@ -505,7 +506,7 @@ namespace WarLeague.Discord.Commands
             {
                 try
                 {
-                    week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, Core.Data.Enums.WeekStatus.SubmissionsClosed);
+                    week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.SubmissionsClosed);
                 }
                 catch (InvalidOperationException)
                 {

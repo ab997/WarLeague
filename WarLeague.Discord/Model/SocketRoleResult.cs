@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using WarLeague.Core.Domain.Model;
+using WarLeague.Core.Model;
 
 namespace WarLeague.Discord.Model
 {

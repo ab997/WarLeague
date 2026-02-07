@@ -1,10 +1,10 @@
 ﻿using Discord.Interactions;
 using Discord;
 using Discord.WebSocket;
-using WarLeague.Core.Data.Entities;
+using WarLeague.Data.Entities;
 using WarLeague.Core.Repositories;
 using WarLeague.Discord.Constants;
-using Format = WarLeague.Core.Data.Entities.Format;
+using Format = WarLeague.Data.Entities.Format;
 
 namespace WarLeague.Discord.Services
 {
