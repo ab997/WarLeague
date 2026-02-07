@@ -36,6 +36,7 @@ public static class TestServiceProvider
         services.AddScoped<TeamValidationService>();
         services.AddScoped<MatchService>();
         services.AddScoped<DeckSubmissionService>();
+        services.AddScoped<SubstitutionService>();
 
         return services.BuildServiceProvider();
     }

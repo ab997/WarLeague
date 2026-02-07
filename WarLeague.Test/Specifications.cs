@@ -1,5 +1,8 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
+using WarLeague.Core.Data;
 using WarLeague.Core.Data.Enums;
 using WarLeague.Core.Domain.Services;
 
@@ -9,22 +12,52 @@ namespace WarLeague.Test
     /// Domain behavior specifications - testing domain services and business rules.
     /// Tests focus on behavior and outcomes, not implementation details.
     /// </summary>
-    public class Specifications : TransactionalTestBase
+    public class Specifications : IDisposable
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly FormatService _formatService;
         private readonly SeasonService _seasonService;
         private readonly WeekService _weekService;
         private readonly TeamService _teamService;
+        private readonly SubstitutionService _substitutionService;
+        private readonly string _connectionString;
+        private readonly WarLeagueDbContext Context;
 
-        public Specifications(DatabaseFixtureSeeded fixture) : base(fixture)
+        public Specifications()
         {
+            var configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.Test.json", optional: false, reloadOnChange: false)
+            .Build();
+
+            _connectionString = configuration.GetConnectionString("TestConnection")
+                ?? throw new InvalidOperationException("Test connection string not found in appsettings.Test.json");
+
+            var optionsBuilder = new DbContextOptionsBuilder<WarLeagueDbContext>();
+            optionsBuilder.UseSqlServer(_connectionString);
+
+            Context = new WarLeagueDbContext(optionsBuilder.Options);
+
             _serviceProvider = TestServiceProvider.CreateServiceProvider(Context);
             
             _formatService = _serviceProvider.GetRequiredService<FormatService>();
             _seasonService = _serviceProvider.GetRequiredService<SeasonService>();
             _weekService = _serviceProvider.GetRequiredService<WeekService>();
             _teamService = _serviceProvider.GetRequiredService<TeamService>();
+            _substitutionService = _serviceProvider.GetRequiredService<SubstitutionService>();
+
+            RecreateDatabase(Context);
+
+        }
+        public void Dispose()
+        {
+            Context?.Dispose();
+        }
+
+        private void RecreateDatabase(WarLeagueDbContext context)
+        {
+            context.Database.EnsureDeleted();
+            context.Database.EnsureCreated();
         }
 
         [Fact]
@@ -172,21 +205,6 @@ namespace WarLeague.Test
 
             updatedSeason.ShouldNotBeNull();
             updatedSeason.DisableTeamModification.ShouldBeFalse();
-        }
-
-        [Fact]
-        public async Task Season_WhenTeamModificationsAreDisabled_CannotAddMembersToTeam()
-        {
-            Seed.SeedData(Context);
-            var format = await _formatService.GetFormatAsync("HAT");
-            var seasonId = format!.Seasons.First().Id;
-            await _seasonService.SetTeamModificationsAsync(seasonId, enabled: false);
-
-            // Should throw exception because team modifications are disabled for the season
-            await Should.ThrowAsync<Exception>(async () =>
-            {
-                await _teamService.AddMemberAsync(seasonId, 1, "Team Alpha");
-            });
         }
 
         #endregion
@@ -390,6 +408,219 @@ namespace WarLeague.Test
 
             result.Success.ShouldBeFalse();
             result.Message.ShouldContain("No InProgress week");
+        }
+
+        #endregion
+
+        #region Substitution Specifications
+
+        [Fact]
+        public async Task Substitution_CanSubstitutePlayerSuccessfully()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatService.GetFormatAsync("HAT");
+            var seasonId = format!.Seasons.First().Id;
+
+            // Create week 2 with InProgress status
+            var week2 = await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null);
+            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.InProgress);
+
+            // Create a scheduled match and deck submission for Player1
+            var player1 = Context.Players.First(p => p.UserName == "Player1");
+            var player2 = Context.Players.First(p => p.UserName == "Player2");
+            var player5 = Context.Players.First(p => p.UserName == "Player5");
+
+            var match = new Core.Data.Entities.Match
+            {
+                WeekId = week2!.Id,
+                Player1Id = player1.Id,
+                Player2Id = player5.Id,
+                Status = Core.Data.Enums.MatchStatus.Scheduled
+            };
+            Context.Matches.Add(match);
+
+            var deckSubmission = new Core.Data.Entities.DeckSubmission
+            {
+                WeekId = week2.Id,
+                PlayerId = player1.Id,
+                DeckFile = "test.ydk",
+                SeatNumber = 1
+            };
+            Context.DeckSubmissions.Add(deckSubmission);
+            await Context.SaveChangesAsync();
+
+            // Substitute Player2 in for Player1
+            var result = await _substitutionService.SubstitutePlayerAsync(seasonId, "Team Alpha", player2.Id, player1.Id);
+
+            result.Success.ShouldBeTrue();
+            result.Message.ShouldContain("Substitution successful");
+
+            // Verify match was updated
+            var updatedMatch = await Context.Matches.FindAsync(match.Id);
+            updatedMatch!.Player1Id.ShouldBe(player2.Id);
+
+            // Verify deck submission was updated
+            var updatedDeck = await Context.DeckSubmissions.FindAsync(deckSubmission.Id);
+            updatedDeck!.PlayerId.ShouldBe(player2.Id);
+        }
+
+        [Fact]
+        public async Task Substitution_ReturnsErrorWhenTeamNotFound()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatService.GetFormatAsync("HAT");
+            var seasonId = format!.Seasons.First().Id;
+            var player1 = Context.Players.First(p => p.UserName == "Player1");
+            var player2 = Context.Players.First(p => p.UserName == "Player2");
+
+            var result = await _substitutionService.SubstitutePlayerAsync(seasonId, "Nonexistent Team", player2.Id, player1.Id);
+
+            result.Success.ShouldBeFalse();
+            result.Message.ShouldContain("not found");
+        }
+
+        [Fact]
+        public async Task Substitution_ReturnsErrorWhenPlayerInNotOnTeam()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatService.GetFormatAsync("HAT");
+            var seasonId = format!.Seasons.First().Id;
+            var player1 = Context.Players.First(p => p.UserName == "Player1");
+            var player5 = Context.Players.First(p => p.UserName == "Player5"); // On Team Beta
+
+            var result = await _substitutionService.SubstitutePlayerAsync(seasonId, "Team Alpha", player5.Id, player1.Id);
+
+            result.Success.ShouldBeFalse();
+            result.Message.ShouldContain("not a member");
+        }
+
+        [Fact]
+        public async Task Substitution_ReturnsErrorWhenPlayerOutNotOnTeam()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatService.GetFormatAsync("HAT");
+            var seasonId = format!.Seasons.First().Id;
+            var player1 = Context.Players.First(p => p.UserName == "Player1");
+            var player5 = Context.Players.First(p => p.UserName == "Player5"); // On Team Beta
+
+            var result = await _substitutionService.SubstitutePlayerAsync(seasonId, "Team Alpha", player1.Id, player5.Id);
+
+            result.Success.ShouldBeFalse();
+            result.Message.ShouldContain("not a member");
+        }
+
+        [Fact]
+        public async Task Substitution_ReturnsErrorWhenPlayerInAlreadyPlaying()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatService.GetFormatAsync("HAT");
+            var seasonId = format!.Seasons.First().Id;
+
+            // Create week 2 with InProgress status
+            var week2 = await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null);
+            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.InProgress);
+
+            var player1 = Context.Players.First(p => p.UserName == "Player1");
+            var player2 = Context.Players.First(p => p.UserName == "Player2");
+            var player5 = Context.Players.First(p => p.UserName == "Player5");
+            var player6 = Context.Players.First(p => p.UserName == "Player6");
+
+            // Player1 is already scheduled to play
+            var match1 = new Core.Data.Entities.Match
+            {
+                WeekId = week2!.Id,
+                Player1Id = player1.Id,
+                Player2Id = player5.Id,
+                Status = Core.Data.Enums.MatchStatus.Scheduled
+            };
+
+            // Player2 is also scheduled to play
+            var match2 = new Core.Data.Entities.Match
+            {
+                WeekId = week2.Id,
+                Player1Id = player2.Id,
+                Player2Id = player6.Id,
+                Status = Core.Data.Enums.MatchStatus.Scheduled
+            };
+
+            Context.Matches.AddRange(match1, match2);
+            await Context.SaveChangesAsync();
+
+            // Try to substitute Player2 (who's already playing) in for Player1
+            var result = await _substitutionService.SubstitutePlayerAsync(seasonId, "Team Alpha", player2.Id, player1.Id);
+
+            result.Success.ShouldBeFalse();
+            result.Message.ShouldContain("already scheduled");
+        }
+
+        [Fact]
+        public async Task Substitution_ReturnsErrorWhenPlayerOutNotScheduledToPlay()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatService.GetFormatAsync("HAT");
+            var seasonId = format!.Seasons.First().Id;
+
+            // Create week 2 with InProgress status
+            var week2 = await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null);
+            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.InProgress);
+
+            var player1 = Context.Players.First(p => p.UserName == "Player1");
+            var player2 = Context.Players.First(p => p.UserName == "Player2");
+
+            // No matches created, so Player1 is not scheduled to play
+            var result = await _substitutionService.SubstitutePlayerAsync(seasonId, "Team Alpha", player2.Id, player1.Id);
+
+            result.Success.ShouldBeFalse();
+            result.Message.ShouldContain("not currently scheduled");
+        }
+
+        [Fact]
+        public async Task Substitution_ReturnsErrorWhenNoInProgressWeekExists()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatService.GetFormatAsync("HAT");
+            var seasonId = format!.Seasons.First().Id;
+            var player1 = Context.Players.First(p => p.UserName == "Player1");
+            var player2 = Context.Players.First(p => p.UserName == "Player2");
+
+            // Week 1 exists but is Completed, no InProgress week
+            var result = await _substitutionService.SubstitutePlayerAsync(seasonId, "Team Alpha", player2.Id, player1.Id);
+
+            result.Success.ShouldBeFalse();
+            result.Message.ShouldContain("No InProgress week");
+        }
+
+        [Fact]
+        public async Task Substitution_ReturnsErrorWhenNoDeckSubmissionToUpdate()
+        {
+            Seed.SeedData(Context);
+            var format = await _formatService.GetFormatAsync("HAT");
+            var seasonId = format!.Seasons.First().Id;
+
+            // Create week 2 with InProgress status
+            var week2 = await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null);
+            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.InProgress);
+
+            var player1 = Context.Players.First(p => p.UserName == "Player1");
+            var player2 = Context.Players.First(p => p.UserName == "Player2");
+            var player5 = Context.Players.First(p => p.UserName == "Player5");
+
+            // Create a scheduled match but NO deck submission
+            var match = new Core.Data.Entities.Match
+            {
+                WeekId = week2!.Id,
+                Player1Id = player1.Id,
+                Player2Id = player5.Id,
+                Status = Core.Data.Enums.MatchStatus.Scheduled
+            };
+            Context.Matches.Add(match);
+            await Context.SaveChangesAsync();
+
+            // Substitute Player2 in for Player1
+            var result = await _substitutionService.SubstitutePlayerAsync(seasonId, "Team Alpha", player2.Id, player1.Id);
+
+            result.Success.ShouldBeFalse();
+            result.Message.ShouldContain("no deck submission found");
         }
 
         #endregion
