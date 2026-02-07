@@ -1,0 +1,3 @@
+- If there is an odd number of teams, one team shall receive a "Bye" week.
+- "Bye" weeks are modeled as such: matches will still be created and added to dbo.Match table with MatchResultType.Bye.
+- Since match entity requires 2 players (PlayerId1 and PlayerId2 are NOT NULL), the same player shall be placed in both columns.

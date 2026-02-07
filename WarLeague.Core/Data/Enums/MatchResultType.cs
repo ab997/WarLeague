@@ -7,6 +7,7 @@ namespace WarLeague.Core.Data.Enums
     public enum MatchResultType
     {
         Normal,
-        NoShow
+        NoShow,
+        Bye
     }
 }
