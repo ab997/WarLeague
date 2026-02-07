@@ -283,16 +283,11 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         await FollowupAsync(Stringify(result.Message, "Discord role assigned."));
     }
     [SlashCommand("admin-drop-member", "Removes a member from any team (Admin only)")]
+    [RequireRole(DiscordRoleConstants.Admin)]
     public async Task AdminDropMemberAsync(
       [Summary("member", "User to remove")] IUser user)
     {
         await DeferAsync(ephemeral: false);
-
-        if (!_helperService.IsUserAdmin(Context))
-        {
-            await FollowupAsync("Only Admins can use this command.");
-            return;
-        }
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 

@@ -14,16 +14,36 @@ namespace WarLeague.Core.Domain.Services
         private readonly TeamRepository _teamRepository;
         private readonly MatchRepository _matchRepository;
         private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
-        public WeekService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, MatchRepository matchRepository)
+        private readonly SeasonRepository _seasonRepository;
+        public WeekService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, MatchRepository matchRepository, SeasonRepository seasonRepository)
         {
             _weekRepository = weekRepository;
             _teamRepository = teamRepository;
             _playerSeasonTeamRepository = playerSeasonTeamRepository;
             _matchRepository = matchRepository;
+            _seasonRepository = seasonRepository;
         }
 
         public async Task<BaseResult> CreateAsync(int seasonId, int weekNumber, DateTime startDate, DateTime endDate, DateTime? subCloseDate, int submissionsRequired)
         {
+            // Validate date ordering
+            if (startDate > endDate)
+            {
+                return new BaseResult(false, "Start date must be before end date.");
+            }
+
+            // Validate submissionsRequired against season minimum
+            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
+            if (season is null)
+            {
+                return new BaseResult(false, "Season not found.");
+            }
+
+            if (submissionsRequired > season.MinimumTeamMembers)
+            {
+                return new BaseResult(false, $"Week cannot have more required submissions ({submissionsRequired}) than the season minimum team members requirement ({season.MinimumTeamMembers}).");
+            }
+
             Week? week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, seasonId);
 
             if (week != null)
@@ -47,6 +67,41 @@ namespace WarLeague.Core.Domain.Services
             return new BaseResult(true, "Week created.");
         }
 
+        public async Task<BaseResult> OpenWeekAsync(int seasonId, int weekNumber)
+        {
+            // Check if another week is already open
+            Week? existingOpenWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.Open);
+            if (existingOpenWeek is not null && existingOpenWeek.WeekNumber != weekNumber)
+            {
+                return new BaseResult(false, $"Week {existingOpenWeek.WeekNumber} is already Open. Close or update it before opening another week.");
+            }
+
+            // Get the season to check team modification status
+            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
+            if (season is null)
+            {
+                return new BaseResult(false, "Season not found.");
+            }
+
+            // Update week status to Open
+            BaseResult updateResult = await UpdateAsync(seasonId, weekNumber, null, null, null, WeekStatus.Open, null);
+            if (!updateResult.Success)
+            {
+                return updateResult;
+            }
+
+            // Disable team modifications for the season if not already disabled
+            string additionalMessage = "\nTeam modifications have already been disabled for the season.";
+            if (!season.DisableTeamModification)
+            {
+                season.DisableTeamModification = true;
+                await _seasonRepository.UpdateAsync(season);
+                additionalMessage = "\nTeam modifications have been automatically disabled for the season.";
+            }
+
+            return new BaseResult(true, $"Week {weekNumber} set to Open.{additionalMessage}");
+        }
+
         public async Task<BaseResult> UpdateAsync(int seasonId, int weekNumber, DateTime? startDate, DateTime? endDate, DateTime? subCloseDate, WeekStatus? weekStatus, int? submissionsRequired)
         {
             Week? week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, seasonId);
@@ -54,6 +109,30 @@ namespace WarLeague.Core.Domain.Services
             if (week is null)
             {
                 return new BaseResult(false, $"Week with number {weekNumber} does not exist.");
+            }
+
+            // Validate date ordering if both are being updated
+            DateTime effectiveStartDate = startDate ?? week.StartDate;
+            DateTime effectiveEndDate = endDate ?? week.EndDate;
+            
+            if (effectiveStartDate > effectiveEndDate)
+            {
+                return new BaseResult(false, "Start date must be before end date.");
+            }
+
+            // Validate submissionsRequired against season minimum if being updated
+            if (submissionsRequired.HasValue)
+            {
+                Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
+                if (season is null)
+                {
+                    return new BaseResult(false, "Season not found.");
+                }
+
+                if (submissionsRequired.Value > season.MinimumTeamMembers)
+                {
+                    return new BaseResult(false, $"Week cannot have more required submissions ({submissionsRequired.Value}) than the season minimum team members requirement ({season.MinimumTeamMembers}).");
+                }
             }
 
             if (startDate.HasValue)
