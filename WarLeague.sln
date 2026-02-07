@@ -14,12 +14,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{9C06
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0F9A5EDE-525D-45F2-A30B-1FE9232C4B98}"
 	ProjectSection(SolutionItems) = preProject
+		queries.sql = queries.sql
 		TODO.md = TODO.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "instructions", "instructions", "{4042F90E-A051-410A-968D-8C6006A2ECED}"
 	ProjectSection(SolutionItems) = preProject
 		.github\instructions\deck-submissions.instructions.md = .github\instructions\deck-submissions.instructions.md
+		.github\instructions\roundrobin.instructions.md = .github\instructions\roundrobin.instructions.md
+		.github\instructions\substitution.instructions.md = .github\instructions\substitution.instructions.md
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WarLeague.Test", "WarLeague.Test\WarLeague.Test.csproj", "{AAADECDB-1116-4442-8F89-DCFE843B23E1}"
