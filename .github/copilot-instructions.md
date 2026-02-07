@@ -6,6 +6,7 @@
 - ALWAYS use Shouldly pattern when writing tests.
 - ALWAYS use transaction scopes in services when performing multiple database operations that should be atomic.
 - NEVER put any logic regarding authorization or permissions in the Core project (Domain, Services), handle it in commands or preconditions.
+- NEVER put business validation in commands - ALL validation (URL checks, format validation, business rules) belongs in services.
 - NEVER return from a command without also calling FollowupAsync with a meaningful message.
 - NEVER place business logic here directly to command file, ALWAYS delegate to services.
 - NEVER call FollowupAsync in private helper methods, ALWAYS call it in the main command method for clarity.

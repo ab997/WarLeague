@@ -104,6 +104,11 @@ namespace WarLeague.Core.Domain.Services
 
         public async Task<BaseResult> ReportLossAsync(int seasonId, int loserId, string replayUrl)
         {
+            if (!IsValidReplayUrl(replayUrl))
+            {
+                return new BaseResult { Success = false, Message = "Please provide a valid HTTP/HTTPS replay URL." };
+            }
+
             Week? week;
             try
             {
@@ -222,6 +227,16 @@ namespace WarLeague.Core.Domain.Services
         /// <returns>Result indicating success or error message.</returns>
         public async Task<BaseResult> ReportResultAsync(int seasonId, int winnerId, int loserId, string replayUrl)
         {
+            if (winnerId == loserId)
+            {
+                return new BaseResult { Success = false, Message = "Winner and loser must be different players." };
+            }
+
+            if (!IsValidReplayUrl(replayUrl))
+            {
+                return new BaseResult { Success = false, Message = "Please provide a valid HTTP/HTTPS replay URL." };
+            }
+
             Week? week;
             try
             {
@@ -305,6 +320,11 @@ namespace WarLeague.Core.Domain.Services
             return new BaseResult { Success = true, Message = "Match result reported successfully." };
         }
 
-        
+        private static bool IsValidReplayUrl(string? replayUrl)
+        {
+            if (string.IsNullOrWhiteSpace(replayUrl)) return false;
+            if (!Uri.TryCreate(replayUrl, UriKind.Absolute, out var uri)) return false;
+            return uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
+        }
     }
 }
