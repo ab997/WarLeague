@@ -32,10 +32,10 @@
   - [x] Update commands to explicitly handle seats and players
 - [X] Deck submission validation:
   - [x] A player can only be submitted once per week
-- [ ] Substitution command:
-  - [ ] Mid-week admin can substitute a player
-  - [ ] Replacement must be from the same team
-  - [ ] Replacement must not already be submitted for that week
+- [x] Substitution command:
+  - [x] Mid-week admin can substitute a player
+  - [x] Replacement must be from the same team
+  - [x] Replacement must not already be submitted for that week
 - [ ] Write down bye week somehow in the database
 - [ ] No pinging for peep commands
 - [ ] Peep all results:
@@ -52,3 +52,4 @@
 - [ ] Discord roles are not unique by name -> we need to migrate from using "admin" and "captain" to integer IDs.
 - [ ] When it makes sense (such as for example when chosing between existing finite choices -> team names, players in team, etc) limit the suggestions in UI
 - [ ] database daily backup
+- [ ] Return-null-as-failure is a design smell. return result instead.

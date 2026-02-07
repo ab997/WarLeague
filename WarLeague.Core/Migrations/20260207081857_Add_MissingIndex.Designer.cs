@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WarLeague.Core.Data;
 
@@ -11,9 +12,11 @@ using WarLeague.Core.Data;
 namespace WarLeague.Core.Migrations
 {
     [DbContext(typeof(WarLeagueDbContext))]
-    partial class WarLeagueDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260207081857_Add_MissingIndex")]
+    partial class Add_MissingIndex
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -353,7 +356,7 @@ namespace WarLeague.Core.Migrations
             modelBuilder.Entity("WarLeague.Core.Data.Entities.PlayerSeasonTeam", b =>
                 {
                     b.HasOne("WarLeague.Core.Data.Entities.Player", "Player")
-                        .WithMany("PlayerSeasonTeams")
+                        .WithMany()
                         .HasForeignKey("PlayerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -430,8 +433,6 @@ namespace WarLeague.Core.Migrations
                     b.Navigation("MatchesAsPlayer2");
 
                     b.Navigation("MatchesWon");
-
-                    b.Navigation("PlayerSeasonTeams");
                 });
 
             modelBuilder.Entity("WarLeague.Core.Data.Entities.Season", b =>

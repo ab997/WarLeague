@@ -86,6 +86,12 @@ public class WarLeagueDbContext : DbContext
             .HasIndex(s => new { s.FormatId, s.SeasonNumber })
             .IsUnique();
 
+        // Season: only one active per FormatId
+        modelBuilder.Entity<Season>()
+            .HasIndex(s => new { s.FormatId, s.Active })
+            .IsUnique()
+            .HasFilter("[Active] = 1");
+
         // Week: unique per (SeasonId, WeekNumber)
         modelBuilder.Entity<Week>()
             .HasIndex(w => new { w.SeasonId, w.WeekNumber })

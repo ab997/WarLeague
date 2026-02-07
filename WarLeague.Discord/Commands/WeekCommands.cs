@@ -42,6 +42,7 @@ namespace WarLeague.Discord.Commands
         }
         [SlashCommand("create", "1 -> Creates a week (Status: null -> NotOpenYet)")]
         public async Task Create(int weekNumber,
+            [Summary("submissions-required", "Number of submissions (players per team) required for the week")] int submissionsRequired, 
             [Summary("start-date", "Start date (YYYY-MM-DD)")] string startDateStr,
             [Summary("end-date", "End date (YYYY-MM-DD)")] string endDateStr,
             [Summary("submissions-close-date", "Submissions close date (YYYY-MM-DD)")] string subCloseDateStr
@@ -66,7 +67,7 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            Week? week = await _weekService.CreateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate);
+            Week? week = await _weekService.CreateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate, submissionsRequired);
 
             if (week is null)
             {
@@ -110,7 +111,7 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            Week? week = await _weekService.UpdateAsync(season.Id, weekNumber, null, null, null, WeekStatus.Open);
+            Week? week = await _weekService.UpdateAsync(season.Id, weekNumber, null, null, null, WeekStatus.Open, 2);
 
             if (week is null)
             {
@@ -195,6 +196,7 @@ namespace WarLeague.Discord.Commands
 
         [SlashCommand("update", "Updates a week")]
         public async Task Update(int weekNumber,
+           [Summary("submissions-required", "Number of submissions (players per team) required for the week")] int? submissionsRequired = null,
            [Summary("start-date", "Start date (YYYY-MM-DD)")] string? startDateStr = null,
            [Summary("end-date", "End date (YYYY-MM-DD)")] string? endDateStr = null,
            [Summary("submissions-close-date", "Submissions close date (YYYY-MM-DD)")] string? subCloseDateStr = null,
@@ -250,7 +252,7 @@ namespace WarLeague.Discord.Commands
 
                 Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-                Week? week = await _weekService.UpdateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate, status);
+                Week? week = await _weekService.UpdateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate, status, submissionsRequired);
 
                 if (week is null)
                 {

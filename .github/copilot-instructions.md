@@ -2,6 +2,9 @@
 - ALWAYS use ResultHelper.Stringify to return strings from commands.
 - ALWAYS use guard clauses, NEVER nested ifs.
 - ALWAYS treat warnings as errors.
+- ALWAYS check build errors and fix them.
+- ALWAYS use Shouldly pattern when writing tests.
+- ALWAYS use transaction scopes in services when performing multiple database operations that should be atomic.
 - NEVER put any logic regarding authorization or permissions in the Core project (Domain, Services), handle it in commands or preconditions.
 - NEVER return from a command without also calling FollowupAsync with a meaningful message.
 - NEVER place business logic here directly to command file, ALWAYS delegate to services.
