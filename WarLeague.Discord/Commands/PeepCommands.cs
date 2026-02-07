@@ -367,7 +367,7 @@ namespace WarLeague.Discord.Commands
 
                             var playerMentions = players
                                 .Where(p => p is not null)
-                                .Select(p => $"<@{p.DiscordUserId}>")
+                                .Select(p => $"{p.UserName}")
                                 .Distinct()
                                 .ToList();
 

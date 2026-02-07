@@ -67,6 +67,12 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
+            if (submissionsRequired > season.MinimumTeamMembers)
+            {
+                await FollowupAsync($"Week cannot have more required submissions ({submissionsRequired}) than the season minimum team members requirement ({season.MinimumTeamMembers}).");
+                return;
+            }
+
             Week? week = await _weekService.CreateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate, submissionsRequired);
 
             if (week is null)
@@ -251,6 +257,12 @@ namespace WarLeague.Discord.Commands
                 }
 
                 Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+                if (submissionsRequired > season.MinimumTeamMembers)
+                {
+                    await FollowupAsync($"Week cannot have more required submissions ({submissionsRequired}) than the season minimum team members requirement ({season.MinimumTeamMembers}).");
+                    return;
+                }
 
                 Week? week = await _weekService.UpdateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate, status, submissionsRequired);
 
