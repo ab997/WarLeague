@@ -6,9 +6,11 @@ using Discord.WebSocket;
 using System;
 using System.Net.Http;
 using System.Text.Json;
+using WarLeague.Core.Domain.Model;
 using WarLeague.Core.Domain.Services;
 using WarLeague.Core.Repositories;
 using WarLeague.Discord.Constants;
+using WarLeague.Discord.Helpers;
 using Format = WarLeague.Core.Data.Entities.Format;
 
 namespace WarLeague.Discord.Commands
@@ -29,11 +31,11 @@ namespace WarLeague.Discord.Commands
         {
             await DeferAsync(ephemeral: false);
 
-            Format? format = await _formatService.CreateFormatAsync(formatName);
+            BaseResult result = await _formatService.CreateFormatAsync(formatName);
 
-            if (format is null)
+            if (!result.Success)
             {
-                await FollowupAsync($"Format with name {formatName} already exists.");
+                await FollowupAsync(ResultHelper.Stringify(result));
                 return;
             }
 
@@ -53,9 +55,9 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            await _formatService.SetSingleFormatModeAsync(format.Id);
+            BaseResult result = await _formatService.SetSingleFormatModeAsync(format.Id);
 
-            await FollowupAsync("Done.");
+            await FollowupAsync(ResultHelper.Stringify(result));
         }
 
 
@@ -65,15 +67,9 @@ namespace WarLeague.Discord.Commands
         {
             await DeferAsync(ephemeral: false);
 
-            var format = await _formatService.DeleteFormatAsync(formatName);
+            BaseResult result = await _formatService.DeleteFormatAsync(formatName);
 
-            if (format == null)
-            {
-                await FollowupAsync($"Format with name {formatName} not found.");
-                return;
-            }
-
-            await FollowupAsync($"Format '{formatName}' deleted.");
+            await FollowupAsync(ResultHelper.Stringify(result));
         }
 
         [SlashCommand("update-rules", "Update format rules from a .json file")]
@@ -120,13 +116,8 @@ namespace WarLeague.Discord.Commands
                 await FollowupAsync($"Unexpected error: {ex.Message}");
             }
 
-            var format = await _formatService.UpdateFormatRulesAsync(formatName, json);
-            if (format == null)
-            {
-                await FollowupAsync($"Format with name {formatName} not found.");
-                return;
-            }
-            await FollowupAsync($"Rules updated for format '{formatName}'.");
+            BaseResult result = await _formatService.UpdateFormatRulesAsync(formatName, json);
+            await FollowupAsync(ResultHelper.Stringify(result));
         }
 
         private async Task CreateFormatCategoryAndChannelAsync(string formatName, SocketGuild guild)
