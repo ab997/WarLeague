@@ -45,8 +45,8 @@ namespace WarLeague.Core.Domain.Services
                 return new BaseResult { Success = false, Message = "Player is not on any team for the active season." };
             }
 
-            // Check if seat is already taken by a different player
-            var seatTaken = await _deckSubmissionRepository.GetBySeatAndWeekAsync(seatNumber, openWeek.Id);
+            // Check if seat is already taken by a different player on the team
+            var seatTaken = await _deckSubmissionRepository.GetBySeatAndWeekAndTeamAsync(seatNumber, openWeek.Id);
             if (seatTaken != null && seatTaken.PlayerId != playerId)
             {
                 return new BaseResult 
