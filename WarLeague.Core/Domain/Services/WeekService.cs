@@ -22,7 +22,7 @@ namespace WarLeague.Core.Domain.Services
             _matchRepository = matchRepository;
         }
 
-        public async Task<Week?> CreateAsync(int seasonId, int weekNumber, DateTime startDate, DateTime endDate, DateTime? subCloseDate)
+        public async Task<Week?> CreateAsync(int seasonId, int weekNumber, DateTime startDate, DateTime endDate, DateTime? subCloseDate, int submissionsRequired)
         {
             Week? week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, seasonId);
 
@@ -39,6 +39,7 @@ namespace WarLeague.Core.Domain.Services
                 EndDate = endDate,
                 SubmissionsClosedDate = subCloseDate,
                 Status = WeekStatus.NotOpenYet,
+                SubmissionsRequired = submissionsRequired
             };
 
             await _weekRepository.AddAsync(weekNew);
@@ -46,7 +47,7 @@ namespace WarLeague.Core.Domain.Services
             return weekNew;
         }
 
-        public async Task<Week?> UpdateAsync(int seasonId, int weekNumber, DateTime? startDate, DateTime? endDate, DateTime? subCloseDate, WeekStatus? weekStatus)
+        public async Task<Week?> UpdateAsync(int seasonId, int weekNumber, DateTime? startDate, DateTime? endDate, DateTime? subCloseDate, WeekStatus? weekStatus, int? submissionsRequired)
         {
             Week? week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, seasonId);
 
@@ -70,6 +71,10 @@ namespace WarLeague.Core.Domain.Services
             if (weekStatus.HasValue)
             {
                 week.Status = weekStatus.Value;
+            }
+            if (submissionsRequired.HasValue)
+            {
+                week.SubmissionsRequired = submissionsRequired.Value;
             }
 
             await _weekRepository.UpdateAsync(week);

@@ -227,7 +227,7 @@ namespace WarLeague.Test
             var endDate = DateTime.Parse("2025-01-07");
             var subCloseDate = DateTime.Parse("2025-01-05");
 
-            var week = await _weekService.CreateAsync(seasonId, 5, startDate, endDate, subCloseDate);
+            var week = await _weekService.CreateAsync(seasonId, 5, startDate, endDate, subCloseDate, 2);
 
             week.ShouldNotBeNull();
             week.WeekNumber.ShouldBe(5);
@@ -244,9 +244,9 @@ namespace WarLeague.Test
             var seasonId = format!.Seasons.First().Id;
             var startDate = DateTime.Parse("2025-01-01");
             var endDate = DateTime.Parse("2025-01-07");
-            await _weekService.CreateAsync(seasonId, 1, startDate, endDate, null);
+            await _weekService.CreateAsync(seasonId, 1, startDate, endDate, null, 2);
 
-            var result = await _weekService.CreateAsync(seasonId, 1, startDate, endDate, null);
+            var result = await _weekService.CreateAsync(seasonId, 1, startDate, endDate, null, 2);
 
             result.ShouldBeNull();
         }
@@ -260,7 +260,7 @@ namespace WarLeague.Test
             var startDate = DateTime.Parse("2025-01-01");
             var endDate = DateTime.Parse("2025-01-07");
 
-            var week = await _weekService.CreateAsync(seasonId, 5, startDate, endDate, null);
+            var week = await _weekService.CreateAsync(seasonId, 5, startDate, endDate, null, 2);
 
             week!.Status.ShouldBe(WeekStatus.NotOpenYet);
         }
@@ -273,7 +273,7 @@ namespace WarLeague.Test
             var seasonId = format!.Seasons.First().Id;
             var startDate = DateTime.Parse("2025-01-01");
             var endDate = DateTime.Parse("2025-01-07");
-            await _weekService.CreateAsync(seasonId, 5, startDate, endDate, null);
+            await _weekService.CreateAsync(seasonId, 5, startDate, endDate, null, 2);
 
             var deletedWeek = await _weekService.DeleteAsync(seasonId, 5);
 
@@ -289,11 +289,11 @@ namespace WarLeague.Test
             var seasonId = format!.Seasons.First().Id;
             var startDate = DateTime.Parse("2025-01-01");
             var endDate = DateTime.Parse("2025-01-07");
-            await _weekService.CreateAsync(seasonId, 5, startDate, endDate, null);
+            await _weekService.CreateAsync(seasonId, 5, startDate, endDate, null, 2);
             var newStartDate = DateTime.Parse("2025-02-01");
             var newEndDate = DateTime.Parse("2025-02-07");
 
-            var updatedWeek = await _weekService.UpdateAsync(seasonId, 5, newStartDate, newEndDate, null, null);
+            var updatedWeek = await _weekService.UpdateAsync(seasonId, 5, newStartDate, newEndDate, null, null, 2);
 
             updatedWeek.ShouldNotBeNull();
             updatedWeek.StartDate.ShouldBe(newStartDate);
@@ -308,9 +308,9 @@ namespace WarLeague.Test
             var seasonId = format!.Seasons.First().Id;
             var startDate = DateTime.Parse("2025-01-01");
             var endDate = DateTime.Parse("2025-01-07");
-            await _weekService.CreateAsync(seasonId, 5, startDate, endDate, null);
+            await _weekService.CreateAsync(seasonId, 5, startDate, endDate, null, 2);
 
-            var updatedWeek = await _weekService.UpdateAsync(seasonId, 5, null, null, null, WeekStatus.Open);
+            var updatedWeek = await _weekService.UpdateAsync(seasonId, 5, null, null, null, WeekStatus.Open, 2);
 
             updatedWeek.ShouldNotBeNull();
             updatedWeek.Status.ShouldBe(WeekStatus.Open);
@@ -324,10 +324,10 @@ namespace WarLeague.Test
             var seasonId = format!.Seasons.First().Id;
             var startDate = DateTime.Parse("2025-01-01");
             var endDate = DateTime.Parse("2025-01-07");
-            var week = await _weekService.CreateAsync(seasonId, 5, startDate, endDate, null);
+            var week = await _weekService.CreateAsync(seasonId, 5, startDate, endDate, null, 2);
             week!.Status.ShouldBe(WeekStatus.NotOpenYet);
 
-            var updatedWeek = await _weekService.UpdateAsync(seasonId, 5, null, null, null, WeekStatus.Open);
+            var updatedWeek = await _weekService.UpdateAsync(seasonId, 5, null, null, null, WeekStatus.Open, 2);
 
             updatedWeek.ShouldNotBeNull();
             updatedWeek.Status.ShouldBe(WeekStatus.Open);
@@ -341,10 +341,10 @@ namespace WarLeague.Test
             var seasonId = format!.Seasons.First().Id;
             var startDate = DateTime.Parse("2025-01-01");
             var endDate = DateTime.Parse("2025-01-07");
-            await _weekService.CreateAsync(seasonId, 5, startDate, endDate, null);
-            await _weekService.UpdateAsync(seasonId, 5, null, null, null, WeekStatus.Open);
+            await _weekService.CreateAsync(seasonId, 5, startDate, endDate, null, 2);
+            await _weekService.UpdateAsync(seasonId, 5, null, null, null, WeekStatus.Open, 2);
 
-            var updatedWeek = await _weekService.UpdateAsync(seasonId, 5, null, null, null, WeekStatus.SubmissionsClosed);
+            var updatedWeek = await _weekService.UpdateAsync(seasonId, 5, null, null, null, WeekStatus.SubmissionsClosed, 2);
 
             updatedWeek.ShouldNotBeNull();
             updatedWeek.Status.ShouldBe(WeekStatus.SubmissionsClosed);
@@ -358,10 +358,10 @@ namespace WarLeague.Test
             var seasonId = format!.Seasons.First().Id;
             var startDate = DateTime.Parse("2025-01-01");
             var endDate = DateTime.Parse("2025-01-07");
-            await _weekService.CreateAsync(seasonId, 5, startDate, endDate, null);
-            await _weekService.UpdateAsync(seasonId, 5, null, null, null, WeekStatus.SubmissionsClosed);
+            await _weekService.CreateAsync(seasonId, 5, startDate, endDate, null, 2);
+            await _weekService.UpdateAsync(seasonId, 5, null, null, null, WeekStatus.SubmissionsClosed, 2);
 
-            var updatedWeek = await _weekService.UpdateAsync(seasonId, 5, null, null, null, WeekStatus.InProgress);
+            var updatedWeek = await _weekService.UpdateAsync(seasonId, 5, null, null, null, WeekStatus.InProgress, 2);
 
             updatedWeek.ShouldNotBeNull();
             updatedWeek.Status.ShouldBe(WeekStatus.InProgress);
@@ -375,10 +375,10 @@ namespace WarLeague.Test
             var seasonId = format!.Seasons.First().Id;
             var startDate = DateTime.Parse("2025-01-01");
             var endDate = DateTime.Parse("2025-01-07");
-            await _weekService.CreateAsync(seasonId, 5, startDate, endDate, null);
-            await _weekService.UpdateAsync(seasonId, 5, null, null, null, WeekStatus.InProgress);
+            await _weekService.CreateAsync(seasonId, 5, startDate, endDate, null, 2);
+            await _weekService.UpdateAsync(seasonId, 5, null, null, null, WeekStatus.InProgress, 2);
 
-            var updatedWeek = await _weekService.UpdateAsync(seasonId, 5, null, null, null, WeekStatus.Completed);
+            var updatedWeek = await _weekService.UpdateAsync(seasonId, 5, null, null, null, WeekStatus.Completed, 2);
 
             updatedWeek.ShouldNotBeNull();
             updatedWeek.Status.ShouldBe(WeekStatus.Completed);
@@ -422,8 +422,8 @@ namespace WarLeague.Test
             var seasonId = format!.Seasons.First().Id;
 
             // Create week 2 with InProgress status
-            var week2 = await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null);
-            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.InProgress);
+            var week2 = await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 2);
+            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.InProgress, 2);
 
             // Create a scheduled match and deck submission for Player1
             var player1 = Context.Players.First(p => p.UserName == "Player1");
@@ -517,8 +517,8 @@ namespace WarLeague.Test
             var seasonId = format!.Seasons.First().Id;
 
             // Create week 2 with InProgress status
-            var week2 = await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null);
-            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.InProgress);
+            var week2 = await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 2);
+            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.InProgress, 2);
 
             var player1 = Context.Players.First(p => p.UserName == "Player1");
             var player2 = Context.Players.First(p => p.UserName == "Player2");
@@ -561,8 +561,8 @@ namespace WarLeague.Test
             var seasonId = format!.Seasons.First().Id;
 
             // Create week 2 with InProgress status
-            var week2 = await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null);
-            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.InProgress);
+            var week2 = await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 2);
+            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.InProgress, 2);
 
             var player1 = Context.Players.First(p => p.UserName == "Player1");
             var player2 = Context.Players.First(p => p.UserName == "Player2");
@@ -598,8 +598,8 @@ namespace WarLeague.Test
             var seasonId = format!.Seasons.First().Id;
 
             // Create week 2 with InProgress status
-            var week2 = await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null);
-            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.InProgress);
+            var week2 = await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 2);
+            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.InProgress, 2);
 
             var player1 = Context.Players.First(p => p.UserName == "Player1");
             var player2 = Context.Players.First(p => p.UserName == "Player2");
