@@ -6,7 +6,8 @@ using WarLeague.Core.Repositories;
 namespace WarLeague.Test;
 
 /// <summary>
-/// Provides a configured DI container for tests with all services and repositories.
+/// Provides a configured DI container for tests with domain services only.
+/// Repositories are internal dependencies of services.
 /// </summary>
 public static class TestServiceProvider
 {
@@ -17,7 +18,7 @@ public static class TestServiceProvider
         // Register DbContext
         services.AddSingleton(context);
 
-        // Register Repositories
+        // Register Repositories (internal dependencies, not exposed to tests)
         services.AddScoped<FormatRepository>();
         services.AddScoped<SeasonRepository>();
         services.AddScoped<WeekRepository>();
@@ -27,7 +28,7 @@ public static class TestServiceProvider
         services.AddScoped<PlayerRepository>();
         services.AddScoped<DeckSubmissionRepository>();
 
-        // Register Services
+        // Register Services (these are what tests should use)
         services.AddScoped<FormatService>();
         services.AddScoped<SeasonService>();
         services.AddScoped<WeekService>();
