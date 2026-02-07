@@ -46,7 +46,7 @@ namespace WarLeague.Core.Domain.Services
             }
 
             // Check if seat is already taken by a different player on the team
-            var seatTaken = await _deckSubmissionRepository.GetBySeatAndWeekAndTeamAsync(seatNumber, openWeek.Id);
+            var seatTaken = await _deckSubmissionRepository.GetBySeatAndWeekAndTeamAsync(seatNumber, openWeek.Id, pst.TeamId);
             if (seatTaken != null && seatTaken.PlayerId != playerId)
             {
                 return new BaseResult 
