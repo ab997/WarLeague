@@ -5,9 +5,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using WarLeague.Core.Data;
-using WarLeague.Core.Domain.Services;
+using WarLeague.Data;
 using WarLeague.Core.Repositories;
+using WarLeague.Core.Services;
 using WarLeague.Discord.HostedService;
 using WarLeague.Discord.Services;
 

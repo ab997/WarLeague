@@ -1,10 +1,10 @@
 ﻿
 
 using Discord.Interactions;
-using WarLeague.Core.Data.Entities;
-using WarLeague.Core.Domain.Model;
-using WarLeague.Core.Domain.Services;
+using WarLeague.Data.Entities;
+using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
+using WarLeague.Core.Services;
 using WarLeague.Discord.Constants;
 using WarLeague.Discord.Helpers;
 using WarLeague.Discord.Preconditions;

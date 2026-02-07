@@ -4,7 +4,7 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using WarLeague.Core.Repositories;
-using Season = WarLeague.Core.Data.Entities.Season;
+using Season = WarLeague.Data.Entities.Season;
 
 namespace WarLeague.Discord.Preconditions
 {

@@ -1,11 +1,12 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Microsoft.Extensions.DependencyInjection;
-using WarLeague.Core.Data.Entities;
-using WarLeague.Core.Domain.Model;
-using WarLeague.Core.Domain.Services;
+using WarLeague.Data.Entities;
+using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
+using WarLeague.Core.Services;
 using WarLeague.Discord.Services;
+using Format = WarLeague.Data.Entities.Format;
 
 namespace WarLeague.Discord.Preconditions
 {
@@ -17,7 +18,7 @@ namespace WarLeague.Discord.Preconditions
             DiscordApiHelperService helperService = services.GetRequiredService<DiscordApiHelperService>();
             TeamValidationService teamValidationService = services.GetRequiredService<TeamValidationService>();
 
-            Core.Data.Entities.Format format = await helperService.GetFormatByCategoryNameAsync((SocketInteractionContext)context);
+            Format format = await helperService.GetFormatByCategoryNameAsync((SocketInteractionContext)context);
 
             List<Season> seasons = await seasonRepository.GetActiveSeasonsByFormatAsync(format.Id);
 

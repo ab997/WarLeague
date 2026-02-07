@@ -6,12 +6,12 @@ using Discord.WebSocket;
 using System;
 using System.Net.Http;
 using System.Text.Json;
-using WarLeague.Core.Domain.Model;
-using WarLeague.Core.Domain.Services;
+using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
+using WarLeague.Core.Services;
 using WarLeague.Discord.Constants;
 using WarLeague.Discord.Helpers;
-using Format = WarLeague.Core.Data.Entities.Format;
+using Format = WarLeague.Data.Entities.Format;
 
 namespace WarLeague.Discord.Commands
 {

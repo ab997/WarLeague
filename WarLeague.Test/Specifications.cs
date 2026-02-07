@@ -2,9 +2,10 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
-using WarLeague.Core.Data;
-using WarLeague.Core.Data.Enums;
-using WarLeague.Core.Domain.Services;
+using WarLeague.Data;
+using WarLeague.Data.Enums;
+using WarLeague.Core.Services;
+using WarLeague.Data.Entities;
 
 namespace WarLeague.Test
 {
@@ -503,16 +504,16 @@ namespace WarLeague.Test
             var player2 = Context.Players.First(p => p.UserName == "Player2");
             var player5 = Context.Players.First(p => p.UserName == "Player5");
 
-            var match = new Core.Data.Entities.Match
+            var match = new Match
             {
                 WeekId = week2!.Id,
                 Player1Id = player1.Id,
                 Player2Id = player5.Id,
-                Status = Core.Data.Enums.MatchStatus.Scheduled
+                Status = MatchStatus.Scheduled
             };
             Context.Matches.Add(match);
 
-            var deckSubmission = new Core.Data.Entities.DeckSubmission
+            var deckSubmission = new DeckSubmission
             {
                 WeekId = week2.Id,
                 PlayerId = player1.Id,
@@ -600,21 +601,21 @@ namespace WarLeague.Test
             var player6 = Context.Players.First(p => p.UserName == "Player6");
 
             // Player1 is already scheduled to play
-            var match1 = new Core.Data.Entities.Match
+            var match1 = new Match
             {
                 WeekId = week2!.Id,
                 Player1Id = player1.Id,
                 Player2Id = player5.Id,
-                Status = Core.Data.Enums.MatchStatus.Scheduled
+                Status = MatchStatus.Scheduled
             };
 
             // Player2 is also scheduled to play
-            var match2 = new Core.Data.Entities.Match
+            var match2 = new Match
             {
                 WeekId = week2.Id,
                 Player1Id = player2.Id,
                 Player2Id = player6.Id,
-                Status = Core.Data.Enums.MatchStatus.Scheduled
+                Status = MatchStatus.Scheduled
             };
 
             Context.Matches.AddRange(match1, match2);

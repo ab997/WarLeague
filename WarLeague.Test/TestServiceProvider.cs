@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using WarLeague.Core.Data;
-using WarLeague.Core.Domain.Services;
+using WarLeague.Data;
 using WarLeague.Core.Repositories;
+using WarLeague.Core.Services;
 
 namespace WarLeague.Test;
 

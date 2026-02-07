@@ -1,12 +1,12 @@
 using Discord.Interactions;
 using Discord;
-using WarLeague.Core.Data.Entities;
-using WarLeague.Core.Domain.Model;
-using WarLeague.Core.Domain.Services;
+using WarLeague.Data.Entities;
 using WarLeague.Discord.Constants;
 using WarLeague.Discord.Helpers;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
+using WarLeague.Core.Services;
+using WarLeague.Core.Model;
 
 namespace WarLeague.Discord.Commands;
 

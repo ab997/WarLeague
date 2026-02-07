@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using WarLeague.Core.Data.Entities;
+using WarLeague.Data.Entities;
 using WarLeague.Core.Repositories;
 
 namespace WarLeague.Discord.Services

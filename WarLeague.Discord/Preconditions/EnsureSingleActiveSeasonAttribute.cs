@@ -2,11 +2,11 @@
 using Discord;
 using Discord.Interactions;
 using Microsoft.Extensions.DependencyInjection;
-using WarLeague.Core.Data.Entities;
+using WarLeague.Data.Entities;
 using WarLeague.Core.Repositories;
 using WarLeague.Discord.Services;
-using Format = WarLeague.Core.Data.Entities.Format;
-using Season = WarLeague.Core.Data.Entities.Season;
+using Format = WarLeague.Data.Entities.Format;
+using Season = WarLeague.Data.Entities.Season;
 
 namespace WarLeague.Discord.Preconditions
 {
