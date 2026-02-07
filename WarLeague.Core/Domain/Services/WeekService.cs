@@ -22,13 +22,13 @@ namespace WarLeague.Core.Domain.Services
             _matchRepository = matchRepository;
         }
 
-        public async Task<Week?> CreateAsync(int seasonId, int weekNumber, DateTime startDate, DateTime endDate, DateTime? subCloseDate, int submissionsRequired)
+        public async Task<BaseResult> CreateAsync(int seasonId, int weekNumber, DateTime startDate, DateTime endDate, DateTime? subCloseDate, int submissionsRequired)
         {
             Week? week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, seasonId);
 
             if (week != null)
             {
-                return null;
+                return new BaseResult(false, $"Week with number {weekNumber} already exists.");
             }
 
             Week weekNew = new Week
@@ -44,16 +44,16 @@ namespace WarLeague.Core.Domain.Services
 
             await _weekRepository.AddAsync(weekNew);
 
-            return weekNew;
+            return new BaseResult(true, "Week created.");
         }
 
-        public async Task<Week?> UpdateAsync(int seasonId, int weekNumber, DateTime? startDate, DateTime? endDate, DateTime? subCloseDate, WeekStatus? weekStatus, int? submissionsRequired)
+        public async Task<BaseResult> UpdateAsync(int seasonId, int weekNumber, DateTime? startDate, DateTime? endDate, DateTime? subCloseDate, WeekStatus? weekStatus, int? submissionsRequired)
         {
             Week? week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, seasonId);
 
             if (week is null)
             {
-                return null;
+                return new BaseResult(false, $"Week with number {weekNumber} does not exist.");
             }
 
             if (startDate.HasValue)
@@ -79,7 +79,7 @@ namespace WarLeague.Core.Domain.Services
 
             await _weekRepository.UpdateAsync(week);
 
-            return week;
+            return new BaseResult(true, $"Week {weekNumber} updated.");
         }
         public async Task<BaseResult> CloseSubmissionsAsync(int seasonId)
         {
@@ -199,18 +199,18 @@ namespace WarLeague.Core.Domain.Services
             return lines;
         }
 
-        public async Task<Week?> DeleteAsync(int seasonId, int weekNumber)
+        public async Task<BaseResult> DeleteAsync(int seasonId, int weekNumber)
         {
             Week? week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, seasonId);
 
             if (week is null)
             {
-                return null;
+                return new BaseResult(false, $"Week with number {weekNumber} does not exists.");
             }
 
             await _weekRepository.DeleteAsync(week);
 
-            return week;
+            return new BaseResult(true, "Week deleted.");
         }
     }
 }

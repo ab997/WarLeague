@@ -73,15 +73,9 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            Week? week = await _weekService.CreateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate, submissionsRequired);
+            BaseResult result = await _weekService.CreateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate, submissionsRequired);
 
-            if (week is null)
-            {
-                await FollowupAsync($"Week with number {weekNumber} already exists.");
-                return;
-            }
-
-            await FollowupAsync($"Week created.");
+            await FollowupAsync(Stringify(result));
         }
         [SlashCommand("delete", "Deletes a week")]
         public async Task DeleteAsync(int weekNumber)
@@ -90,15 +84,9 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            Week? week = await _weekService.DeleteAsync(season.Id, weekNumber);
+            BaseResult result = await _weekService.DeleteAsync(season.Id, weekNumber);
 
-            if (week is null)
-            {
-                await FollowupAsync($"Week with number {weekNumber} does not exists.");
-                return;
-            }
-
-            await FollowupAsync($"Week deleted.");
+            await FollowupAsync(Stringify(result));
         }
 
 
@@ -117,11 +105,11 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            Week? week = await _weekService.UpdateAsync(season.Id, weekNumber, null, null, null, WeekStatus.Open, 2);
+            BaseResult result = await _weekService.UpdateAsync(season.Id, weekNumber, null, null, null, WeekStatus.Open, null);
 
-            if (week is null)
+            if (!result.Success)
             {
-                await FollowupAsync($"Week with number {weekNumber} does not exist.");
+                await FollowupAsync(Stringify(result));
                 return;
             }
 
@@ -144,7 +132,7 @@ namespace WarLeague.Discord.Commands
 
             BaseResult result = await _weekService.CloseSubmissionsAsync(season.Id);
 
-            await FollowupAsync(result.Message);
+            await FollowupAsync(Stringify(result));
         }
 
         [SlashCommand("generate-pairings", "4 -> Generate pairings (Status: SubmissionsClosed -> InProgress)")]
@@ -177,7 +165,7 @@ namespace WarLeague.Discord.Commands
 
             BaseResult result = await _weekService.CloseAsync(season.Id);
 
-            await FollowupAsync(result.Message);
+            await FollowupAsync(Stringify(result));
         }
 
         [SlashCommand("ping-players", "Tags players who need to finish their matches for the current week")]
@@ -264,17 +252,11 @@ namespace WarLeague.Discord.Commands
                     return;
                 }
 
-                Week? week = await _weekService.UpdateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate, status, submissionsRequired);
+                BaseResult result = await _weekService.UpdateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate, status, submissionsRequired);
 
-                if (week is null)
-                {
-                    await FollowupAsync($"Week with number {weekNumber} does not exist.");
-                    return;
-                }
-
-                await FollowupAsync($"Week {weekNumber} updated.", ephemeral: false);
+                await FollowupAsync(Stringify(result));
             }
-            catch (DbUpdateException ex)
+            catch (DbUpdateException)
             {
                 await FollowupAsync($"No but seriously, you are not allowed to put two different weeks of a single season to same status, " +
                     $"unless the status is {WeekStatus.Completed} or {WeekStatus.NotOpenYet}. Use /peep overview to get some help.");
@@ -294,8 +276,8 @@ namespace WarLeague.Discord.Commands
 
             EmbedBuilder NewEmbed(int page) => new EmbedBuilder()
                 .WithTitle(page == 1
-                    ? $"Week {week.WeekNumber} Pairings • Season {season.SeasonNumber}"
-                    : $"Week {week.WeekNumber} Pairings • Season {season.SeasonNumber} (page {page})")
+                    ? $"Week {week.WeekNumber} Pairings ï¿½ Season {season.SeasonNumber}"
+                    : $"Week {week.WeekNumber} Pairings ï¿½ Season {season.SeasonNumber} (page {page})")
                 .WithColor(new Color(88, 101, 242))
                 .WithDescription($"Generated {totalMatchesCreated} matches. Pairings are random among deck submitters.");
 
@@ -353,7 +335,7 @@ namespace WarLeague.Discord.Commands
         {
             if (string.IsNullOrEmpty(s)) return "_<empty>_";
             if (s.Length <= maxChars) return s;
-            return s[..Math.Max(0, maxChars - 4)] + " …";
+            return s[..Math.Max(0, maxChars - 4)] + " ï¿½";
         }
 
         private async Task SendEmbedsInBatchesAsync(IReadOnlyList<Embed> embeds)
