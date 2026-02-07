@@ -50,14 +50,9 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         Player player = await _playerService.EnsurePlayerExistsAsync(Context.User);
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+        bool canBypassTeamModificationCheck = _helperService.IsUserAdmin(Context);
 
-        if (season.DisableTeamModification && !_helperService.IsUserAdmin(Context))
-        {
-            await FollowupAsync("Team modifications are currently disabled for this season.");
-            return;
-        }
-
-        BaseResult result = await _teamService.CreateAsync(season.Id, teamName, player.Id);
+        BaseResult result = await _teamService.CreateAsync(season.Id, teamName, player.Id, canBypassTeamModificationCheck);
 
         if (!result.Success)
         {
@@ -137,27 +132,29 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        Team? deleted = await _teamService.DeleteAsync(season.Id, teamName);
+        BaseResult result = await _teamService.DeleteAsync(season.Id, teamName);
 
-        if (deleted is null) 
+        if (!result.Success)
         {
-            await FollowupAsync($"Team with name '{teamName}' not found.");
+            await FollowupAsync(Stringify(result));
             return;
         }
 
-        bool roleDeleted = await _roleService.DeleteTeamRoleAsync(Context.Guild, deleted);
+        bool roleDeleted = await _roleService.DeleteTeamRoleAsync(Context.Guild, team);
 
-        string message = $"Team '{teamName}' deleted.";
-        if (!roleDeleted && deleted.DiscordRoleId.HasValue)
+        if (!roleDeleted && team.DiscordRoleId.HasValue)
         {
-            message += "\nWarning: Failed to delete Discord role.";
-        }
-        else if (roleDeleted)
-        {
-            message += "\nDiscord role deleted.";
+            await FollowupAsync(Stringify(result, "Warning: Failed to delete Discord role."));
+            return;
         }
 
-        await FollowupAsync(message);
+        if (roleDeleted)
+        {
+            await FollowupAsync(Stringify(result, "Discord role deleted."));
+            return;
+        }
+
+        await FollowupAsync(Stringify(result));
     }
 
     [SlashCommand("add-member", "Adds a member to your team (captain only)")]
@@ -167,17 +164,11 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         await DeferAsync(ephemeral: false);
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-
-        if (season.DisableTeamModification && !_helperService.IsUserAdmin(Context))
-        {
-            await FollowupAsync("Team modifications are currently disabled for this season.");
-            return;
-        }
-
         Player caller = await _playerService.EnsurePlayerExistsAsync(Context.User);
         Player targetPlayer = await _playerService.EnsurePlayerExistsAsync(user);
+        bool canBypassTeamModificationCheck = _helperService.IsUserAdmin(Context);
 
-        BaseResult result = await _teamService.CaptainAddMemberAsync(season.Id, caller.Id, targetPlayer.Id);
+        BaseResult result = await _teamService.CaptainAddMemberAsync(season.Id, caller.Id, targetPlayer.Id, canBypassTeamModificationCheck);
 
         if (!result.Success)
         {
@@ -217,17 +208,11 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         await DeferAsync(ephemeral: false);
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-
-        if (season.DisableTeamModification && !_helperService.IsUserAdmin(Context))
-        {
-            await FollowupAsync("Team modifications are currently disabled for this season.");
-            return;
-        }
-
         Player caller = await _playerService.EnsurePlayerExistsAsync(Context.User);
         Player targetPlayer = await _playerService.EnsurePlayerExistsAsync(user);
+        bool canBypassTeamModificationCheck = _helperService.IsUserAdmin(Context);
 
-        BaseResult result = await _teamService.CaptainRemoveMemberAsync(season.Id, caller.Id, targetPlayer.Id);
+        BaseResult result = await _teamService.CaptainRemoveMemberAsync(season.Id, caller.Id, targetPlayer.Id, canBypassTeamModificationCheck);
 
         if (!result.Success)
         {
