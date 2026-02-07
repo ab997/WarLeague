@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using WarLeague.Core.Data;
 using WarLeague.Core.Data.Entities;
+using WarLeague.Core.Domain.Model;
 using WarLeague.Core.Repositories;
 
 namespace WarLeague.Core.Domain.Services
@@ -17,16 +18,14 @@ namespace WarLeague.Core.Domain.Services
             _formatRepository = formatRepo;
             _context = context;
         }
-        /// <summary>
-        /// returns newly created Format or null if format with given name already exists
-        /// </summary>
-        public async Task<Format?> CreateFormatAsync(string formatName)
+
+        public async Task<BaseResult> CreateFormatAsync(string formatName)
         {
             Format? existing = await _formatRepository.GetByNameAsync(formatName);
 
             if (existing != null)
             {
-                return null;
+                return new BaseResult(false, $"Format with name {formatName} already exists.");
             }
 
             Format format = new Format
@@ -36,21 +35,19 @@ namespace WarLeague.Core.Domain.Services
 
             await _formatRepository.AddAsync(format);
 
-            return format;
+            return new BaseResult(true, $"Format {formatName} created.");
         }
-        /// <summary>
-        /// return deleted format of null if format with given name does not exist
-        /// </summary>
-        public async Task<Format?> DeleteFormatAsync(string formatName)
+
+        public async Task<BaseResult> DeleteFormatAsync(string formatName)
         {
             var format = await _formatRepository.GetByNameAsync(formatName);
             if (format == null)
             {
-                return null;
+                return new BaseResult(false, $"Format with name {formatName} not found.");
             }
 
             await _formatRepository.DeleteAsync(format);
-            return format;
+            return new BaseResult(true, $"Format '{formatName}' deleted.");
         }
 
         public async Task<Format?> GetFormatAsync(string formatName)
@@ -58,7 +55,7 @@ namespace WarLeague.Core.Domain.Services
             return await _formatRepository.GetByNameAsync(formatName);
         }
 
-        public async Task SetSingleFormatModeAsync(int formatId)
+        public async Task<BaseResult> SetSingleFormatModeAsync(int formatId)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -78,28 +75,24 @@ namespace WarLeague.Core.Domain.Services
             await _formatRepository.UpdateAsync(targetFormat);
 
             await transaction.CommitAsync();
+
+            return new BaseResult(true, "Done.");
         }
 
-        /// <summary>
-        /// return updated format or null if format with given name does not exist
-        /// </summary>
-        /// <param name="formatName"></param>
-        /// <param name="rulesJson"></param>
-        /// <returns></returns>
-        public async Task<Format?> UpdateFormatRulesAsync(string formatName, string rulesJson)
+        public async Task<BaseResult> UpdateFormatRulesAsync(string formatName, string rulesJson)
         {
             var format = await _formatRepository.GetByNameAsync(formatName);
 
             if (format == null)
             {
-                return null;
+                return new BaseResult(false, $"Format with name {formatName} not found.");
             }
 
             format.Rules = rulesJson;
 
             await _formatRepository.UpdateAsync(format);
 
-            return format;
+            return new BaseResult(true, $"Rules updated for format '{formatName}'.");
         }
     }
 }

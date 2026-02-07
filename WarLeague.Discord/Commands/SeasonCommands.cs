@@ -2,9 +2,11 @@
 
 using Discord.Interactions;
 using WarLeague.Core.Data.Entities;
+using WarLeague.Core.Domain.Model;
 using WarLeague.Core.Domain.Services;
 using WarLeague.Core.Repositories;
 using WarLeague.Discord.Constants;
+using WarLeague.Discord.Helpers;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 
@@ -29,15 +31,9 @@ namespace WarLeague.Discord.Commands
 
             Format format = await _helperService.GetFormatByCategoryNameAsync(Context);
 
-            var season = _seasonService.CreateAsync(format.Id, seasonNumber, minimumTeamMembers);
+            BaseResult result = await _seasonService.CreateAsync(format.Id, seasonNumber, minimumTeamMembers);
 
-            if (season is null)
-            {
-                await FollowupAsync($"Season with number {seasonNumber} already exists.");
-                return;
-            }
-          
-            await FollowupAsync($"Season '{seasonNumber}' created (inactive).");
+            await FollowupAsync(ResultHelper.Stringify(result));
         }
 
         [SlashCommand("delete", "Deletes a season")]
@@ -47,15 +43,9 @@ namespace WarLeague.Discord.Commands
 
             Format format = await _helperService.GetFormatByCategoryNameAsync(Context);
 
-            var season = await _seasonService.DeleteAsync(seasonNumber, format.Id);
+            BaseResult result = await _seasonService.DeleteAsync(format.Id, seasonNumber);
 
-            if (season == null)
-            {
-                await FollowupAsync($"Season with number {seasonNumber} not found.");
-                return;
-            }
-
-            await FollowupAsync($"Season '{seasonNumber}' deleted.");
+            await FollowupAsync(ResultHelper.Stringify(result));
         }
 
         [SlashCommand("set-active", "Sets a season to active (all other to inactive)")]
@@ -65,15 +55,9 @@ namespace WarLeague.Discord.Commands
 
             Format format = await _helperService.GetFormatByCategoryNameAsync(Context);
 
-            var season = await _seasonService.SetActiveAsync(format.Id, seasonNumber);
+            BaseResult result = await _seasonService.SetActiveAsync(format.Id, seasonNumber);
 
-            if (season == null)
-            {
-                await FollowupAsync($"Season with number {seasonNumber} not found.");
-                return;
-            }
-
-            await FollowupAsync($"Season '{seasonNumber}' is now active.");
+            await FollowupAsync(ResultHelper.Stringify(result));
         }
 
         [SlashCommand("admin-set-team-modifications", "Enables or disables captain team modifications for the current season (Admin only)")]
@@ -85,15 +69,9 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            Season? result = await _seasonService.SetTeamModificationsAsync(season.Id, enabled);
+            BaseResult result = await _seasonService.SetTeamModificationsAsync(season.Id, enabled);
 
-            if (result == null)
-            {
-                await FollowupAsync($"Failed to update team modifications for season {season.SeasonNumber}.");
-                return;
-            }
-
-            await FollowupAsync($"Captain team modifications have been {(enabled ? "enabled" : "disabled")} for season {season.SeasonNumber}.");
+            await FollowupAsync(ResultHelper.Stringify(result));
         }
     }
 }

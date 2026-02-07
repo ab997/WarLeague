@@ -24,21 +24,15 @@ namespace WarLeague.Discord.Commands
     {
         private readonly WeekService _weekService;
         private readonly DiscordApiHelperService _helperService;
-        private readonly WeekRepository _weekRepository;
         private readonly MatchService _matchService;
-        private readonly SeasonService _seasonService;
         public WeekCommands(
             DiscordApiHelperService helperService,
             WeekService weekService,
-            WeekRepository weekRepository,
-            MatchService matchService,
-            SeasonService seasonService)
+            MatchService matchService)
         {
             _helperService = helperService;
             _weekService = weekService;
-            _weekRepository = weekRepository;
             _matchService = matchService;
-            _seasonService = seasonService;
         }
         [SlashCommand("create", "1 -> Creates a week (Status: null -> NotOpenYet)")]
         public async Task Create(int weekNumber,
@@ -54,34 +48,15 @@ namespace WarLeague.Discord.Commands
                 !DateTime.TryParse(endDateStr, out var endDate) ||
                 !DateTime.TryParse(subCloseDateStr, out var subCloseDate))
             {
-                await FollowupAsync("Invalid date format. Use YYYY-MM-DD.", ephemeral: false);
-                return;
-            }
-
-            // Validate logical ordering
-            if (startDate > endDate)
-            {
-                await FollowupAsync("Start date must be before end date.", ephemeral: false);
+                await FollowupAsync("Invalid date format. Use YYYY-MM-DD.");
                 return;
             }
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            if (submissionsRequired > season.MinimumTeamMembers)
-            {
-                await FollowupAsync($"Week cannot have more required submissions ({submissionsRequired}) than the season minimum team members requirement ({season.MinimumTeamMembers}).");
-                return;
-            }
+            BaseResult result = await _weekService.CreateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate, submissionsRequired);
 
-            Week? week = await _weekService.CreateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate, submissionsRequired);
-
-            if (week is null)
-            {
-                await FollowupAsync($"Week with number {weekNumber} already exists.");
-                return;
-            }
-
-            await FollowupAsync($"Week created.");
+            await FollowupAsync(Stringify(result));
         }
         [SlashCommand("delete", "Deletes a week")]
         public async Task DeleteAsync(int weekNumber)
@@ -90,15 +65,9 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            Week? week = await _weekService.DeleteAsync(season.Id, weekNumber);
+            BaseResult result = await _weekService.DeleteAsync(season.Id, weekNumber);
 
-            if (week is null)
-            {
-                await FollowupAsync($"Week with number {weekNumber} does not exists.");
-                return;
-            }
-
-            await FollowupAsync($"Week deleted.");
+            await FollowupAsync(Stringify(result));
         }
 
 
@@ -110,30 +79,9 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            var existingOpen = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(season.Id, WeekStatus.Open);
-            if (existingOpen is not null && existingOpen.WeekNumber != weekNumber)
-            {
-                await FollowupAsync($"Week {existingOpen.WeekNumber} is already Open. Close or update it before opening another week.");
-                return;
-            }
+            BaseResult result = await _weekService.OpenWeekAsync(season.Id, weekNumber);
 
-            Week? week = await _weekService.UpdateAsync(season.Id, weekNumber, null, null, null, WeekStatus.Open, 2);
-
-            if (week is null)
-            {
-                await FollowupAsync($"Week with number {weekNumber} does not exist.");
-                return;
-            }
-
-            // at this point we close team modifications for the season
-            string additionalMessage = "\nTeam modifications have already been disabled for the season.";
-            if (!season.DisableTeamModification)
-            {
-                await _seasonService.SetTeamModificationsAsync(season.Id, false);
-                additionalMessage = "\nTeam modifications have been automatically disabled for the season.";
-            }
-
-            await FollowupAsync(Stringify($"Week {weekNumber} set to Open.", additionalMessage));
+            await FollowupAsync(Stringify(result));
         }
         [SlashCommand("close-submissions", "3 -> Closes submissions for the week (Status: Open -> SubmissionsClosed)")]
         public async Task CloseSubmissionsAsync()
@@ -144,7 +92,7 @@ namespace WarLeague.Discord.Commands
 
             BaseResult result = await _weekService.CloseSubmissionsAsync(season.Id);
 
-            await FollowupAsync(result.Message);
+            await FollowupAsync(Stringify(result));
         }
 
         [SlashCommand("generate-pairings", "4 -> Generate pairings (Status: SubmissionsClosed -> InProgress)")]
@@ -177,7 +125,7 @@ namespace WarLeague.Discord.Commands
 
             BaseResult result = await _weekService.CloseAsync(season.Id);
 
-            await FollowupAsync(result.Message);
+            await FollowupAsync(Stringify(result));
         }
 
         [SlashCommand("ping-players", "Tags players who need to finish their matches for the current week")]
@@ -213,15 +161,13 @@ namespace WarLeague.Discord.Commands
             {
                 await DeferAsync(ephemeral: false);
 
-
-
                 // Parse provided dates (only when provided)
                 DateTime? startDate = null;
                 if (startDateStr is not null)
                 {
                     if (!DateTime.TryParse(startDateStr, out var parsedStart))
                     {
-                        await FollowupAsync("Invalid start date format. Use YYYY-MM-DD.", ephemeral: false);
+                        await FollowupAsync("Invalid start date format. Use YYYY-MM-DD.");
                         return;
                     }
                     startDate = parsedStart;
@@ -232,7 +178,7 @@ namespace WarLeague.Discord.Commands
                 {
                     if (!DateTime.TryParse(endDateStr, out var parsedEnd))
                     {
-                        await FollowupAsync("Invalid end date format. Use YYYY-MM-DD.", ephemeral: false);
+                        await FollowupAsync("Invalid end date format. Use YYYY-MM-DD.");
                         return;
                     }
                     endDate = parsedEnd;
@@ -243,38 +189,19 @@ namespace WarLeague.Discord.Commands
                 {
                     if (!DateTime.TryParse(subCloseDateStr, out var parsedSubClose))
                     {
-                        await FollowupAsync("Invalid submissions close date format. Use YYYY-MM-DD.", ephemeral: false);
+                        await FollowupAsync("Invalid submissions close date format. Use YYYY-MM-DD.");
                         return;
                     }
                     subCloseDate = parsedSubClose;
                 }
 
-                // Validate logical ordering
-                if (startDate > endDate)
-                {
-                    await FollowupAsync("Start date must be before end date.", ephemeral: false);
-                    return;
-                }
-
                 Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-                if (submissionsRequired > season.MinimumTeamMembers)
-                {
-                    await FollowupAsync($"Week cannot have more required submissions ({submissionsRequired}) than the season minimum team members requirement ({season.MinimumTeamMembers}).");
-                    return;
-                }
+                BaseResult result = await _weekService.UpdateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate, status, submissionsRequired);
 
-                Week? week = await _weekService.UpdateAsync(season.Id, weekNumber, startDate, endDate, subCloseDate, status, submissionsRequired);
-
-                if (week is null)
-                {
-                    await FollowupAsync($"Week with number {weekNumber} does not exist.");
-                    return;
-                }
-
-                await FollowupAsync($"Week {weekNumber} updated.", ephemeral: false);
+                await FollowupAsync(Stringify(result));
             }
-            catch (DbUpdateException ex)
+            catch (DbUpdateException)
             {
                 await FollowupAsync($"No but seriously, you are not allowed to put two different weeks of a single season to same status, " +
                     $"unless the status is {WeekStatus.Completed} or {WeekStatus.NotOpenYet}. Use /peep overview to get some help.");
@@ -294,8 +221,8 @@ namespace WarLeague.Discord.Commands
 
             EmbedBuilder NewEmbed(int page) => new EmbedBuilder()
                 .WithTitle(page == 1
-                    ? $"Week {week.WeekNumber} Pairings • Season {season.SeasonNumber}"
-                    : $"Week {week.WeekNumber} Pairings • Season {season.SeasonNumber} (page {page})")
+                    ? $"Week {week.WeekNumber} Pairings ï¿½ Season {season.SeasonNumber}"
+                    : $"Week {week.WeekNumber} Pairings ï¿½ Season {season.SeasonNumber} (page {page})")
                 .WithColor(new Color(88, 101, 242))
                 .WithDescription($"Generated {totalMatchesCreated} matches. Pairings are random among deck submitters.");
 
@@ -353,7 +280,7 @@ namespace WarLeague.Discord.Commands
         {
             if (string.IsNullOrEmpty(s)) return "_<empty>_";
             if (s.Length <= maxChars) return s;
-            return s[..Math.Max(0, maxChars - 4)] + " …";
+            return s[..Math.Max(0, maxChars - 4)] + " ï¿½";
         }
 
         private async Task SendEmbedsInBatchesAsync(IReadOnlyList<Embed> embeds)

@@ -4,6 +4,7 @@ using WarLeague.Core.Data.Entities;
 using WarLeague.Core.Domain.Model;
 using WarLeague.Core.Domain.Services;
 using WarLeague.Discord.Constants;
+using WarLeague.Discord.Helpers;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 
@@ -34,19 +35,12 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
     {
         await DeferAsync(ephemeral: false);
 
-        if (!_helperService.IsValidReplayUrl(replayUrl))
-        {
-            await FollowupAsync("Please provide a valid HTTP/HTTPS replay URL.");
-            return;
-        }
-
-        // Ensure caller exists as Player in the system.
         Player callerPlayer = await _playerService.EnsurePlayerExistsAsync(Context.User);
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
         BaseResult result = await _matchService.ReportLossAsync(season.Id, callerPlayer.Id, replayUrl);
 
-        await FollowupAsync(result.Message);
+        await FollowupAsync(ResultHelper.Stringify(result));
     }
 
     [SlashCommand("undo", "Undo a previously reported match result between two players")]
@@ -57,14 +51,13 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
     {
         await DeferAsync(ephemeral: false);
 
-        // Ensure players exist as Player in the system.
         Player p1 = await _playerService.EnsurePlayerExistsAsync(player1);
         Player p2 = await _playerService.EnsurePlayerExistsAsync(player2);
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
         BaseResult result = await _matchService.UndoResultAsync(season.Id, p1.Id, p2.Id);
 
-        await FollowupAsync(result.Message);
+        await FollowupAsync(ResultHelper.Stringify(result));
     }
 
     [SlashCommand("no-show", "Mark a match as no show")]
@@ -75,14 +68,13 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
     {
         await DeferAsync(ephemeral: false);
 
-        // Ensure players exist as Player in the system.
         Player p1 = await _playerService.EnsurePlayerExistsAsync(playerWinner);
         Player p2 = await _playerService.EnsurePlayerExistsAsync(playerNoShow);
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
         BaseResult result = await _matchService.NoShowAsync(season.Id, p1.Id, p2.Id);
 
-        await FollowupAsync(result.Message);
+        await FollowupAsync(ResultHelper.Stringify(result));
     }
 
     [SlashCommand("result", "Admin: Report a result for a scheduled match between two players")]
@@ -94,28 +86,13 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
     {
         await DeferAsync(ephemeral: false);
 
-        // Validate replay URL
-        if (!_helperService.IsValidReplayUrl(replayUrl))
-        {
-            await FollowupAsync("Please provide a valid HTTP/HTTPS replay URL.");
-            return;
-        }
-
-        // Resolve season
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-
-        // Ensure players exist
         Player w = await _playerService.EnsurePlayerExistsAsync(winner);
         Player l = await _playerService.EnsurePlayerExistsAsync(loser);
 
-        if (w.Id == l.Id)
-        {
-            await FollowupAsync("Winner and loser must be different players.");
-            return;
-        }
-
         BaseResult result = await _matchService.ReportResultAsync(season.Id, w.Id, l.Id, replayUrl);
-        await FollowupAsync(result.Message);
+
+        await FollowupAsync(ResultHelper.Stringify(result));
     }
 }
 

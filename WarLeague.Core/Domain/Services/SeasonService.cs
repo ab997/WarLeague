@@ -1,6 +1,7 @@
 ﻿
 using Microsoft.SqlServer.Server;
 using WarLeague.Core.Data.Entities;
+using WarLeague.Core.Domain.Model;
 using WarLeague.Core.Repositories;
 
 namespace WarLeague.Core.Domain.Services
@@ -15,20 +16,14 @@ namespace WarLeague.Core.Domain.Services
             _formatRepository = formatRepository;
         }
 
-        /// <summary>
-        /// creates a new season for the given format if season with seasonNumber  does not already exist
-        /// </summary>
-        /// <param name="format"></param>
-        /// <param name="seasonNumber"></param>
-        /// <returns></returns>
-        public async Task<Season?> CreateAsync(int formatId, int seasonNumber, int minTeamMembers)
+        public async Task<BaseResult> CreateAsync(int formatId, int seasonNumber, int minTeamMembers)
         {
             var format = await _formatRepository.GetByIdAsync(formatId);
             var existing = format.Seasons.SingleOrDefault(s => s.SeasonNumber == seasonNumber);
 
             if (existing is not null)
             {
-                return null;
+                return new BaseResult(false, $"Season with number {seasonNumber} already exists.");
             }
 
             var season = new Season
@@ -41,30 +36,30 @@ namespace WarLeague.Core.Domain.Services
 
             await _seasonRepository.AddAsync(season);
 
-            return season;
+            return new BaseResult(true, $"Season '{seasonNumber}' created (inactive).");
         }
 
-        public async Task<Season?> DeleteAsync(int formatId, int seasonNumber)
+        public async Task<BaseResult> DeleteAsync(int formatId, int seasonNumber)
         {
             var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(seasonNumber, formatId);
 
             if (season == null)
             {
-                return null;
+                return new BaseResult(false, $"Season with number {seasonNumber} not found.");
             }
 
             await _seasonRepository.DeleteAsync(season);
 
-            return season;
+            return new BaseResult(true, $"Season '{seasonNumber}' deleted.");
         }
 
-        public async Task<Season?> SetActiveAsync(int formatId, int seasonNumber)
+        public async Task<BaseResult> SetActiveAsync(int formatId, int seasonNumber)
         {
             var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(seasonNumber, formatId);
 
             if (season == null)
             {
-                return null;
+                return new BaseResult(false, $"Season with number {seasonNumber} not found.");
             }
             var allSeasons = await _seasonRepository.GetAllByFormatAsync(formatId);
 
@@ -76,20 +71,20 @@ namespace WarLeague.Core.Domain.Services
             season.Active = true;
             await _seasonRepository.UpdateAsync(season);
 
-            return season;
+            return new BaseResult(true, $"Season '{seasonNumber}' is now active.");
         }
 
-        public async Task<Season?> SetTeamModificationsAsync(int seasonId, bool enabled) 
+        public async Task<BaseResult> SetTeamModificationsAsync(int seasonId, bool enabled) 
         {
             var season =  await _seasonRepository.GetByIdOrDefault(seasonId);
             if (season == null)
             {
-                return null;
+                return new BaseResult(false, $"Failed to update team modifications for season.");
             }
             season.DisableTeamModification = !enabled;
 
             await _seasonRepository.UpdateAsync(season);
-            return season;
+            return new BaseResult(true, $"Captain team modifications have been {(enabled ? "enabled" : "disabled")} for season {season.SeasonNumber}.");
         }
     }
 }

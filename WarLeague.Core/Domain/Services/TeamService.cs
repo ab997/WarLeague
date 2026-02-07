@@ -26,7 +26,7 @@ namespace WarLeague.Core.Domain.Services
             _playerRepository = playerRepository;
         }
 
-        public async Task<BaseResult> CreateAsync(int seasonId, string teamName, int captainId, ulong? discordRoleId = null)
+        public async Task<BaseResult> CreateAsync(int seasonId, string teamName, int captainId, bool canBypassTeamModificationCheck = false, ulong? discordRoleId = null)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -35,6 +35,11 @@ namespace WarLeague.Core.Domain.Services
             if (season is null)
             {
                 return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
+            }
+
+            if (season.DisableTeamModification && !canBypassTeamModificationCheck)
+            {
+                return new BaseResult { Success = false, Message = "Team modifications are currently disabled for this season." };
             }
 
             Team? check = await _teamRepository.GetByNameAsync(teamName);
@@ -78,17 +83,17 @@ namespace WarLeague.Core.Domain.Services
             return new BaseResult { Success = true, Message = $"Team created successfully with {player.UserName} as captain." };
         }
 
-        public async Task<Team?> DeleteAsync(int seasonId, string teamName)
+        public async Task<BaseResult> DeleteAsync(int seasonId, string teamName)
         {
             Team? team = await _teamRepository.GetByNameAndSeasonAsync(teamName, seasonId);
             if (team == null)
             {
-                return null;
+                return new BaseResult(false, $"Team with name '{teamName}' not found.");
             }
 
             await _teamRepository.DeleteAsync(team);
 
-            return team;
+            return new BaseResult(true, $"Team '{teamName}' deleted.");
         }
         /// <summary>
         /// add a member to captain's team
@@ -97,8 +102,20 @@ namespace WarLeague.Core.Domain.Services
         /// <param name="teamName"></param>
         /// <param name="playerId"></param>
         /// <returns></returns>
-        public async Task<BaseResult> CaptainAddMemberAsync(int seasonId, int captainId, int playerId)
+        public async Task<BaseResult> CaptainAddMemberAsync(int seasonId, int captainId, int playerId, bool canBypassTeamModificationCheck = false)
         {
+            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
+            
+            if (season is null)
+            {
+                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
+            }
+
+            if (season.DisableTeamModification && !canBypassTeamModificationCheck)
+            {
+                return new BaseResult { Success = false, Message = "Team modifications are currently disabled for this season." };
+            }
+
             Team? team = await _teamRepository.GetByCaptainAndSeasonAsync(captainId, seasonId);
 
             if (team is null)
@@ -140,8 +157,20 @@ namespace WarLeague.Core.Domain.Services
             return new BaseResult { Success = true, Message = $"Added player to team." };
         }
 
-        public async Task<BaseResult> CaptainRemoveMemberAsync(int seasonId, int captainId, int playerId)
+        public async Task<BaseResult> CaptainRemoveMemberAsync(int seasonId, int captainId, int playerId, bool canBypassTeamModificationCheck = false)
         {
+            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
+            
+            if (season is null)
+            {
+                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
+            }
+
+            if (season.DisableTeamModification && !canBypassTeamModificationCheck)
+            {
+                return new BaseResult { Success = false, Message = "Team modifications are currently disabled for this season." };
+            }
+
             Team? team = await _teamRepository.GetByCaptainAndSeasonAsync(captainId, seasonId);
 
             if (team is null)

@@ -8,8 +8,10 @@ using WarLeague.Core.Domain.Model;
 using WarLeague.Core.Domain.Services;
 using WarLeague.Core.Repositories;
 using WarLeague.Discord.Constants;
+using WarLeague.Discord.Helpers;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
+using static WarLeague.Discord.Helpers.ResultHelper;
 
 namespace WarLeague.Discord.Commands;
 
@@ -95,7 +97,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
 
         BaseResult result = await _deckSubmissionService.SubmitAsync(season.Id, targetPlayer.Id, deckContent, seatNumber);
 
-        await FollowupAsync(result.Message);
+        await FollowupAsync(Stringify(result));
     }
 
     [SlashCommand("delete", "Delete a player's deck submission")]
@@ -117,28 +119,30 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
 
         BaseResult result = await _deckSubmissionService.DeleteSubmissionAsync(season.Id, targetPlayer.Id);
 
-        await FollowupAsync(result.Message);
+        await FollowupAsync(Stringify(result));
     }
 
     private async Task<string?> ValidateDeckSubmissionPermission(Season season, Player callerPlayer, Player targetPlayer)
     {
         bool isAdmin = _helperService.IsUserAdmin(Context);
 
+        // Admins can submit for anyone, let service handle business validation
+        if (isAdmin)
+        {
+            return null;
+        }
+
+        // Non-admins must be captains
         var callerCaptainTeam = await _teamRepository.GetByCaptainAndSeasonAsync(callerPlayer.Id, season.Id);
-        if (!isAdmin && callerCaptainTeam is null)
+        if (callerCaptainTeam is null)
         {
             return "Only Admins or team captains for the active season can submit or modify decks.";
         }
 
+        // Captains can only submit for players on their team
         var pst = await _playerSeasonTeamRepository.GetByPlayerAndSeasonAsync(targetPlayer.Id, season.Id);
-        if (pst is null)
-        {
-            return "Player is not on any team for the active season.";
-        }
-
-        int targetTeamId = pst.TeamId;
-
-        if (!isAdmin && targetTeamId != callerCaptainTeam!.Id)
+        
+        if (pst is null || pst.TeamId != callerCaptainTeam.Id)
         {
             return $"{targetPlayer.UserName} is not on your team for the active season.";
         }
