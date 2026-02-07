@@ -52,3 +52,4 @@
 - [ ] Discord roles are not unique by name -> we need to migrate from using "admin" and "captain" to integer IDs.
 - [ ] When it makes sense (such as for example when chosing between existing finite choices -> team names, players in team, etc) limit the suggestions in UI
 - [ ] database daily backup
+- [ ] Return-null-as-failure is a design smell. return result instead.

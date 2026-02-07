@@ -13,11 +13,8 @@ namespace WarLeague.Test
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly FormatService _formatService;
-        private readonly FormatRepository _formatRepository;
         private readonly SeasonService _seasonService;
-        private readonly SeasonRepository _seasonRepository;
         private readonly WeekService _weekService;
-        private readonly WeekRepository _weekRepository;
         private readonly TeamService _teamService;
 
         public Specifications(DatabaseFixtureSeeded fixture) : base(fixture)
@@ -25,11 +22,8 @@ namespace WarLeague.Test
             _serviceProvider = TestServiceProvider.CreateServiceProvider(Context);
             
             _formatService = _serviceProvider.GetRequiredService<FormatService>();
-            _formatRepository = _serviceProvider.GetRequiredService<FormatRepository>();
             _seasonService = _serviceProvider.GetRequiredService<SeasonService>();
-            _seasonRepository = _serviceProvider.GetRequiredService<SeasonRepository>();
             _weekService = _serviceProvider.GetRequiredService<WeekService>();
-            _weekRepository = _serviceProvider.GetRequiredService<WeekRepository>();
             _teamService = _serviceProvider.GetRequiredService<TeamService>();
         }
 
@@ -40,7 +34,7 @@ namespace WarLeague.Test
 
             await _formatService.CreateFormatAsync(formatName);
 
-            var createdFormat = await _formatRepository.GetByNameAsync(formatName);
+            var createdFormat = await _formatService.GetFormatAsync(formatName);
             createdFormat.ShouldNotBeNull();
         }
 
@@ -69,7 +63,7 @@ namespace WarLeague.Test
 
             await _formatService.DeleteFormatAsync("GOAT");
 
-            var deletedFormat = await _formatRepository.GetByNameAsync("GOAT");
+            var deletedFormat = await _formatService.GetFormatAsync("GOAT");
             deletedFormat.ShouldBeNull();
         }
 
