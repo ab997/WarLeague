@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using System.Numerics;
+using WarLeague.Core.Model;
+using WarLeague.Core.Repositories;
 using WarLeague.Data;
 using WarLeague.Data.Entities;
 using WarLeague.Data.Enums;
-using WarLeague.Core.Model;
-using WarLeague.Core.Repositories;
 
 namespace WarLeague.Core.Services;
 
@@ -101,7 +102,7 @@ public class SubstitutionService
         {
             return new BaseResult(
                 false,
-                $"Substitution successful in matches, but no deck submission found for {playerOutPst.Player.UserName} for week {currentWeek.WeekNumber} to update.");
+                $"Cannot substitute player - no deck submission found for {playerOutPst.Player.UserName} week {currentWeek.WeekNumber}. Substitution requires existing deck submission.");
         }
 
         deckSubmission.PlayerId = playerInId;

@@ -53,8 +53,8 @@
 - [ ] Playoff bracket creation and advancement logic
 - [ ] Database constraints:
   - [ ] Match: Check constraint - exactly one of WeekId or PlayoffMatchupId must be set (not both null, not both set)
-  - [ ] Match: Check constraint - Player1Id != Player2Id (cannot play yourself)
-  - [ ] DeckSubmission: Unique index on (PlayerId, WeekId) - player can only submit once per week
+  - [x] Match: Check constraint - Player1Id != Player2Id (cannot play yourself)
+  - [x] DeckSubmission: Unique index on (PlayerId, WeekId) - player can only submit once per week
   - [ ] Conference: Unique index on (SeasonId, Name)
   - [ ] PlayoffMatchup: Unique index on (SeasonId, Round, BracketPosition)
   - [ ] TeamWeekBye: Unique index on (TeamId, WeekId) if implemented
@@ -62,6 +62,7 @@
 ## TECHNICAL
 
 - [ ] Add logging
+- [ ] Add audit columns
 - [ ] Add deck validation:
   - [ ] Format-specific
   - [ ] Banlist
@@ -69,4 +70,4 @@
 - [ ] Discord roles are not unique by name -> we need to migrate from using "admin" and "captain" to integer IDs.
 - [ ] When it makes sense (such as for example when chosing between existing finite choices -> team names, players in team, etc) limit the suggestions in UI
 - [ ] database daily backup
-- [ ] Return-null-as-failure is a design smell. return result instead.
+- [x] Return-null-as-failure is a design smell. return result instead.
