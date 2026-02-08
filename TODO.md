@@ -36,9 +36,9 @@
   - [x] Mid-week admin can substitute a player
   - [x] Replacement must be from the same team
   - [x] Replacement must not already be submitted for that week
-- [ ] No pinging for peep commands
-- [ ] Peep all results:
-  - [ ] Remove attachments
+- [x] No pinging for peep commands
+- [x] Peep all results:
+  - [x] Remove attachments
 
 ## BYE WEEKS & PLAYOFFS & CONFERENCES
 
