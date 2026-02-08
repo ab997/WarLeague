@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -55,20 +56,46 @@ namespace WarLeague.Discord.HostedService
 
         private async Task OnInteractionAsync(SocketInteraction interaction)
         {
-            try
+            var commandOptions = (interaction as SocketSlashCommand).Data.Options
+              .Select(o => new
+              {
+                  Name = o.Name,
+                  Type = o.Type.ToString(),
+                  Value = o.Value
+              });
+            using (LogContext.PushProperty("ChannelName", interaction.Channel.Name))
+            using (LogContext.PushProperty("InteractionType", interaction.Type.ToString()))
+            using (LogContext.PushProperty("CommandName", (interaction as SocketSlashCommand).CommandName))
+            using (LogContext.PushProperty("Username", interaction.User.Username))
+            using (LogContext.PushProperty("CommandOptions", commandOptions))
             {
-                var context = new SocketInteractionContext(_discord, interaction);
-                var result = await _interactions.ExecuteCommandAsync(context, _services);
-
-                if (!result.IsSuccess)
-                    await context.Channel.SendMessageAsync(result.ToString());
-            }
-            catch
-            {
-                if (interaction.Type == InteractionType.ApplicationCommand)
+                try
                 {
-                    await interaction.GetOriginalResponseAsync()
-                        .ContinueWith(msg => msg.Result.DeleteAsync());
+                    var context = new SocketInteractionContext(_discord, interaction);
+
+                    _logger.LogInformation($"Interaction received: Username: {interaction.User.Username} ChannelName: {interaction.Channel.Name} " +
+                        $"CommandName: {(interaction as SocketSlashCommand).CommandName}");
+
+                    var result = await _interactions.ExecuteCommandAsync(context, _services);
+
+                    if (!result.IsSuccess)
+                    {
+                        _logger.LogWarning(
+                            "Interaction execution failed: {ErrorReason}",
+                            result.ErrorReason);
+
+                        await context.Channel.SendMessageAsync(result.ToString());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Unhandled exception during interaction execution");
+
+                    if (interaction.Type == InteractionType.ApplicationCommand)
+                    {
+                        await interaction.GetOriginalResponseAsync()
+                            .ContinueWith(msg => msg.Result.DeleteAsync());
+                    }
                 }
             }
         }

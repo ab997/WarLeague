@@ -10,6 +10,7 @@ using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
 using WarLeague.Discord.HostedService;
 using WarLeague.Discord.Services;
+using Serilog;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -20,6 +21,15 @@ builder.Configuration
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
     ;
+
+// serilog
+builder.Services.AddSerilog((services, loggerConfig) =>
+{
+    loggerConfig
+        .ReadFrom.Configuration(builder.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext();
+});
 
 // Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
