@@ -1,3 +1,7 @@
-- If there is an odd number of teams, one team shall receive a "Bye" week.
-- "Bye" weeks are modeled as such: matches will still be created and added to dbo.Match table with MatchResultType.Bye.
-- Since match entity requires 2 players (PlayerId1 and PlayerId2 are NOT NULL), the same player shall be placed in both columns.
+- Round robin used during regular season (before playoffs).
+- If odd number of teams, one team receives "Bye" week.
+- Bye weeks do NOT create Match records - teams paired with BYE are skipped during pairing generation.
+- Team pairings are implicit - reconstructed from Match records via PlayerSeasonTeams joins.
+- Application validation ensures matches always exist when teams are paired (no team pairings without matches).
+- Optional: TeamWeekBye table (TeamId, WeekId) for explicit bye tracking to avoid complex NOT EXISTS queries.
+- With conferences: pairing filters teams by ConferenceId (teams only play within conference).

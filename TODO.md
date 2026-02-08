@@ -36,20 +36,40 @@
   - [x] Mid-week admin can substitute a player
   - [x] Replacement must be from the same team
   - [x] Replacement must not already be submitted for that week
-- [ ] Write down bye week somehow in the database
-- [ ] No pinging for peep commands
-- [ ] Peep all results:
-  - [ ] Remove attachments
+- [x] No pinging for peep commands
+- [x] Peep all results:
+  - [x] Remove attachments
+
+## BYE WEEKS & PLAYOFFS & CONFERENCES
+
+- [ ] Add TeamWeekBye table (TeamId, WeekId) for explicit bye tracking
+- [ ] Add Conference table (Id, SeasonId, Name)
+- [ ] Add ConferenceId (nullable) to Team table
+- [ ] Add PlayoffMatchup table (SeasonId, Round, BracketPosition, Team1Id, Team2Id, WinnerTeamId, AdvancesToMatchupId, Status)
+- [ ] Update Match table: WeekId nullable, add PlayoffMatchupId nullable
+- [ ] Update RoundRobin pairing to filter by conference when applicable
+- [ ] Implement SingleEliminationPairing strategy for playoffs
+- [ ] Update MatchService.GeneratePairingsAsync to handle conference-filtered pairings
+- [ ] Playoff bracket creation and advancement logic
+- [ ] Database constraints:
+  - [ ] Match: Check constraint - exactly one of WeekId or PlayoffMatchupId must be set (not both null, not both set)
+  - [x] Match: Check constraint - Player1Id != Player2Id (cannot play yourself)
+  - [x] DeckSubmission: Unique index on (PlayerId, WeekId) - player can only submit once per week
+  - [ ] Conference: Unique index on (SeasonId, Name)
+  - [ ] PlayoffMatchup: Unique index on (SeasonId, Round, BracketPosition)
+  - [ ] TeamWeekBye: Unique index on (TeamId, WeekId) if implemented
 
 ## TECHNICAL
 
 - [ ] Add logging
+- [ ] Add audit columns
 - [ ] Add deck validation:
   - [ ] Format-specific
   - [ ] Banlist
   - [ ] Card pool
-- [ ] Prepare for conferences (e.g. teams grouped by conference)
 - [ ] Discord roles are not unique by name -> we need to migrate from using "admin" and "captain" to integer IDs.
 - [ ] When it makes sense (such as for example when chosing between existing finite choices -> team names, players in team, etc) limit the suggestions in UI
 - [ ] database daily backup
-- [ ] Return-null-as-failure is a design smell. return result instead.
+- [x] Return-null-as-failure is a design smell. return result instead.
+- [x] each week transition should check that IN status and OUT status are ok
+- [x] a way to add teams in tests so that we can test all week transition (close submissions)

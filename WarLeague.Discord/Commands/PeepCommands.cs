@@ -434,7 +434,7 @@ namespace WarLeague.Discord.Commands
                 sbAll.AppendLine($"[Admin] SeasonId: {season.Id}");
             }
 
-            await FollowupAsync(sbAll.ToString().TrimEnd());
+            await FollowupAsync(sbAll.ToString().TrimEnd(), flags: MessageFlags.SuppressEmbeds);
         }
 
         private async Task<string> BuildWeekResultsAsync(int weekId, int weekNumber)

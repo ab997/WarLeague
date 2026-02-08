@@ -79,7 +79,7 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            BaseResult result = await _weekService.OpenWeekAsync(season.Id, weekNumber);
+            BaseResult result = await _weekService.TransitionToOpenWeekAsync(season.Id, weekNumber);
 
             await FollowupAsync(Stringify(result));
         }
@@ -90,7 +90,7 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            BaseResult result = await _weekService.CloseSubmissionsAsync(season.Id);
+            BaseResult result = await _weekService.TransitionToCloseSubmissionsAsync(season.Id);
 
             await FollowupAsync(Stringify(result));
         }
@@ -102,7 +102,7 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            GeneratePairingsResult result = await _matchService.GeneratePairingsAsync(season.Id);
+            GeneratePairingsResult result = await _weekService.TransitionToInProgressAsync(season.Id);
 
             if (!result.Success || result.Week is null || result.WeeklyMatchups is null || result.CreatedMatches is null)
             {
@@ -123,7 +123,7 @@ namespace WarLeague.Discord.Commands
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-            BaseResult result = await _weekService.CloseAsync(season.Id);
+            BaseResult result = await _weekService.TransitionToCompletedAsync(season.Id);
 
             await FollowupAsync(Stringify(result));
         }

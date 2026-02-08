@@ -39,7 +39,8 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            await CreateFormatCategoryAndChannelAsync(formatName, Context.Guild);
+            string message=await CreateFormatCategoryAndChannelAsync(formatName, Context.Guild);
+            await FollowupAsync(message);
         }
 
         [SlashCommand("single-format-mode", "Enable single format mode for entire server.")]
@@ -120,7 +121,7 @@ namespace WarLeague.Discord.Commands
             await FollowupAsync(ResultHelper.Stringify(result));
         }
 
-        private async Task CreateFormatCategoryAndChannelAsync(string formatName, SocketGuild guild)
+        private async Task<string> CreateFormatCategoryAndChannelAsync(string formatName, SocketGuild guild)
         {
             // Normalize channel name if not provided
             string channelName = formatName.ToLowerInvariant().Replace(' ', '-');
@@ -128,8 +129,7 @@ namespace WarLeague.Discord.Commands
             // Optionally verify bot permissions
             if (!guild.CurrentUser.GuildPermissions.ManageChannels)
             {
-                await FollowupAsync("I don't have permission to manage channels. Grant the bot Manage Channels permission.");
-                return;
+                return "I don't have permission to manage channels. Grant the bot Manage Channels permission.";
             }
             // Find or create category
             var category = guild.CategoryChannels
@@ -149,8 +149,7 @@ namespace WarLeague.Discord.Commands
 
             if (existing != null)
             {
-                await FollowupAsync($"Channel '{existing.Mention}' already exists under category '{category.Name}'.");
-                return;
+                return $"Channel '{existing.Mention}' already exists under category '{category.Name}'.";
             }
 
             // Create the text channel and assign it to the category
@@ -160,8 +159,7 @@ namespace WarLeague.Discord.Commands
                 props.CategoryId = category.Id;
             });
 
-
-            await FollowupAsync($"Format {formatName} created.");
+            return $"Format {formatName} created.";
         }
     }
 }

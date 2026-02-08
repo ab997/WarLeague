@@ -51,6 +51,13 @@ public class WarLeagueDbContext : DbContext
             .HasForeignKey(m => m.WinnerId);
 
         //--------------------------------------
+        // check constraints
+        //--------------------------------------
+        // Match: prevent self-play
+        modelBuilder.Entity<Match>()
+            .ToTable(t => t.HasCheckConstraint("CK_Match_NoSelfPlay", "[Player1Id] <> [Player2Id]"));
+
+        //--------------------------------------
         // enums as strings
         //--------------------------------------
         modelBuilder.Entity<Week>()
@@ -107,6 +114,10 @@ public class WarLeagueDbContext : DbContext
         // PlayerSeasonTeam: unique per (PlayerId, SeasonId) -> a player can only be in one team per season
         modelBuilder.Entity<PlayerSeasonTeam>()
             .HasIndex(x => new { x.PlayerId, x.SeasonId })
+            .IsUnique();
+
+        modelBuilder.Entity<DeckSubmission>()
+            .HasIndex(x => new { x.PlayerId, x.WeekId })
             .IsUnique();
 
         //--------------------------------------
