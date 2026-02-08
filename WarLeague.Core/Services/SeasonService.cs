@@ -53,13 +53,13 @@ namespace WarLeague.Core.Services
             return new BaseResult(true, $"Season '{seasonNumber}' deleted.");
         }
 
-        public async Task<BaseResult> SetActiveAsync(int formatId, int seasonNumber)
+        public async Task<SeasonResult> SetActiveAsync(int formatId, int seasonNumber)
         {
             var season = await _seasonRepository.GetBySeasonNumberAndFormatAsync(seasonNumber, formatId);
 
             if (season == null)
             {
-                return new BaseResult(false, $"Season with number {seasonNumber} not found.");
+                return new SeasonResult { Success = false,  Message = $"Season with number {seasonNumber} not found." };
             }
             var allSeasons = await _seasonRepository.GetAllByFormatAsync(formatId);
 
@@ -71,20 +71,20 @@ namespace WarLeague.Core.Services
             season.Active = true;
             await _seasonRepository.UpdateAsync(season);
 
-            return new BaseResult(true, $"Season '{seasonNumber}' is now active.");
+            return new SeasonResult { Success = true, Message = $"Season '{seasonNumber}' is now active.", Season = season };
         }
 
-        public async Task<BaseResult> SetTeamModificationsAsync(int seasonId, bool enabled) 
+        public async Task<SeasonResult> SetTeamModificationsAsync(int seasonId, bool enabled) 
         {
             var season =  await _seasonRepository.GetByIdOrDefault(seasonId);
             if (season == null)
             {
-                return new BaseResult(false, $"Failed to update team modifications for season.");
+                return new SeasonResult { Success = false, Message = $"Failed to update team modifications for season." };
             }
             season.DisableTeamModification = !enabled;
 
             await _seasonRepository.UpdateAsync(season);
-            return new BaseResult(true, $"Captain team modifications have been {(enabled ? "enabled" : "disabled")} for season {season.SeasonNumber}.");
+            return new SeasonResult{ Success = true, Message = $"Captain team modifications have been {(enabled ? "enabled" : "disabled")} for season {season.SeasonNumber}.", Season = season };
         }
     }
 }

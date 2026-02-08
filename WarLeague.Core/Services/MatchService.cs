@@ -24,81 +24,7 @@ namespace WarLeague.Core.Services
             _context = context;
         }
 
-        public async Task<GeneratePairingsResult> GeneratePairingsAsync(int seasonId)
-        {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-
-            // Find the single week in SubmissionsClosed state for this season.
-            Week? week;
-            try
-            {
-                week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.SubmissionsClosed);
-            }
-            catch (InvalidOperationException)
-            {
-                return new GeneratePairingsResult { Success = false, Message = "Multiple weeks with status 'SubmissionsClosed' exist for the active season." };
-            }
-
-            if (week is null)
-            {
-                return new GeneratePairingsResult { Success = false, Message = "There is no week with status 'SubmissionsClosed' for the active season." };
-            }
-
-            var teams = await _teamRepository.GetBySeasonAsync(seasonId);
-            if (teams.Count < 2)
-            {
-                return new GeneratePairingsResult { Success = false, Message = "Need at least 2 teams to generate pairings." };
-            }
-
-            // Resolve the team-vs-team matchups for this week (deterministic round-robin based on WeekNumber).
-            var teamMatchups = RoundRobin.GetRoundRobinTeamMatchupsForWeek(teams, week.WeekNumber);
-            if (teamMatchups.Count == 0)
-            {
-                return new GeneratePairingsResult { Success = false, Message = "No team matchups available for this week (did everyone get a bye?)." };
-            }
-
-            // Build quick lookup: player -> team for this season.
-            var memberships = await _playerSeasonTeamRepository.GetBySeasonAsync(seasonId);
-            var membershipByPlayerId = memberships
-                .GroupBy(m => m.PlayerId)
-                .ToDictionary(g => g.Key, g => g.First());
-
-            // Group deck submissions by team, preserving SeatNumber.
-            var submissionsByTeamId = week.DeckSubmissions
-                .Where(ds => membershipByPlayerId.ContainsKey(ds.PlayerId))
-                .GroupBy(ds => membershipByPlayerId[ds.PlayerId].TeamId)
-                .ToDictionary(g => g.Key, g => g.ToList());
-
-            // Safety: don't generate duplicates if matches already exist for this week.
-            var existingMatches = await _matchRepository.GetByWeekIdAsync(week.Id);
-            if (existingMatches.Count > 0)
-            {
-                return new GeneratePairingsResult { Success = false, Message = $"Matches already exist for week {week.WeekNumber}. Refusing to generate new pairings to avoid duplicates." };
-            }
-
-            var (createdMatches, matchupOutputs) = RoundRobin.Run(week, teamMatchups, submissionsByTeamId);
-
-            if (createdMatches.Count == 0)
-            {
-                return new GeneratePairingsResult { Success = false, Message = "No pairings generated. Likely missing deck submissions for the teams playing this week." };
-            }
-
-            await _matchRepository.AddRangeAsync(createdMatches);
-
-            // Move week to InProgress now that pairings are generated.
-            week.Status = WeekStatus.InProgress;
-            await _weekRepository.UpdateAsync(week);
-
-            await transaction.CommitAsync();
-
-            return new GeneratePairingsResult(
-                true,
-                "Pairings generated successfully.",
-                week,
-                createdMatches,
-                matchupOutputs
-                );
-        }
+        
 
         
 
@@ -318,6 +244,52 @@ namespace WarLeague.Core.Services
             await _matchRepository.UpdateAsync(match);
 
             return new BaseResult { Success = true, Message = "Match result reported successfully." };
+        }
+
+        public async Task<GeneratePairingsResult> GeneratePairingsAsync(int seasonId, Week week, List<Team> teams)
+        {
+            // Resolve the team-vs-team matchups for this week (deterministic round-robin based on WeekNumber).
+            var teamMatchups = RoundRobin.GetRoundRobinTeamMatchupsForWeek(teams, week.WeekNumber);
+            if (teamMatchups.Count == 0)
+            {
+                return new GeneratePairingsResult { Success = false, Message = "No team matchups available for this week (did everyone get a bye?)." };
+            }
+
+            // Build quick lookup: player -> team for this season.
+            var memberships = await _playerSeasonTeamRepository.GetBySeasonAsync(seasonId);
+            var membershipByPlayerId = memberships
+                .GroupBy(m => m.PlayerId)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            // Group deck submissions by team, preserving SeatNumber.
+            var submissionsByTeamId = week.DeckSubmissions
+                .Where(ds => membershipByPlayerId.ContainsKey(ds.PlayerId))
+                .GroupBy(ds => membershipByPlayerId[ds.PlayerId].TeamId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // Safety: don't generate duplicates if matches already exist for this week.
+            var existingMatches = await _matchRepository.GetByWeekIdAsync(week.Id);
+            if (existingMatches.Count > 0)
+            {
+                return new GeneratePairingsResult { Success = false, Message = $"Matches already exist for week {week.WeekNumber}. Refusing to generate new pairings to avoid duplicates." };
+            }
+
+            var (createdMatches, matchupOutputs) = RoundRobin.Run(week, teamMatchups, submissionsByTeamId);
+
+            if (createdMatches.Count == 0)
+            {
+                return new GeneratePairingsResult { Success = false, Message = "No pairings generated. Likely missing deck submissions for the teams playing this week." };
+            }
+
+            await _matchRepository.AddRangeAsync(createdMatches);
+            return new GeneratePairingsResult
+            {
+                Success = true,
+                Message = "Pairings generated successfully.",
+                Week = week,
+                CreatedMatches = createdMatches,
+                WeeklyMatchups = matchupOutputs
+            };
         }
 
         private static bool IsValidReplayUrl(string? replayUrl)

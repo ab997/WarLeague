@@ -1,10 +1,13 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Text;
-using WarLeague.Data.Entities;
-using WarLeague.Data.Enums;
+using WarLeague.Core.Helpers;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
+using WarLeague.Data;
+using WarLeague.Data.Entities;
+using WarLeague.Data.Enums;
 
 namespace WarLeague.Core.Services
 {
@@ -15,13 +18,17 @@ namespace WarLeague.Core.Services
         private readonly MatchRepository _matchRepository;
         private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
         private readonly SeasonRepository _seasonRepository;
-        public WeekService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, MatchRepository matchRepository, SeasonRepository seasonRepository)
+        private readonly MatchService _matchService;
+        private readonly WarLeagueDbContext _context;
+        public WeekService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, MatchRepository matchRepository, SeasonRepository seasonRepository, WarLeagueDbContext context, MatchService matchService)
         {
             _weekRepository = weekRepository;
             _teamRepository = teamRepository;
             _playerSeasonTeamRepository = playerSeasonTeamRepository;
             _matchRepository = matchRepository;
             _seasonRepository = seasonRepository;
+            _context = context;
+            _matchService = matchService;
         }
 
         public async Task<BaseResult> CreateAsync(int seasonId, int weekNumber, DateTime startDate, DateTime endDate, DateTime? subCloseDate, int submissionsRequired)
@@ -67,13 +74,30 @@ namespace WarLeague.Core.Services
             return new BaseResult(true, "Week created.");
         }
 
-        public async Task<BaseResult> OpenWeekAsync(int seasonId, int weekNumber)
+        /// <summary>
+        /// week number is needed because there can be many NotOpenYet weeks
+        /// </summary>
+        /// <param name="seasonId"></param>
+        /// <param name="weekNumber"></param>
+        public async Task<BaseResult> TransitionToOpenWeekAsync(int seasonId, int weekNumber)
         {
             // Check if another week is already open
             Week? existingOpenWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.Open);
             if (existingOpenWeek is not null && existingOpenWeek.WeekNumber != weekNumber)
             {
                 return new BaseResult(false, $"Week {existingOpenWeek.WeekNumber} is already Open. Close or update it before opening another week.");
+            }
+
+            // check if this week is in status NotOpenYet, if not return error
+            Week? weekToOpen = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, seasonId);
+            if (weekToOpen is null)
+            {
+                return new BaseResult(false, $"Week with number {weekNumber} does not exist.");
+            }
+
+            if (weekToOpen.Status != WeekStatus.NotOpenYet)
+            {
+                return new BaseResult(false, $"Week with number {weekNumber} is not in a valid state to be opened. Expected status: NotOpenYet, Actual status: {weekToOpen.Status}");
             }
 
             // Get the season to check team modification status
@@ -160,7 +184,7 @@ namespace WarLeague.Core.Services
 
             return new BaseResult(true, $"Week {weekNumber} updated.");
         }
-        public async Task<BaseResult> CloseSubmissionsAsync(int seasonId)
+        public async Task<BaseResult> TransitionToCloseSubmissionsAsync(int seasonId)
         {
             Week? openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.Open);
 
@@ -221,7 +245,7 @@ namespace WarLeague.Core.Services
             return invalidTeams;
         }
 
-        public async Task<BaseResult> CloseAsync(int seasonId)
+        public async Task<BaseResult> TransitionToCompletedAsync(int seasonId)
         {
             Week? activeWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
 
@@ -250,6 +274,41 @@ namespace WarLeague.Core.Services
 
             return new BaseResult { Success = true, Message = "Week closed successfully." };
         }
+
+        public async Task<GeneratePairingsResult> TransitionToInProgressAsync(int seasonId)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            // Find the single week in SubmissionsClosed state for this season.
+            Week? week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.SubmissionsClosed);
+
+            if (week is null)
+            {
+                return new GeneratePairingsResult { Success = false, Message = "There is no week with status 'SubmissionsClosed' for the active season." };
+            }
+
+            var teams = await _teamRepository.GetBySeasonAsync(seasonId);
+            if (teams.Count < 2)
+            {
+                return new GeneratePairingsResult { Success = false, Message = "Need at least 2 teams to generate pairings." };
+            }
+
+            GeneratePairingsResult result = await _matchService.GeneratePairingsAsync(seasonId, week, teams);
+            if (!result.Success)
+            {
+                return result;
+            }
+
+            // Move week to InProgress now that pairings are generated.
+            week.Status = WeekStatus.InProgress;
+            await _weekRepository.UpdateAsync(week);
+
+            await transaction.CommitAsync();
+
+            return result;
+        }
+
+        
 
         public async Task<List<string>> GetPendingMatchPairsAsync(int seasonId)
         {
