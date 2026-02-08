@@ -1,0 +1,7 @@
+- Playoffs are bracket-driven, not week-driven (asynchronous advancement).
+- PlayoffMatchup represents a bracket node (QF, SF, Final positions).
+- Match.WeekId is NULL for playoff matches, Match.PlayoffMatchupId set instead.
+- PlayoffMatchup contains: Round, BracketPosition, Team1Id/Team2Id (nullable until determined), WinnerTeamId, AdvancesToMatchupId.
+- When PlayoffMatchup completes, winner advances to next PlayoffMatchup (populated via AdvancesToMatchupId).
+- Player matches (Match table) still work identically - same pairing and reporting logic.
+- Deck submissions tied to PlayoffMatchup instead of Week during playoffs.
