@@ -193,6 +193,13 @@ namespace WarLeague.Core.Services
                 return new BaseResult { Success = false, Message = "No open week found to start." };
             }
 
+            Week? submissionClosedWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.SubmissionsClosed);
+
+            if (submissionClosedWeek is not null)
+            {
+                return new BaseResult { Success = false, Message = "There is already a week in SubmissionClosed status" }; 
+            }
+
             var teams = await _teamRepository.GetBySeasonAsync(seasonId);
 
             if (teams.Count < 2)
@@ -285,6 +292,12 @@ namespace WarLeague.Core.Services
             if (week is null)
             {
                 return new GeneratePairingsResult { Success = false, Message = "There is no week with status 'SubmissionsClosed' for the active season." };
+            }
+
+            Week? inprogress = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
+            if (inprogress is not null)
+            {
+                return new GeneratePairingsResult { Success = false, Message = $"Week {inprogress.WeekNumber} is already InProgress." };
             }
 
             var teams = await _teamRepository.GetBySeasonAsync(seasonId);

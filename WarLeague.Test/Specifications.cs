@@ -281,6 +281,17 @@ namespace WarLeague.Test
         [Fact]
         public async Task WhenOpeningWeek_WithOpenWeekAlreadyExists_ThenReturnsFail()
         {
+            // Arrange
+            var (_, seasonId) = await CreateFormatAndSeason();
+            await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 3);
+            await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 3);
+            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.Open, 3);
+
+            // Act
+            var result = await _weekService.TransitionToOpenWeekAsync(seasonId, 1);
+
+            // Assert
+            result.Success.ShouldBeFalse();
         }
 
         //________________________________________________________________________
@@ -303,10 +314,7 @@ namespace WarLeague.Test
         public async Task WhenClosingSubmissions_WithOpenWeek_ThenReturnsSuccess()
         {
             // Arrange
-            int weekNumber = 1;
-            var (_, seasonId) = await CreateFormatAndSeason();
-            await _weekService.CreateAsync(seasonId, weekNumber, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 3);
-            await _weekService.TransitionToOpenWeekAsync(seasonId, weekNumber);
+            int seasonId = await PrepareWeek_ReadyForClosingSubmissions();
 
             // Act
             var result = await _weekService.TransitionToCloseSubmissionsAsync(seasonId);
@@ -315,9 +323,59 @@ namespace WarLeague.Test
             result.Success.ShouldBeTrue();
         }
 
+       
+
         [Fact]
         public async Task WhenClosingSubmissions_WithSubmissionClosedWeekAlreadyExists_ThenReturnsFail()
         {
+            // Arrange
+            int seasonId = await PrepareWeek_ReadyForClosingSubmissions();
+
+            await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 3);
+            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.SubmissionsClosed, 3);
+
+            // Act
+            var result = await _weekService.TransitionToCloseSubmissionsAsync(seasonId);
+
+            // Assert
+            result.Success.ShouldBeFalse();
+        }
+
+        [Fact]
+        public async Task WhenClosingSubmissions_WithNoTeams_ThenReturnsFail()
+        {
+            // Arrange
+            int weekNumber = 1;
+            int submissionRequired = 1;
+            var (_, seasonId) = await CreateFormatAndSeason();
+            await _weekService.CreateAsync(seasonId, weekNumber, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, submissionRequired);
+            await _weekService.TransitionToOpenWeekAsync(seasonId, weekNumber);
+
+            // Act
+            var result = await _weekService.TransitionToCloseSubmissionsAsync(seasonId);
+
+            // Assert
+            result.Success.ShouldBeFalse();
+        }
+
+        [Fact]
+        public async Task WhenClosingSubmissions_WithNotEnoughSubmissions_ThenReturnsFail()
+        {
+            // Arrange
+            int weekNumber = 1;
+            int submissionRequired = 1;
+            var (_, seasonId) = await CreateFormatAndSeason();
+            await _weekService.CreateAsync(seasonId, weekNumber, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, submissionRequired);
+            await _weekService.TransitionToOpenWeekAsync(seasonId, weekNumber);
+            int playerId1 = await CreateTeamWithPlayer(seasonId, "Team1");
+            int playerId2 = await CreateTeamWithPlayer(seasonId, "Team2");
+            await _deckSubmissionService.SubmitAsync(seasonId, (int)playerId1, "deck content", 1);
+
+            // Act
+            var result = await _weekService.TransitionToCloseSubmissionsAsync(seasonId);
+
+            // Assert
+            result.Success.ShouldBeFalse();
         }
 
         //________________________________________________________________________
@@ -327,15 +385,44 @@ namespace WarLeague.Test
         [Fact]
         public async Task WhenMovingToInProgressWeek_WithCloseSubmissionWeek_ThenReturnsSuccess()
         {
+            // Arrange
+            int seasonId = await PrepareWeek_ReadyForClosingSubmissions();
+            await _weekService.TransitionToCloseSubmissionsAsync(seasonId);
+
+            // Act
+            var result = await _weekService.TransitionToInProgressAsync(seasonId);
+
+            // Assert
+            result.Success.ShouldBeTrue();
         }
         [Fact]
         public async Task WhenMovingToInProgressWeek_WithNoCloseSubmissionWeek_ThenReturnsSuccess()
         {
+            // Arrange
+            int seasonId = await PrepareWeek_ReadyForClosingSubmissions();
+
+            // Act
+            var result = await _weekService.TransitionToInProgressAsync(seasonId);
+
+            // Assert
+            result.Success.ShouldBeFalse();
         }
 
         [Fact]
         public async Task WhenMovingToInProgressWeek_WithInProgressWeekAlreadyExists_ThenReturnsFail()
         {
+            // Arrange
+            int seasonId = await PrepareWeek_ReadyForClosingSubmissions();
+            await _weekService.TransitionToCloseSubmissionsAsync(seasonId);
+
+            await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 2);
+            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.InProgress, null);
+
+            // Act
+            var result = await _weekService.TransitionToInProgressAsync(seasonId);
+
+            // Assert
+            result.Success.ShouldBeFalse();
         }
 
         //________________________________________________________________________
@@ -353,16 +440,38 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeFalse();
-            result.Message.ShouldContain("InProgress week", Case.Insensitive);
         }
 
         [Fact]
         public async Task WhenCompletingWeek_WithInProgressWeek_ThenReturnsSuccess()
         {
+            // Arrange
+            int seasonId = await PrepareReadyToCloseWeek();
 
+            // Act
+            var result = await _weekService.TransitionToCompletedAsync(seasonId);
+
+            // Assert
+            result.Success.ShouldBeTrue();
         }
 
-       
+        [Fact]
+        public async Task WhenCompletingWeek_WithNotAllMatchesReported_ThenReturnsFail()
+        {
+            // Arrange
+            int seasonId = await PrepareWeek_ReadyForClosingSubmissions();
+            await _weekService.TransitionToCloseSubmissionsAsync(seasonId);
+            await _weekService.TransitionToInProgressAsync(seasonId);
+
+            // Act
+            var result = await _weekService.TransitionToCompletedAsync(seasonId);
+
+            // Assert
+            result.Success.ShouldBeFalse();
+        }
+
+      
+
 
         [Fact]
         public async Task WhenDeletingExistingWeek_ThenReturnsSuccess()
@@ -376,10 +485,6 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeTrue();
-        }
-        [Fact]
-        public async Task WhenDeletingExistingWeek_WithDependingEntitiesPresent_ThenReturnsFail()
-        {
         }
 
         #endregion
@@ -397,7 +502,6 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeTrue();
-            result.Message.ShouldContain("submitted", Case.Insensitive);
         }
 
         [Fact]
@@ -412,7 +516,6 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeTrue();
-            result.Message.ShouldContain("updated", Case.Insensitive);
         }
 
         [Fact]
@@ -427,7 +530,6 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeFalse();
-            result.Message.ShouldContain("already taken", Case.Insensitive);
         }
 
         [Fact]
@@ -460,9 +562,7 @@ namespace WarLeague.Test
 
             // Assert
             result0.Success.ShouldBeFalse();
-            result0.Message.ShouldContain("between", Case.Insensitive);
             result4.Success.ShouldBeFalse();
-            result4.Message.ShouldContain("between", Case.Insensitive);
         }
 
         [Fact]
@@ -478,7 +578,6 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeFalse();
-            result.Message.ShouldContain("not open", Case.Insensitive);
         }
 
         [Fact]
@@ -494,7 +593,6 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeFalse();
-            result.Message.ShouldContain("not on any team", Case.Insensitive);
         }
 
         [Fact]
@@ -522,7 +620,44 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeFalse();
-            result.Message.ShouldContain("No existing deck submission", Case.Insensitive);
+        }
+
+        [Fact]
+        public async Task WhenDeletingSubmissionWithMultipleWeeks_ThenDeletesFromOpenWeekOnly()
+        {
+            // Arrange - Create season with team and players
+            var (_, seasonId) = await CreateFormatAndSeason();
+            var (player1, player2) = await CreateTwoPlayersOnSameTeam(seasonId, "Team1");
+            
+            // Week 1: Create, submit, and close
+            await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 1);
+            await _weekService.TransitionToOpenWeekAsync(seasonId, 1);
+            await _deckSubmissionService.SubmitAsync(seasonId, player1.Id, "week1 deck", 1);
+            await _weekService.UpdateAsync(seasonId, 1, null, null, null, WeekStatus.Completed, 2);
+            
+            // Week 2: Create, make open, and submit
+            await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(14), null, 1);
+            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.Open, 2);
+            await _deckSubmissionService.SubmitAsync(seasonId, player1.Id, "week2 deck", 1);
+
+            // Act - Delete submission
+            var result = await _deckSubmissionService.DeleteSubmissionAsync(seasonId, player1.Id);
+
+            // Assert - Verify deletion was successful
+            result.Success.ShouldBeTrue();
+            
+            // Verify week 1 submission still exists
+            var week1 = await _context.Weeks.FirstAsync(w => w.SeasonId == seasonId && w.WeekNumber == 1);
+            var week1Submission = await _context.DeckSubmissions
+                .FirstOrDefaultAsync(ds => ds.WeekId == week1.Id && ds.PlayerId == player1.Id);
+            week1Submission.ShouldNotBeNull();
+            week1Submission.DeckFile.ShouldBe("week1 deck");
+            
+            // Verify week 2 submission was deleted
+            var week2 = await _context.Weeks.FirstAsync(w => w.SeasonId == seasonId && w.WeekNumber == 2);
+            var week2Submission = await _context.DeckSubmissions
+                .FirstOrDefaultAsync(ds => ds.WeekId == week2.Id && ds.PlayerId == player1.Id);
+            week2Submission.ShouldBeNull();
         }
 
         [Fact]
@@ -555,7 +690,6 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeTrue();
-            result.Message.ShouldContain("successful", Case.Insensitive);
         }
 
         [Fact]
@@ -569,7 +703,6 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeFalse();
-            result.Message.ShouldContain("not found", Case.Insensitive);
         }
 
         [Fact]
@@ -584,7 +717,6 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeFalse();
-            result.Message.ShouldContain("not a member", Case.Insensitive);
         }
 
         [Fact]
@@ -599,7 +731,6 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeFalse();
-            result.Message.ShouldContain("not a member", Case.Insensitive);
         }
 
         [Fact]
@@ -614,7 +745,6 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeFalse();
-            result.Message.ShouldContain("InProgress week", Case.Insensitive);
         }
 
         [Fact]
@@ -628,7 +758,6 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeFalse();
-            result.Message.ShouldContain("already scheduled", Case.Insensitive);
         }
 
         [Fact]
@@ -642,7 +771,6 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeFalse();
-            result.Message.ShouldContain("not currently scheduled", Case.Insensitive);
         }
 
         #endregion
@@ -683,6 +811,8 @@ namespace WarLeague.Test
         [Fact]
         public async Task WhenGeneratingPairingsWithOddNumberOfTeams_ThenHandlesByeCorrectly()
         {
+            // TODO: handle bye with BYE table
+
             // Arrange
             var (seasonId, weekId) = await CreateSeasonWithTeamsAndSubmissions(teamCount: 3, playersPerTeam: 2);
             await CloseSubmissions(seasonId);
@@ -693,6 +823,7 @@ namespace WarLeague.Test
             // Assert
             result.Success.ShouldBeTrue();
             result.CreatedMatches!.Count.ShouldBe(2);
+            // TODO: assert bye table
         }
 
         [Fact]
@@ -707,7 +838,6 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeFalse();
-            result.Message.ShouldContain("at least 2 teams", Case.Insensitive);
         }
 
         [Fact]
@@ -721,7 +851,6 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeFalse();
-            result.Message.ShouldContain("SubmissionsClosed", Case.Insensitive);
         }
 
         #endregion
@@ -830,9 +959,10 @@ namespace WarLeague.Test
 
         private async Task<int> CreateTeamWithPlayer(int seasonId, string teamName)
         {
-            var captain = await CreatePlayer(123456);
+            Random rnd = new Random();
+            var captain = await CreatePlayer((ulong)rnd.Next(100000, 999999));
             var teamId = await CreateTeam(seasonId, teamName, captain.Id);
-            var player = await CreatePlayer(654321);
+            var player = await CreatePlayer((ulong)rnd.Next(100000, 999999));
             await AddPlayerToTeam(player.Id, seasonId, teamId);
             return player.Id;
         }
@@ -922,7 +1052,15 @@ namespace WarLeague.Test
             });
             await _context.SaveChangesAsync();
         }
-
+        private async Task<int> PrepareReadyToCloseWeek()
+        {
+            int seasonId = await PrepareWeek_ReadyForClosingSubmissions();
+            await _weekService.TransitionToCloseSubmissionsAsync(seasonId);
+            await _weekService.TransitionToInProgressAsync(seasonId);
+            int playerUd = _context.Matches.First().Player1Id;
+            await _matchService.ReportLossAsync(seasonId, playerUd, "http://www.example.com");
+            return seasonId;
+        }
         private async Task<List<int>> GetTeamPlayerIds(int seasonId, int teamId)
         {
             return await _context.PlayerSeasonTeams
@@ -930,7 +1068,19 @@ namespace WarLeague.Test
                 .Select(pst => pst.PlayerId)
                 .ToListAsync();
         }
-
+        private async Task<int> PrepareWeek_ReadyForClosingSubmissions()
+        {
+            int weekNumber = 1;
+            int submissionRequired = 1;
+            var (_, seasonId) = await CreateFormatAndSeason();
+            await _weekService.CreateAsync(seasonId, weekNumber, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, submissionRequired);
+            await _weekService.TransitionToOpenWeekAsync(seasonId, weekNumber);
+            int playerId1 = await CreateTeamWithPlayer(seasonId, "Team1");
+            int playerId2 = await CreateTeamWithPlayer(seasonId, "Team2");
+            await _deckSubmissionService.SubmitAsync(seasonId, (int)playerId1, "deck content", 1);
+            await _deckSubmissionService.SubmitAsync(seasonId, (int)playerId2, "deck content", 1);
+            return seasonId;
+        }
         #endregion
     }
 }

@@ -71,4 +71,5 @@
 - [ ] When it makes sense (such as for example when chosing between existing finite choices -> team names, players in team, etc) limit the suggestions in UI
 - [ ] database daily backup
 - [x] Return-null-as-failure is a design smell. return result instead.
-- [ ] each week transition should check that IN status and OUT status are ok
+- [x] each week transition should check that IN status and OUT status are ok
+- [ ] a way to add teams in tests so that we can test all week transition (close submissions)
