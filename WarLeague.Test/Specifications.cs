@@ -239,6 +239,14 @@ namespace WarLeague.Test
             result.Message.ShouldContain("already exists", Case.Insensitive);
         }
 
+        //________________________________________________________________________
+        // WEEK LIFECYCLE TRANSITIONS - Each transition has tests for both valid and invalid scenarios
+        //________________________________________________________________________
+
+        //________________________________________________________________________
+        // NotOpenYet -> Open
+        //________________________________________________________________________
+
         [Fact]
         public async Task WhenOpeningWeek_InStatusNotOpenYet_ThenReturnsSuccess()
         {
@@ -271,7 +279,16 @@ namespace WarLeague.Test
         }
 
         [Fact]
-        public async Task WhenClosingSubmissionsWithNoOpenWeek_ThenReturnsFail()
+        public async Task WhenOpeningWeek_WithOpenWeekAlreadyExists_ThenReturnsFail()
+        {
+        }
+
+        //________________________________________________________________________
+        // Open -> CloseSubmissions
+        //________________________________________________________________________
+
+        [Fact]
+        public async Task WhenClosingSubmissions_WithNoOpenWeek_ThenReturnsFail()
         {
             // Arrange
             var (_, seasonId) = await CreateFormatAndSeason();
@@ -282,9 +299,51 @@ namespace WarLeague.Test
             // Assert
             result.Success.ShouldBeFalse();
         }
+        [Fact]
+        public async Task WhenClosingSubmissions_WithOpenWeek_ThenReturnsSuccess()
+        {
+            // Arrange
+            int weekNumber = 1;
+            var (_, seasonId) = await CreateFormatAndSeason();
+            await _weekService.CreateAsync(seasonId, weekNumber, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 3);
+            await _weekService.TransitionToOpenWeekAsync(seasonId, weekNumber);
+
+            // Act
+            var result = await _weekService.TransitionToCloseSubmissionsAsync(seasonId);
+
+            // Assert
+            result.Success.ShouldBeTrue();
+        }
 
         [Fact]
-        public async Task WhenClosingWeekWithNoInProgressWeek_ThenReturnsFail()
+        public async Task WhenClosingSubmissions_WithSubmissionClosedWeekAlreadyExists_ThenReturnsFail()
+        {
+        }
+
+        //________________________________________________________________________
+        // CloseSubmission -> InProgress
+        //________________________________________________________________________
+
+        [Fact]
+        public async Task WhenMovingToInProgressWeek_WithCloseSubmissionWeek_ThenReturnsSuccess()
+        {
+        }
+        [Fact]
+        public async Task WhenMovingToInProgressWeek_WithNoCloseSubmissionWeek_ThenReturnsSuccess()
+        {
+        }
+
+        [Fact]
+        public async Task WhenMovingToInProgressWeek_WithInProgressWeekAlreadyExists_ThenReturnsFail()
+        {
+        }
+
+        //________________________________________________________________________
+        // InProgress -> Completed
+        //________________________________________________________________________
+
+        [Fact]
+        public async Task WhenCompletingWeek_WithNoInProgressWeek_ThenReturnsFail()
         {
             // Arrange
             var (_, seasonId) = await CreateFormatAndSeason();
@@ -298,6 +357,14 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        public async Task WhenCompletingWeek_WithInProgressWeek_ThenReturnsSuccess()
+        {
+
+        }
+
+       
+
+        [Fact]
         public async Task WhenDeletingExistingWeek_ThenReturnsSuccess()
         {
             // Arrange
@@ -309,6 +376,10 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeTrue();
+        }
+        [Fact]
+        public async Task WhenDeletingExistingWeek_WithDependingEntitiesPresent_ThenReturnsFail()
+        {
         }
 
         #endregion
