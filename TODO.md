@@ -72,4 +72,4 @@
 - [ ] database daily backup
 - [x] Return-null-as-failure is a design smell. return result instead.
 - [x] each week transition should check that IN status and OUT status are ok
-- [ ] a way to add teams in tests so that we can test all week transition (close submissions)
+- [x] a way to add teams in tests so that we can test all week transition (close submissions)
