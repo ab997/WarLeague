@@ -81,6 +81,8 @@ namespace WarLeague.Core.Services
         /// <param name="weekNumber"></param>
         public async Task<BaseResult> TransitionToOpenWeekAsync(int seasonId, int weekNumber)
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             // Check if another week is already open
             Week? existingOpenWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.Open);
             if (existingOpenWeek is not null && existingOpenWeek.WeekNumber != weekNumber)
@@ -122,6 +124,8 @@ namespace WarLeague.Core.Services
                 await _seasonRepository.UpdateAsync(season);
                 additionalMessage = "\nTeam modifications have been automatically disabled for the season.";
             }
+
+            await transaction.CommitAsync();
 
             return new BaseResult(true, $"Week {weekNumber} set to Open.{additionalMessage}");
         }
