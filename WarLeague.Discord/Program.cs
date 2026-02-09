@@ -75,6 +75,7 @@ builder.Services.AddSingleton(interactionService);
 
 builder.Services.AddHostedService<DiscordBotService>();
 builder.Services.AddHostedService<InteractionHandlingService>();
+builder.Services.AddHostedService<LogCleanupService>();
 
 builder.Services.AddHttpClient();
 
