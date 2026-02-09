@@ -42,7 +42,6 @@ namespace WarLeague.Discord.Commands
   • Week exists; no actions are allowed yet
 
 - Open
-  • Teams may submit decks
   • Players and captains can prepare lineups; deck submissions are permitted
 
 - SubmissionsClosed
