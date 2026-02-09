@@ -61,7 +61,7 @@
 
 ## TECHNICAL
 
-- [ ] Add logging
+- [x] Add logging
 - [ ] Add audit columns
 - [ ] Add deck validation:
   - [ ] Format-specific
