@@ -27,6 +27,7 @@ namespace WarLeague.Discord.Preconditions
 
             var repo = services.GetRequiredService<PermissionRepository>();
 
+            // TODO: this is worth caching
             IReadOnlyCollection<ulong> allowedRoleIds =
                 await repo.GetRoleIdsAsync(context.Guild.Id, _permission);
 
