@@ -8,15 +8,16 @@ using WarLeague.Data.Enums;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
-using WarLeague.Discord.Constants;
+
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 using static WarLeague.Discord.Helpers.ResultHelper;
+using WarLeague.Data.Data.Enums;
 
 namespace WarLeague.Discord.Commands
 {
     [Group("week", "Week commands")]
-    [RequireRole(DiscordRoleConstants.Admin)]
+    [RequireAppPermission(PermissionType.Admin)]
     [EnsureChannelIsInFormatCategory]
     [EnsureSingleActiveSeason]
     [EnsureValidTeams]

@@ -1,9 +1,11 @@
-﻿using Discord.Interactions;
-using Discord;
+﻿using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
-using WarLeague.Data.Entities;
+using System.Security;
 using WarLeague.Core.Repositories;
-using WarLeague.Discord.Constants;
+using WarLeague.Data.Data.Enums;
+using WarLeague.Data.Entities;
+using WarLeague.Data.Repositories;
 using Format = WarLeague.Data.Entities.Format;
 
 namespace WarLeague.Discord.Services
@@ -12,10 +14,12 @@ namespace WarLeague.Discord.Services
     {
         private readonly FormatRepository _formatRepository;
         private readonly SeasonRepository _seasonRepository;
-        public DiscordApiHelperService(FormatRepository formatRepository, SeasonRepository seasonRepository)
+        private readonly PermissionRepository _permissionRepository;
+        public DiscordApiHelperService(FormatRepository formatRepository, SeasonRepository seasonRepository, PermissionRepository permissionRepository)
         {
             _formatRepository = formatRepository;
             _seasonRepository = seasonRepository;
+            _permissionRepository = permissionRepository;
         }
         public async Task<Format> GetFormatByCategoryNameAsync(SocketInteractionContext context)
         {
@@ -60,7 +64,13 @@ namespace WarLeague.Discord.Services
             var guildUser = context.User as SocketGuildUser;
             if (guildUser == null) return false;
 
-            return guildUser.Roles.Any(r => string.Equals(r.Name, DiscordRoleConstants.Admin, StringComparison.OrdinalIgnoreCase));
+            ulong guildId = context.Guild.Id;
+            PermissionType permission = PermissionType.Admin;
+
+            IReadOnlyCollection<ulong> allowedRoleIds =
+               _permissionRepository.GetRoleIds(context.Guild.Id, permission);
+
+            return guildUser.Roles.Any(r => allowedRoleIds.Contains(r.Id));
         }
 
         /// <summary>

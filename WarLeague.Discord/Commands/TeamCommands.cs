@@ -6,19 +6,20 @@ using WarLeague.Data.Entities;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
-using WarLeague.Discord.Constants;
 using WarLeague.Discord.Enums;
 using WarLeague.Discord.Helpers;
 using WarLeague.Discord.Model;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 using static WarLeague.Discord.Helpers.ResultHelper;
+using WarLeague.Data.Data.Enums;
+using WarLeague.Data.Repositories;
 
 namespace WarLeague.Discord.Commands;
 
 [Group("team", "Team management commands")]
-[RequireRole(DiscordRoleConstants.Admin, Group = "Permission")]
-[RequireRole(DiscordRoleConstants.Captain, Group = "Permission")]
+[RequireAppPermission(PermissionType.Admin, Group = "Permission")]
+[RequireAppPermission(PermissionType.Captain, Group = "Permission")]
 [EnsureChannelIsInFormatCategory]
 [EnsureSingleActiveSeason]
 public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
@@ -30,7 +31,8 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     private readonly TeamRepository _teamRepository;
     private readonly DiscordRoleService _roleService;
     private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
-    public TeamCommands(DiscordPlayerService playerService, DiscordApiHelperService helperService, TeamRepository teamRepository, WarLeagueDbContext dbContext, TeamService teamService, DiscordRoleService roleService, PlayerSeasonTeamRepository playerSeasonTeamRepository)
+    private readonly PermissionRepository _permissionRepository;
+    public TeamCommands(DiscordPlayerService playerService, DiscordApiHelperService helperService, TeamRepository teamRepository, WarLeagueDbContext dbContext, TeamService teamService, DiscordRoleService roleService, PlayerSeasonTeamRepository playerSeasonTeamRepository, PermissionRepository permissionRepository)
     {
         _playerService = playerService;
         _helperService = helperService;
@@ -39,6 +41,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         _teamService = teamService;
         _roleService = roleService;
         _playerSeasonTeamRepository = playerSeasonTeamRepository;
+        _permissionRepository = permissionRepository;
     }
 
 
@@ -76,7 +79,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     
 
     [SlashCommand("admin-create", "Creates a team and assigns the specified user as captain (Admin only)")]
-    [RequireRole(DiscordRoleConstants.Admin)]
+    [RequireAppPermission(PermissionType.Admin)]
     public async Task AdminCreateAsync(
        [Summary("team-name", "Name of the team")] string teamName,
        [Summary("captain", "User to set as captain")] IUser captain)
@@ -239,7 +242,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     }
 
     [SlashCommand("admin-add-member", "Adds a member to any team (Admin only)")]
-    [RequireRole(DiscordRoleConstants.Admin)]
+    [RequireAppPermission(PermissionType.Admin)]
     public async Task AdminAddMemberAsync(
       [Summary("team-name", "Name of the team")] string teamName,
       [Summary("member", "User to add")] IUser user)
@@ -283,7 +286,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         await FollowupAsync(Stringify(result.Message, "Discord role assigned."));
     }
     [SlashCommand("admin-drop-member", "Removes a member from any team (Admin only)")]
-    [RequireRole(DiscordRoleConstants.Admin)]
+    [RequireAppPermission(PermissionType.Admin)]
     public async Task AdminDropMemberAsync(
       [Summary("member", "User to remove")] IUser user)
     {
@@ -323,7 +326,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     }
 
     [SlashCommand("admin-transfer-member", "Transfers a member to another team (Admin only)")]
-    [RequireRole(DiscordRoleConstants.Admin)]
+    [RequireAppPermission(PermissionType.Admin)]
     public async Task AdminTransferMemberAsync(
     [Summary("member", "User to transfer")] IUser user,
     [Summary("team-name", "Target team name")] string teamName)
@@ -392,7 +395,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     }
 
     [SlashCommand("admin-transfer-captainship", "Transfers captainship to another team member (Admin only)")]
-    [RequireRole(DiscordRoleConstants.Admin)]
+    [RequireAppPermission(PermissionType.Admin)]
     public async Task AdminTransferCaptainshipAsync(
     [Summary("team-name", "Name of the team")] string teamName,
     [Summary("new-captain", "User to become captain")] IUser newCaptain)
@@ -419,7 +422,8 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        SocketRole? captainRole = Context.Guild.Roles.FirstOrDefault(r => r.Name == DiscordRoleConstants.Captain);
+        ulong? captainRoleId = (await _permissionRepository.GetRoleIdsAsync(Context.Guild.Id, PermissionType.Captain)).FirstOrDefault();
+        SocketRole? captainRole = Context.Guild.Roles.FirstOrDefault(r => r.Id == captainRoleId);
         if (captainRole == null)
         {
             await FollowupAsync(Stringify(result.Message, "Warning: Captain role not found in guild."));
@@ -451,7 +455,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     }
 
     [SlashCommand("update-color", "Updates your team's Discord role color (captain only)")]
-    [RequireRole(DiscordRoleConstants.Captain)]
+    [RequireAppPermission(PermissionType.Captain)]
     public async Task UpdateColorAsync(
         [Summary("color", "Color to set for your team")] TeamColor color)
     {
@@ -487,7 +491,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     }
 
     [SlashCommand("update-color-hex", "Updates your team's Discord role color using a hex code (captain only)")]
-    [RequireRole(DiscordRoleConstants.Captain)]
+    [RequireAppPermission(PermissionType.Captain)]
     public async Task UpdateColorHexAsync(
         [Summary("hex-code", "Hex color code (e.g., #FF5733 or FF5733)")] string hexCode)
     {

@@ -3,16 +3,16 @@ using Discord.Interactions;
 using WarLeague.Data.Entities;
 using WarLeague.Core.Model;
 using WarLeague.Core.Services;
-using WarLeague.Discord.Constants;
 using WarLeague.Discord.Helpers;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
+using WarLeague.Data.Data.Enums;
 
 namespace WarLeague.Discord.Commands
 {
     [EnsureChannelIsInFormatCategory]
     [EnsureSingleActiveSeason]
-    [RequireRole(DiscordRoleConstants.Admin)]
+    [RequireAppPermission(PermissionType.Admin)]
     public class SubstitutionCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly DiscordApiHelperService _helperService;

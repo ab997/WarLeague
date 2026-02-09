@@ -1,17 +1,16 @@
 ﻿using Discord.Interactions;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using WarLeague.Data;
+using WarLeague.Data.Data.Enums;
 using WarLeague.Data.Entities;
 using WarLeague.Data.Enums;
-using WarLeague.Discord.Constants;
+using WarLeague.Discord.Preconditions;
+
 
 namespace WarLeague.Discord.Commands
 {
     [Group("test", "Test commands")]
-    [RequireRole(DiscordRoleConstants.Admin)]
+    [RequireAppPermission(PermissionType.Admin)]
     public class TestCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly WarLeagueDbContext _dbContext;

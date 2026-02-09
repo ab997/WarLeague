@@ -56,6 +56,7 @@ namespace WarLeague.Discord.HostedService
 
         private async Task OnInteractionAsync(SocketInteraction interaction)
         {
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
             var commandOptions = (interaction as SocketSlashCommand).Data.Options
               .Select(o => new
               {
@@ -98,6 +99,7 @@ namespace WarLeague.Discord.HostedService
                     }
                 }
             }
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
         }
 
         private Task HandleInteractionExecuted(ICommandInfo command, IInteractionContext context, IResult result)

@@ -1,20 +1,15 @@
 using Discord.Interactions;
 using Discord;
 using WarLeague.Discord.Preconditions;
-using WarLeague.Discord.Constants;
+using WarLeague.Data.Data.Enums;
+
 
 namespace WarLeague.Discord.Commands
 {
     [Group("info", "Information commands")]
-    [RequireRole(DiscordRoleConstants.Admin)]
+    [RequireAppPermission(PermissionType.Admin)]
     public class InfoCommands : InteractionModuleBase<SocketInteractionContext>
     {
-        private readonly WarLeague.Discord.Services.DiscordApiHelperService _helperService;
-
-        public InfoCommands(WarLeague.Discord.Services.DiscordApiHelperService helperService)
-        {
-            _helperService = helperService;
-        }
         [SlashCommand("admin-help", "Administrator operational guide")]
         public async Task AdminHelpAsync()
         {
