@@ -1,25 +1,21 @@
 using Discord;
 using Discord.Interactions;
-using System.Net.Http;
-using System.Numerics;
 using WarLeague.Data.Entities;
-using WarLeague.Data.Enums;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
-using WarLeague.Discord.Constants;
-using WarLeague.Discord.Helpers;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 using static WarLeague.Discord.Helpers.ResultHelper;
+using WarLeague.Data.Data.Enums;
 
 namespace WarLeague.Discord.Commands;
 
 [Group("deck", "Deck submission commands")]
 [EnsureChannelIsInFormatCategory]
 [EnsureSingleActiveSeason]
-[RequireRole(DiscordRoleConstants.Admin, Group = "Permission")]
-[RequireRole(DiscordRoleConstants.Captain, Group = "Permission")]
+[RequireAppPermission(PermissionType.Admin, Group = "Permission")]
+[RequireAppPermission(PermissionType.Captain, Group = "Permission")]
 public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
 {
     private const int MaxDeckFileBytes = 1_000_000; // 1MB safety limit

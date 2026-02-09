@@ -5,7 +5,6 @@
 - [x] Add command for Captain to update team color
 - [x] Before season starts, validate that all teams have a minimum amount of members
 - [x] Disable team creation when season starts (when first week is opened for submissions)
-- [ ] Add a system for reporting messages in a separate channel
 - [x] Number of submissions per week:
   - [x] Not a command parameter
   - [x] Stored as a column on the week
@@ -23,7 +22,6 @@
 - [x] Week rules:
   - [x] One week may be `InProgress`
   - [x] One `InProgress` week may coexist with another week that is `Open` **or** `SubmissionClosed`
-- [ ] Decide which commands should be ephemeral (private)
 - [x] Deck submission:
   - [x] Seat number is a parameter
   - [x] Do not randomize pairings
@@ -39,6 +37,8 @@
 - [x] No pinging for peep commands
 - [x] Peep all results:
   - [x] Remove attachments
+- [ ] Decide which commands should be ephemeral (private)
+- [ ] Add a system for reporting messages in a separate channel
 
 ## BYE WEEKS & PLAYOFFS & CONFERENCES
 
@@ -67,7 +67,7 @@
   - [ ] Format-specific
   - [ ] Banlist
   - [ ] Card pool
-- [ ] Discord roles are not unique by name -> we need to migrate from using "admin" and "captain" to integer IDs.
+- [x] Discord roles are not unique by name -> we need to migrate from using "admin" and "captain" to integer IDs.
 - [ ] When it makes sense (such as for example when chosing between existing finite choices -> team names, players in team, etc) limit the suggestions in UI
 - [ ] database daily backup
 - [x] Return-null-as-failure is a design smell. return result instead.

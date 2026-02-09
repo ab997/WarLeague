@@ -1,0 +1,124 @@
+- COPILOT SHOULD IGNORE THIS FILE ENTIRELY.
+
+Plan: Multi-Guild Database Isolation
+Adding GuildId to Format and Player tables to enable complete per-guild isolation. Each guild operates independently with its own formats, players, teams, and competitive data while sharing one database. Format names, team names, and player records are scoped per-guild.
+
+Key decisions from discussion:
+
+Same Discord user gets separate Player records per guild (can compete in parallel)
+Team names unique per-guild (Guild A and B can both have "Team Phoenix")
+Format names unique per-guild (Guild A and B can both run "HAT")
+Steps
+
+Add GuildId to database entities
+
+Add ulong GuildId property to Format.cs
+Add ulong GuildId property to Player.cs
+No changes needed to Season/Week/Team/Match/DeckSubmission - guild context cascades via FK relationships
+Update unique constraints in DbContext
+
+In WarLeagueDbContext.cs:
+Change Format unique index from Name to composite (GuildId, Name)
+Change Format SingleFormatMode index to (GuildId, SingleFormatMode) where SingleFormatMode = 1
+Change Player unique index from DiscordUserId to composite (GuildId, DiscordUserId)
+Team.Name stays as-is (uniqueness enforced through Season → Format → GuildId relationship)
+Create and apply EF Core migration
+
+Generate migration adding GuildId columns with non-null constraint
+Migration needs default value or two-step migration (nullable first, then required)
+Existing data consideration: populate existing records with a specific GuildId or clear database
+Update Format repository
+
+Add ulong guildId parameter to all methods in FormatRepository.cs:
+GetByNameAsync(ulong guildId, string name)
+GetByIdAsync(ulong guildId, int id)
+GetSingleFormatModeAsync(ulong guildId)
+CreateAsync() - format entity already contains GuildId
+All queries add .Where(f => f.GuildId == guildId)
+Update Player repository
+
+Add ulong guildId parameter to methods in PlayerRepository.cs:
+GetOrCreateByDiscordUserAsync(ulong guildId, ulong discordUserId, string username)
+Change unique lookup from DiscordUserId to (GuildId, DiscordUserId)
+All player queries add .Where(p => p.GuildId == guildId)
+Update all other repositories
+
+Repositories for Season, Team, Week, Match, DeckSubmission, PlayerSeasonTeam don't need guildId parameters
+Guild filtering happens automatically through FK joins (e.g., Team → Season → Format → GuildId)
+Verify queries work correctly with cascaded filtering via navigation properties
+Update Format service
+
+Add ulong guildId parameter to all methods in FormatService.cs
+Pass guildId to repository calls
+Update validation logic if any format name uniqueness checks exist
+Update Player/Team services
+
+In DiscordPlayerService.cs:
+Add ulong guildId parameter to EnsurePlayerExistsAsync()
+Pass to player repository
+In TeamService.cs:
+Add ulong guildId if needed for cross-guild validation
+Team name uniqueness is now scoped by Season → Format → GuildId
+Update Season/Week/Match/Deck services
+
+Services in WarLeague.Core/Services likely don't need guildId parameters
+Guild context flows through entity relationships (Week → Season → Format → GuildId)
+Verify validation logic doesn't break with guild scoping
+Update DiscordApiHelperService
+
+In DiscordApiHelperService.cs:
+Modify GetFormatByCategoryNameAsync() to pass context.Guild.Id to format lookup
+Ensure all helper methods extract and use guildId from context
+Update all command files
+
+In FormatCommands.cs, SeasonCommands.cs, TeamCommands.cs, WeekCommands.cs, DeckCommands.cs, ReportCommands.cs, SubstitutionCommands.cs, PeepCommands.cs, InfoCommands.cs:
+Pass Context.Guild.Id to service method calls
+Pass Context.Guild.Id to EnsurePlayerExistsAsync() calls
+Commands using DiscordApiHelperService.GetFormatByCategoryNameAsync() already get guild context from channel
+Update preconditions
+
+In EnsureChannelIsInFormatCategory.cs:
+Pass context.Guild.Id to format lookup
+In EnsureSingleActiveSeasonAttribute.cs:
+Ensure active season check is scoped to guild (via format)
+In EnsureValidTeams.cs:
+Guild context flows through team relationships
+Update test specifications
+
+In TestServiceProvider.cs:
+Add mock guild ID constant (e.g., TestGuildId = 123456789)
+Update all test files to use test guild ID:
+FormatSpecifications.cs
+SeasonSpecifications.cs
+DeckSubmissionSpecifications.cs
+MatchGenerationSpecifications.cs
+SubstitutionSpecifications.cs
+WeekSpecifications.cs
+Update Seed.cs to include GuildId in test data
+Update existing data migration strategy
+
+Decide approach for existing production data:
+Option A: Assign all existing data to primary guild ID
+Option B: Clear database and start fresh
+Option C: Create data migration script to distribute existing data
+Document the chosen approach
+Verification
+
+Build solution and resolve all compilation errors
+Run all tests in WarLeague.Test - should pass with guild-scoped data
+Manual testing with two Discord servers:
+Create same format name in both guilds - should succeed
+Same Discord user joins teams in both guilds - should create separate player records
+Create same team name in both guilds - should succeed
+Verify commands in Guild A don't see Guild B's data
+Verify role permissions remain guild-scoped
+Test single-format mode works independently per guild
+Check channel category name resolution works per-guild
+Scope Notes
+
+RolePermissionMapping already has GuildId - no changes needed
+Discord role IDs (Team.DiscordRoleId) are inherently guild-specific through Team → Season → Format → GuildId relationship
+Planned features (Conference, Playoffs) will inherit guild context when implemented
+Does this plan address your needs? Any aspects you'd like me to expand or reconsider?
+
+Claude Sonnet 4.5 • 1x

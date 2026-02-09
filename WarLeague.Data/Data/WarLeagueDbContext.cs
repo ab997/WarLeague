@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using WarLeague.Data.Data.Entities;
 using WarLeague.Data.Entities;
 
 
@@ -17,6 +18,7 @@ public class WarLeagueDbContext : DbContext
     public DbSet<Team> Teams { get; set; }
     public DbSet<Week> Weeks { get; set; }
     public DbSet<PlayerSeasonTeam> PlayerSeasonTeams { get; set; }
+    public DbSet<RolePermissionMapping> RolePermissionMappings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -66,6 +68,10 @@ public class WarLeagueDbContext : DbContext
 
         modelBuilder.Entity<Match>()
         .Property(w => w.Status)
+        .HasConversion<string>();
+
+        modelBuilder.Entity<RolePermissionMapping>()
+        .Property(w => w.PermissionType)
         .HasConversion<string>();
 
         //--------------------------------------
@@ -118,6 +124,10 @@ public class WarLeagueDbContext : DbContext
 
         modelBuilder.Entity<DeckSubmission>()
             .HasIndex(x => new { x.PlayerId, x.WeekId })
+            .IsUnique();
+
+        modelBuilder.Entity<RolePermissionMapping>()
+            .HasIndex(w => new { w.GuildId, w.PermissionType })
             .IsUnique();
 
         //--------------------------------------

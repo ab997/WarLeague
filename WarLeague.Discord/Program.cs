@@ -11,6 +11,7 @@ using WarLeague.Core.Services;
 using WarLeague.Discord.HostedService;
 using WarLeague.Discord.Services;
 using Serilog;
+using WarLeague.Data.Repositories;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -46,6 +47,7 @@ builder.Services.AddScoped<FormatRepository>();
 builder.Services.AddScoped<SeasonRepository>();
 builder.Services.AddScoped<PlayerRepository>();
 builder.Services.AddScoped<PlayerSeasonTeamRepository>();
+builder.Services.AddScoped<PermissionRepository>();
 
 // Services (core - domain)
 builder.Services.AddScoped<TeamService>();

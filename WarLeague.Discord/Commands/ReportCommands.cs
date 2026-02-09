@@ -1,12 +1,13 @@
 using Discord.Interactions;
 using Discord;
 using WarLeague.Data.Entities;
-using WarLeague.Discord.Constants;
+
 using WarLeague.Discord.Helpers;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 using WarLeague.Core.Services;
 using WarLeague.Core.Model;
+using WarLeague.Data.Data.Enums;
 
 namespace WarLeague.Discord.Commands;
 
@@ -44,7 +45,7 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
     }
 
     [SlashCommand("undo", "Undo a previously reported match result between two players")]
-    [RequireRole(DiscordRoleConstants.Admin)]
+    [RequireAppPermission(PermissionType.Admin)]
     public async Task UndoAsync(
         [Summary("player1", "First player")] IUser player1,
         [Summary("player2", "Second player")] IUser player2)
@@ -61,7 +62,7 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
     }
 
     [SlashCommand("no-show", "Mark a match as no show")]
-    [RequireRole(DiscordRoleConstants.Admin)]
+    [RequireAppPermission(PermissionType.Admin)]
     public async Task NoShowAsync(
        [Summary("player-winmer", "Winner player")] IUser playerWinner,
        [Summary("player-no-show", "No show player")] IUser playerNoShow)
@@ -78,7 +79,7 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
     }
 
     [SlashCommand("result", "Admin: Report a result for a scheduled match between two players")]
-    [RequireRole(DiscordRoleConstants.Admin)]
+    [RequireAppPermission(PermissionType.Admin)]
     public async Task ReportResultAsync(
         [Summary("winner", "Winner player")] IUser winner,
         [Summary("loser", "Loser player")] IUser loser,
