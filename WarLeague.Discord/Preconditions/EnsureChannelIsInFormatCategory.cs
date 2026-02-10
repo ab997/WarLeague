@@ -4,7 +4,6 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using WarLeague.Core.Repositories;
-using Season = WarLeague.Data.Entities.Season;
 
 namespace WarLeague.Discord.Preconditions
 {
@@ -18,6 +17,9 @@ namespace WarLeague.Discord.Preconditions
             {
                 return PreconditionResult.FromError(ErrorMessage ?? "This command can only be used in text channels.");
             }
+
+            // because order of attribute execution is not deterministic, add this to every precondition just in case
+            InitializeGuildContextAttribute.SetGuildIdFromContext(context, services);
 
             SocketTextChannel textChannel = (SocketTextChannel)channel;
 

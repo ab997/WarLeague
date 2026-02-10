@@ -37,19 +37,19 @@ public class WarLeagueDbContext : DbContext
         // Match -> Player1
         modelBuilder.Entity<Match>()
             .HasOne(m => m.Player1)
-            .WithMany(p => p.MatchesAsPlayer1)
+            .WithMany()
             .HasForeignKey(m => m.Player1Id);
 
         // Match -> Player2
         modelBuilder.Entity<Match>()
             .HasOne(m => m.Player2)
-            .WithMany(p => p.MatchesAsPlayer2)
+            .WithMany()
             .HasForeignKey(m => m.Player2Id);
 
         // Match -> Winner (nullable)
         modelBuilder.Entity<Match>()
             .HasOne(m => m.Winner)
-            .WithMany(p => p.MatchesWon)
+            .WithMany()
             .HasForeignKey(m => m.WinnerId);
 
         //--------------------------------------
@@ -78,11 +78,11 @@ public class WarLeagueDbContext : DbContext
         // unique indexes
         //--------------------------------------
         modelBuilder.Entity<Format>()
-            .HasIndex(f => f.Name)
+            .HasIndex(f => new { f.GuildId, f.Name })
             .IsUnique();
 
         modelBuilder.Entity<Format>()
-          .HasIndex(w => w.SingleFormatMode)
+          .HasIndex(f => new { f.GuildId, f.SingleFormatMode })
           .IsUnique()
           .HasFilter("[SingleFormatMode] = 1");
 
@@ -91,21 +91,22 @@ public class WarLeagueDbContext : DbContext
             .IsUnique();
 
         modelBuilder.Entity<Team>()
-            .HasIndex(t => t.Name)
+            .HasIndex(t => new { t.SeasonId, t.Name })
             .IsUnique();
 
-        // Season: unique per (FormatId, SeasonNumber)
+        modelBuilder.Entity<Team>()
+            .HasIndex(t => new { t.SeasonId, t.CaptainId })
+            .IsUnique();
+
         modelBuilder.Entity<Season>()
             .HasIndex(s => new { s.FormatId, s.SeasonNumber })
             .IsUnique();
 
-        // Season: only one active per FormatId
         modelBuilder.Entity<Season>()
             .HasIndex(s => new { s.FormatId, s.Active })
             .IsUnique()
             .HasFilter("[Active] = 1");
 
-        // Week: unique per (SeasonId, WeekNumber)
         modelBuilder.Entity<Week>()
             .HasIndex(w => new { w.SeasonId, w.WeekNumber })
             .IsUnique();

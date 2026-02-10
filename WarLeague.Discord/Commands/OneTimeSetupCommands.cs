@@ -3,11 +3,13 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using WarLeague.Data.Data.Enums;
 using WarLeague.Data.Repositories;
+using WarLeague.Discord.Preconditions;
 
 namespace WarLeague.Discord.Commands
 {
     [RequireUserPermission(GuildPermission.Administrator)]
     [Group("one-time-setup", "Bind discord roles to app roles (admin, captain)")]
+    [InitializeGuildContext]
     public class OneTimeSetupCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly PermissionRepository _permissionRepository;

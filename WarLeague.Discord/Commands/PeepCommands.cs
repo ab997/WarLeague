@@ -13,6 +13,7 @@ using WarLeague.Data.Enums;
 namespace WarLeague.Discord.Commands
 {
     [Group("peep", "Peep commands")]
+    [InitializeGuildContext]
     public class PeepCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly SeasonRepository _seasonRepository;

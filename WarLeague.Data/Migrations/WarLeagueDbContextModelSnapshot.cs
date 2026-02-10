@@ -90,6 +90,9 @@ namespace WarLeague.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<decimal>("GuildId")
+                        .HasColumnType("decimal(20,0)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -103,10 +106,10 @@ namespace WarLeague.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Name")
+                    b.HasIndex("GuildId", "Name")
                         .IsUnique();
 
-                    b.HasIndex("SingleFormatMode")
+                    b.HasIndex("GuildId", "SingleFormatMode")
                         .IsUnique()
                         .HasFilter("[SingleFormatMode] = 1");
 
@@ -277,10 +280,8 @@ namespace WarLeague.Data.Migrations
 
                     b.HasIndex("CaptainId");
 
-                    b.HasIndex("Name")
+                    b.HasIndex("SeasonId", "Name")
                         .IsUnique();
-
-                    b.HasIndex("SeasonId");
 
                     b.ToTable("Teams");
                 });
@@ -349,13 +350,13 @@ namespace WarLeague.Data.Migrations
             modelBuilder.Entity("WarLeague.Data.Entities.Match", b =>
                 {
                     b.HasOne("WarLeague.Data.Entities.Player", "Player1")
-                        .WithMany("MatchesAsPlayer1")
+                        .WithMany()
                         .HasForeignKey("Player1Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("WarLeague.Data.Entities.Player", "Player2")
-                        .WithMany("MatchesAsPlayer2")
+                        .WithMany()
                         .HasForeignKey("Player2Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -367,7 +368,7 @@ namespace WarLeague.Data.Migrations
                         .IsRequired();
 
                     b.HasOne("WarLeague.Data.Entities.Player", "Winner")
-                        .WithMany("MatchesWon")
+                        .WithMany()
                         .HasForeignKey("WinnerId")
                         .OnDelete(DeleteBehavior.Restrict);
 
@@ -455,12 +456,6 @@ namespace WarLeague.Data.Migrations
 
             modelBuilder.Entity("WarLeague.Data.Entities.Player", b =>
                 {
-                    b.Navigation("MatchesAsPlayer1");
-
-                    b.Navigation("MatchesAsPlayer2");
-
-                    b.Navigation("MatchesWon");
-
                     b.Navigation("PlayerSeasonTeams");
                 });
 

@@ -4,6 +4,8 @@
 - ALWAYS treat warnings as errors.
 - ALWAYS check build errors and fix them.
 - ALWAYS use Shouldly pattern when writing tests.
+- ALWAYS add [InitializeGuildContext] to top of every command class.
+- Every command that queries Format table must always query by GuildId to avoid cross-guild data leaks.
 - ALWAYS use transaction scopes in services when performing multiple database operations that should be atomic.
 - NEVER put any logic regarding authorization or permissions in the Core project (Domain, Services), handle it in commands or preconditions.
 - NEVER put business validation in commands - ALL validation (URL checks, format validation, business rules) belongs in services.

@@ -25,6 +25,9 @@ namespace WarLeague.Discord.Preconditions
             if (user == null)
                 return PreconditionResult.FromError("Invalid user.");
 
+            // because order of attribute execution is not deterministic, add this to every precondition just in case
+            InitializeGuildContextAttribute.SetGuildIdFromContext(context, services);
+
             var repo = services.GetRequiredService<PermissionRepository>();
 
             // TODO: this is worth caching

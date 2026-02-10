@@ -15,6 +15,7 @@ namespace WarLeague.Discord.Commands
 {
     [Group("format", "Format commands")]
     [RequireAppPermission(PermissionType.Admin)]
+    [InitializeGuildContext]
     public class FormatCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly FormatService _formatService;

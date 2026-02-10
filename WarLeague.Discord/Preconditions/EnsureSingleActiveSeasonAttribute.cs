@@ -17,6 +17,9 @@ namespace WarLeague.Discord.Preconditions
             SeasonRepository seasonRepository = services.GetRequiredService<SeasonRepository>();
             DiscordApiHelperService helperService = services.GetRequiredService<DiscordApiHelperService>();
 
+            // because order of attribute execution is not deterministic, add this to every precondition just in case
+            InitializeGuildContextAttribute.SetGuildIdFromContext(context, services);
+
             Format format = await helperService.GetFormatByCategoryNameAsync((SocketInteractionContext)context);
 
             List<Season> seasons = await seasonRepository.GetActiveSeasonsByFormatAsync(format.Id);
