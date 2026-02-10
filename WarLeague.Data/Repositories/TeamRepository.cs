@@ -19,12 +19,6 @@ public class TeamRepository
         await _context.SaveChangesAsync();
     }
 
-    public async Task<Team?> GetByNameAsync(string teamName)
-    {
-        return await _context.Teams
-            .SingleOrDefaultAsync(t => t.Name == teamName);
-    }
-
     public async Task<Team?> GetByNameAndSeasonAsync(string teamName, int seasonId)
     {
         return await _context.Teams
