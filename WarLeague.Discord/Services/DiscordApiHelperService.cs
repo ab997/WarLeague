@@ -73,15 +73,6 @@ namespace WarLeague.Discord.Services
             return guildUser.Roles.Any(r => allowedRoleIds.Contains(r.Id));
         }
 
-        /// <summary>
-        /// Validates that the provided URL is an absolute HTTP or HTTPS URL.
-        /// </summary>
-        public bool IsValidReplayUrl(string? replayUrl)
-        {
-            if (string.IsNullOrWhiteSpace(replayUrl)) return false;
-            if (!Uri.TryCreate(replayUrl, UriKind.Absolute, out var uri)) return false;
-            return uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
-        }
 
         /// <summary>
         /// Sends embeds in batches to respect Discord's limit of up to 10 embeds per message.
@@ -99,45 +90,6 @@ namespace WarLeague.Discord.Services
             {
                 Embed[] batch = embeds.Skip(i).Take(batchSize).ToArray();
                 await context.Interaction.FollowupAsync(embeds: batch);
-            }
-        }
-
-        /// <summary>
-        /// Splits a long text into chunks and sends multiple follow-up messages to avoid message length limits.
-        /// </summary>
-        public async Task SendMessageInChunksAsync(SocketInteractionContext context, string text, int maxChunkSize = 1800)
-        {
-            if (string.IsNullOrEmpty(text))
-            {
-                await context.Interaction.FollowupAsync("_<empty>_");
-                return;
-            }
-
-            // Discord max message length is ~2000; keep margin for safety
-            if (maxChunkSize < 500) maxChunkSize = 500;
-            if (maxChunkSize > 1900) maxChunkSize = 1900;
-
-            int start = 0;
-            while (start < text.Length)
-            {
-                int len = Math.Min(maxChunkSize, text.Length - start);
-                int end = start + len;
-
-                // Prefer to break on newline to keep structure
-                int lastNewLine = text.LastIndexOf('\n', end - 1, len);
-                if (lastNewLine > start)
-                {
-                    end = lastNewLine + 1;
-                }
-
-                var chunk = text.Substring(start, end - start).TrimEnd();
-                if (string.IsNullOrWhiteSpace(chunk))
-                {
-                    chunk = "…";
-                }
-
-                await context.Interaction.FollowupAsync(chunk);
-                start = end;
             }
         }
     }

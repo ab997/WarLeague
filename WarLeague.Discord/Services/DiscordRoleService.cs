@@ -7,12 +7,6 @@ namespace WarLeague.Discord.Services
 {
     public class DiscordRoleService
     {
-        private readonly DiscordSocketClient _discordClient;
-
-        public DiscordRoleService(DiscordSocketClient discordClient)
-        {
-            _discordClient = discordClient;
-        }
         public async Task<SocketRoleResult> CreateAndAssignTeamRoleAsync(SocketGuild guild, string teamName, Player player)
         {
             SocketRole? role = await CreateTeamRoleAsync(guild, teamName);

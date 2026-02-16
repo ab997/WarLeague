@@ -22,6 +22,7 @@ namespace WarLeague.Discord.Commands;
 [RequireAppPermission(PermissionType.Captain, Group = "Permission")]
 [EnsureChannelIsInFormatCategory]
 [EnsureSingleActiveSeason]
+[InitializeGuildContext]
 public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly TeamService _teamService;
@@ -71,7 +72,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
        
-        BaseResult assignRoleResult = await _teamService.AssignDiscordRoleIdAsync(season.Id, teamName, roleResult.Role!.Id);
+        BaseResult assignRoleResult = await _teamService.AssignDiscordRoleIdAsync(season.Id, teamName, roleResult.Role!.Id, canBypassTeamModificationCheck);
 
         await FollowupAsync(Stringify(result, roleResult, assignRoleResult));
     }
@@ -89,7 +90,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
         Player captainPlayer = await _playerService.EnsurePlayerExistsAsync(captain);
 
-        BaseResult result = await _teamService.CreateAsync(season.Id, teamName, captainPlayer.Id);
+        BaseResult result = await _teamService.CreateAsync(season.Id, teamName, captainPlayer.Id, true);
 
         if (!result.Success)
         {
@@ -105,7 +106,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
        
-        BaseResult assignRoleResult = await _teamService.AssignDiscordRoleIdAsync(season.Id, teamName, roleResult.Role!.Id);
+        BaseResult assignRoleResult = await _teamService.AssignDiscordRoleIdAsync(season.Id, teamName, roleResult.Role!.Id, true);
 
         await FollowupAsync(Stringify(result, roleResult, assignRoleResult));
     }
@@ -253,7 +254,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         Player targetPlayer = await _playerService.EnsurePlayerExistsAsync(user);
 
-        BaseResult result = await _teamService.AddMemberAsync(season.Id, targetPlayer.Id, teamName);
+        BaseResult result = await _teamService.AddMemberAsync(season.Id, targetPlayer.Id, teamName, true);
 
         if (!result.Success)
         {
@@ -301,7 +302,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         Team? team = playerSeasonTeam?.Team;
         ulong? discordRoleId = team?.DiscordRoleId;
 
-        BaseResult result = await _teamService.RemoveMemberAsync(season.Id, targetPlayer.Id);
+        BaseResult result = await _teamService.RemoveMemberAsync(season.Id, targetPlayer.Id, true);
 
         if (!result.Success)
         {
@@ -342,7 +343,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         Team? oldTeam = oldPlayerSeasonTeam?.Team;
         ulong? oldDiscordRoleId = oldTeam?.DiscordRoleId;
 
-        BaseResult result = await _teamService.TransferMemberAsync(season.Id, player.Id, teamName);
+        BaseResult result = await _teamService.TransferMemberAsync(season.Id, player.Id, teamName, true);
 
         if (!result.Success)
         {
@@ -414,7 +415,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         Player oldCaptainPlayer = team.Captain;
         Player newCaptainPlayer = await _playerService.EnsurePlayerExistsAsync(newCaptain);
 
-        BaseResult result = await _teamService.TransferCaptainshipAsync(season.Id, newCaptainPlayer.Id, teamName);
+        BaseResult result = await _teamService.TransferCaptainshipAsync(season.Id, newCaptainPlayer.Id, teamName, true);
 
         if (!result.Success)
         {
