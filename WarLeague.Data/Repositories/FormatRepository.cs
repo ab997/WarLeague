@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WarLeague.Data;
+using WarLeague.Data.Data;
 using WarLeague.Data.Entities;
 
 namespace WarLeague.Core.Repositories;
@@ -7,29 +8,34 @@ namespace WarLeague.Core.Repositories;
 public class FormatRepository
 {
     private readonly WarLeagueDbContext _context;
+    private readonly GuildContextService _guildContextService;
 
-    public FormatRepository(WarLeagueDbContext context)
+    public FormatRepository(WarLeagueDbContext context, GuildContextService guildContextService)
     {
         _context = context;
+        _guildContextService = guildContextService;
     }
 
     public async Task<Format> GetByIdAsync(int id)
     {
-        return await _context.Formats.Include(x => x.Seasons).SingleAsync(f => f.Id == id);
+        return await _context.Formats.Include(x => x.Seasons).SingleAsync(f => f.Id == id && f.GuildId == _guildContextService.GuildId);
     }
 
     public async Task<Format?> GetByNameAsync(string name)
     {
-        return await _context.Formats.Include(x => x.Seasons).SingleOrDefaultAsync(f => f.Name == name);
+        return await _context.Formats.Include(x => x.Seasons).SingleOrDefaultAsync(f => f.Name == name && f.GuildId == _guildContextService.GuildId);
     }
 
     public async Task<List<Format>> GetAllAsync()
     {
-        return await _context.Formats.ToListAsync();
+        return await _context.Formats
+            .Where(f => f.GuildId == _guildContextService.GuildId)
+            .ToListAsync();
     }
 
     public async Task<Format> AddAsync(Format format)
     {
+        format.GuildId = _guildContextService.GuildId;
         await _context.Formats.AddAsync(format);
         await _context.SaveChangesAsync();
         return format;
@@ -52,7 +58,7 @@ public class FormatRepository
     {
         var formats = await GetAllAsync();
 
-        Format? format = formats.SingleOrDefault(x => x.SingleFormatMode);
+        Format? format = formats.SingleOrDefault(x => x.SingleFormatMode && x.GuildId == _guildContextService.GuildId);
 
         if (format is null) return (false, null);
 

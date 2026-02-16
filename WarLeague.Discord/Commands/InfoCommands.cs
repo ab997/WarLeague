@@ -8,6 +8,7 @@ namespace WarLeague.Discord.Commands
 {
     [Group("info", "Information commands")]
     [RequireAppPermission(PermissionType.Admin)]
+    [InitializeGuildContext]
     public class InfoCommands : InteractionModuleBase<SocketInteractionContext>
     {
         [SlashCommand("admin-help", "Administrator operational guide")]

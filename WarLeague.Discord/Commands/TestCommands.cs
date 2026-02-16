@@ -11,6 +11,7 @@ namespace WarLeague.Discord.Commands
 {
     [Group("test", "Test commands")]
     [RequireAppPermission(PermissionType.Admin)]
+    [InitializeGuildContext]
     public class TestCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly WarLeagueDbContext _dbContext;

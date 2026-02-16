@@ -14,6 +14,7 @@ namespace WarLeague.Discord.Commands
     [Group("season", "Season commands")]
     [RequireAppPermission(PermissionType.Admin)]
     [EnsureChannelIsInFormatCategory]
+    [InitializeGuildContext]
     public class SeasonCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly SeasonService _seasonService;

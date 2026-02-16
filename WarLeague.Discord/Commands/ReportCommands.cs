@@ -14,6 +14,7 @@ namespace WarLeague.Discord.Commands;
 [Group("report", "Match result reporting commands")]
 [EnsureChannelIsInFormatCategory]
 [EnsureSingleActiveSeason]
+[InitializeGuildContext]
 public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly DiscordPlayerService _playerService;

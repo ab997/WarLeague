@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace WarLeague.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class Initial : Migration
+    public partial class Initial_MultiServerSupport : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -19,7 +19,8 @@ namespace WarLeague.Data.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Rules = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    SingleFormatMode = table.Column<bool>(type: "bit", nullable: false)
+                    SingleFormatMode = table.Column<bool>(type: "bit", nullable: false),
+                    GuildId = table.Column<decimal>(type: "decimal(20,0)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -38,6 +39,21 @@ namespace WarLeague.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Players", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "RolePermissionMappings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    GuildId = table.Column<decimal>(type: "decimal(20,0)", nullable: false),
+                    RoleId = table.Column<decimal>(type: "decimal(20,0)", nullable: false),
+                    PermissionType = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RolePermissionMappings", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -197,6 +213,7 @@ namespace WarLeague.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Matches", x => x.Id);
+                    table.CheckConstraint("CK_Match_NoSelfPlay", "[Player1Id] <> [Player2Id]");
                     table.ForeignKey(
                         name: "FK_Matches_Players_Player1Id",
                         column: x => x.Player1Id,
@@ -224,9 +241,10 @@ namespace WarLeague.Data.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_DeckSubmissions_PlayerId",
+                name: "IX_DeckSubmissions_PlayerId_WeekId",
                 table: "DeckSubmissions",
-                column: "PlayerId");
+                columns: new[] { "PlayerId", "WeekId" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_DeckSubmissions_WeekId",
@@ -234,15 +252,15 @@ namespace WarLeague.Data.Migrations
                 column: "WeekId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Formats_Name",
+                name: "IX_Formats_GuildId_Name",
                 table: "Formats",
-                column: "Name",
+                columns: new[] { "GuildId", "Name" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Formats_SingleFormatMode",
+                name: "IX_Formats_GuildId_SingleFormatMode",
                 table: "Formats",
-                column: "SingleFormatMode",
+                columns: new[] { "GuildId", "SingleFormatMode" },
                 unique: true,
                 filter: "[SingleFormatMode] = 1");
 
@@ -289,6 +307,12 @@ namespace WarLeague.Data.Migrations
                 column: "TeamId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_RolePermissionMappings_GuildId_PermissionType",
+                table: "RolePermissionMappings",
+                columns: new[] { "GuildId", "PermissionType" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Seasons_FormatId_Active",
                 table: "Seasons",
                 columns: new[] { "FormatId", "Active" },
@@ -307,15 +331,10 @@ namespace WarLeague.Data.Migrations
                 column: "CaptainId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Teams_Name",
+                name: "IX_Teams_SeasonId_Name",
                 table: "Teams",
-                column: "Name",
+                columns: new[] { "SeasonId", "Name" },
                 unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Teams_SeasonId",
-                table: "Teams",
-                column: "SeasonId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Weeks_SeasonId_Status",
@@ -342,6 +361,9 @@ namespace WarLeague.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "PlayerSeasonTeams");
+
+            migrationBuilder.DropTable(
+                name: "RolePermissionMappings");
 
             migrationBuilder.DropTable(
                 name: "Weeks");

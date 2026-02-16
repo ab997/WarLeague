@@ -13,6 +13,7 @@ namespace WarLeague.Discord.Commands
     [EnsureChannelIsInFormatCategory]
     [EnsureSingleActiveSeason]
     [RequireAppPermission(PermissionType.Admin)]
+    [InitializeGuildContext]
     public class SubstitutionCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly DiscordApiHelperService _helperService;

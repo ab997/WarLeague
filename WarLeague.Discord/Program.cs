@@ -12,6 +12,7 @@ using WarLeague.Discord.HostedService;
 using WarLeague.Discord.Services;
 using Serilog;
 using WarLeague.Data.Repositories;
+using WarLeague.Data.Data;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -49,6 +50,9 @@ builder.Services.AddScoped<PlayerRepository>();
 builder.Services.AddScoped<PlayerSeasonTeamRepository>();
 builder.Services.AddScoped<PermissionRepository>();
 
+// multi server support
+builder.Services.AddScoped<GuildContextService>();
+
 // Services (core - domain)
 builder.Services.AddScoped<TeamService>();
 builder.Services.AddScoped<FormatService>();
@@ -71,7 +75,9 @@ var discordClient = new DiscordSocketClient(new DiscordSocketConfig
     GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMembers | GatewayIntents.MessageContent,
     AlwaysDownloadUsers = true
 });
-var interactionService = new InteractionService(discordClient);
+
+// we disable auto service scope create so that we can create our own scope and set GuildId in GuildContextService before executing command
+var interactionService = new InteractionService(discordClient, new InteractionServiceConfig { AutoServiceScopes = false });
 builder.Services.AddSingleton(discordClient);
 builder.Services.AddSingleton(interactionService);
 

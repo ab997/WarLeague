@@ -1,3 +1,5 @@
+using WarLeague.Data.Data.Entities;
+
 namespace WarLeague.Data.Entities;
 
 public class Format
@@ -7,4 +9,5 @@ public class Format
     public string Rules { get; set; } = "{}"; // JSON for extensibility
     public IEnumerable<Season> Seasons { get; set; } = null!;
     public bool SingleFormatMode { get; set; }
+    public ulong GuildId { get; set; }
 }

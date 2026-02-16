@@ -16,6 +16,7 @@ namespace WarLeague.Discord.Commands;
 [EnsureSingleActiveSeason]
 [RequireAppPermission(PermissionType.Admin, Group = "Permission")]
 [RequireAppPermission(PermissionType.Captain, Group = "Permission")]
+[InitializeGuildContext]
 public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
 {
     private const int MaxDeckFileBytes = 1_000_000; // 1MB safety limit

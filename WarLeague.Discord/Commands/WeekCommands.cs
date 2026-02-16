@@ -21,6 +21,7 @@ namespace WarLeague.Discord.Commands
     [EnsureChannelIsInFormatCategory]
     [EnsureSingleActiveSeason]
     [EnsureValidTeams]
+    [InitializeGuildContext]
     public class WeekCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly WeekService _weekService;
