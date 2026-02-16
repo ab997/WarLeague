@@ -38,6 +38,8 @@ namespace WarLeague.Core.Helpers
                         WeekId = week.Id,
                         Player1Id = p1.Id,
                         Player2Id = p2.Id,
+                        Team1Id = teamA.Id,
+                        Team2Id = teamB.Id,
                         Status = MatchStatus.Scheduled
                     });
                 }

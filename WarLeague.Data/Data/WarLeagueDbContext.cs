@@ -52,6 +52,21 @@ public class WarLeagueDbContext : DbContext
             .WithMany()
             .HasForeignKey(m => m.WinnerId);
 
+        modelBuilder.Entity<Match>()
+            .HasOne(m => m.Team1)
+            .WithMany()
+            .HasForeignKey(m => m.Team1Id);
+
+         modelBuilder.Entity<Match>()
+            .HasOne(m => m.Team2)
+            .WithMany()
+            .HasForeignKey(m => m.Team2Id);
+
+        modelBuilder.Entity<Match>()
+           .HasOne(m => m.WinnerTeam)
+           .WithMany()
+           .HasForeignKey(m => m.WinnerTeamId);
+
         //--------------------------------------
         // check constraints
         //--------------------------------------
