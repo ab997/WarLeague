@@ -13,6 +13,12 @@ public class Match
     public Player Player2 { get; set; } = null!;
     public int? WinnerId { get; set; }
     public Player? Winner { get; set; }
+    public int Team1Id { get; set; }
+    public Team Team1 { get; set; } = null!;
+    public int Team2Id { get; set; }
+    public Team Team2 { get; set; } = null!;
+    public int? WinnerTeamId { get; set; }
+    public Team? WinnerTeam { get; set; }
     public MatchStatus Status { get; set; } = MatchStatus.Scheduled;
     public DateTime? ReportedDate { get; set; }
     public string? ReplayUrl { get; set; }
