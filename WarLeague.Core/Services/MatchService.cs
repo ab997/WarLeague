@@ -71,7 +71,9 @@ namespace WarLeague.Core.Services
             }
 
             var match = scheduledMatches.Single();
-            var opponentPlayer = match.Player1Id == loserId ? match.Player2 : match.Player1;
+            Player opponentPlayer = match.Player1Id == loserId ? match.Player2 : match.Player1;
+
+            Team team = (await _teamRepository.GetByPlayerAndSeasonAsync(opponentPlayer.Id, seasonId))!;
 
             // Loser is the caller, so winner is the opponent.
             match.WinnerId = opponentPlayer.Id;
@@ -79,6 +81,7 @@ namespace WarLeague.Core.Services
             match.MatchResultType = MatchResultType.Normal;
             match.ReportedDate = DateTime.UtcNow;
             match.ReplayUrl = replayUrl;
+            match.WinnerTeamId = team.Id;
 
             await _matchRepository.UpdateAsync(match);
 
@@ -137,6 +140,7 @@ namespace WarLeague.Core.Services
             match.Status = MatchStatus.Scheduled;
             match.ReportedDate = null;
             match.ReplayUrl = null;
+            match.WinnerId = null;
 
             await _matchRepository.UpdateAsync(match);
 
@@ -191,12 +195,15 @@ namespace WarLeague.Core.Services
                 return new BaseResult { Success = false, Message = "Multiple scheduled matches found between these players; unable to determine which one to report." };
             }
 
+            Team team = (await _teamRepository.GetByPlayerAndSeasonAsync(winnerId, seasonId))!;
+
             var match = candidateMatches.Single();
             match.WinnerId = winnerId;
             match.Status = MatchStatus.Reported;
             match.MatchResultType = MatchResultType.Normal;
             match.ReportedDate = DateTime.UtcNow;
             match.ReplayUrl = replayUrl;
+            match.WinnerTeamId = team.Id;
 
             await _matchRepository.UpdateAsync(match);
 
@@ -235,11 +242,14 @@ namespace WarLeague.Core.Services
                 return new BaseResult { Success = false, Message = "Multiple scheduled matches found between these players; unable to determine which one to report." };
             }
 
+            Team team = (await _teamRepository.GetByPlayerAndSeasonAsync(winnerId, seasonId))!;
+
             var match = candidateMatches.Single();
             match.WinnerId = winnerId;
             match.Status = MatchStatus.Reported;
             match.MatchResultType = MatchResultType.NoShow;
             match.ReportedDate = DateTime.UtcNow;
+            match.WinnerTeamId = team.Id;
 
             await _matchRepository.UpdateAsync(match);
 

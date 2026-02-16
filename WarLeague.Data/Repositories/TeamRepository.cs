@@ -27,6 +27,14 @@ public class TeamRepository
             .SingleOrDefaultAsync(t => t.Name == teamName);
     }
 
+    public async Task<Team?> GetByPlayerAndSeasonAsync(int playerId, int seasonId)
+    {
+        return (await _context.PlayerSeasonTeams
+            .Include(x => x.Team)
+            .SingleOrDefaultAsync(pst => pst.PlayerId == playerId && pst.SeasonId == seasonId))
+            ?.Team;
+    }
+
     public async Task<Team?> GetByCaptainAndSeasonAsync(int captainId, int seasonId)
     {
         return await _context.Teams
