@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using WarLeague.Data;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
+using WarLeague.Data.Data;
 
 namespace WarLeague.Test;
 
@@ -34,9 +35,12 @@ public static class TestServiceProvider
         services.AddScoped<WeekService>();
         services.AddScoped<TeamService>();
         services.AddScoped<TeamValidationService>();
+        services.AddScoped<IRoundRobinService, RoundRobinService>();
         services.AddScoped<MatchService>();
         services.AddScoped<DeckSubmissionService>();
         services.AddScoped<SubstitutionService>();
+
+        services.AddScoped<GuildContextService>();
 
         return services.BuildServiceProvider();
     }

@@ -69,7 +69,7 @@ namespace WarLeague.Test
         {
             // Arrange
             var (formatId, seasonId) = await CreateFormatAndSeason();
-            var (player1, player2) = await CreateTwoPlayersOnSameTeam(seasonId, "Team1");
+            var (player1, player2, _) = await CreateTwoPlayersOnSameTeam(seasonId, "Team1");
 
             // Act
             var result = await _substitutionService.SubstitutePlayerAsync(seasonId, "Team1", player2.Id, player1.Id);
