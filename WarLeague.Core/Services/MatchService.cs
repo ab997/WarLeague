@@ -285,6 +285,14 @@ namespace WarLeague.Core.Services
 
             var (createdMatches, matchupOutputs) = _matchupService.GetIndividualMatchups(week, teamMatchups, submissionsByTeamId);
 
+            var participatingTeamIds = teamMatchups
+                .SelectMany(m => new[] { m.a.Id, m.b.Id })
+                .ToHashSet();
+
+            var byeTeams = teams
+                .Where(t => !participatingTeamIds.Contains(t.Id))
+                .ToList();
+
             if (createdMatches.Count == 0)
             {
                 return new GeneratePairingsResult { Success = false, Message = "No pairings generated. Likely missing deck submissions for the teams playing this week." };
@@ -304,7 +312,8 @@ namespace WarLeague.Core.Services
                 Message = "Pairings generated successfully.",
                 Week = week,
                 CreatedMatches = createdMatches,
-                WeeklyMatchups = matchupOutputs
+                WeeklyMatchups = matchupOutputs,
+                ByeTeams = byeTeams
             };
         }
 
