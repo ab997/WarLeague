@@ -142,6 +142,10 @@ public class WarLeagueDbContext : DbContext
             .HasIndex(s => new { s.FormatId, s.SeasonNumber })
             .IsUnique();
 
+        modelBuilder.Entity<Conference>()
+            .HasIndex(c => new { c.SeasonId, c.Name })
+            .IsUnique();
+
         modelBuilder.Entity<Season>()
             .HasIndex(s => new { s.FormatId, s.Active })
             .IsUnique()

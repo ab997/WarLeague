@@ -48,7 +48,8 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
     [SlashCommand("create", "Creates team with you as captain")]
     public async Task CreateAsync(
-        [Summary("team-name", "Name of the team")] string teamName)
+        [Summary("team-name", "Name of the team")] string teamName,
+        [Summary("conference-name", "Conference for the team")] string conferenceName)
     {
         await DeferAsync(ephemeral: false);
 
@@ -56,7 +57,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
         bool canBypassTeamModificationCheck = _helperService.IsUserAdmin(Context);
 
-        BaseResult result = await _teamService.CreateAsync(season.Id, teamName, player.Id, canBypassTeamModificationCheck);
+        BaseResult result = await _teamService.CreateAsync(season.Id, teamName, player.Id, conferenceName, canBypassTeamModificationCheck);
 
         if (!result.Success)
         {
@@ -83,6 +84,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     [RequireAppPermission(PermissionType.Admin)]
     public async Task AdminCreateAsync(
        [Summary("team-name", "Name of the team")] string teamName,
+         [Summary("conference-name", "Conference for the team")] string conferenceName,
        [Summary("captain", "User to set as captain")] IUser captain)
     {
         await DeferAsync(ephemeral: false);
@@ -90,7 +92,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
         Player captainPlayer = await _playerService.EnsurePlayerExistsAsync(captain);
 
-        BaseResult result = await _teamService.CreateAsync(season.Id, teamName, captainPlayer.Id, true);
+        BaseResult result = await _teamService.CreateAsync(season.Id, teamName, captainPlayer.Id, conferenceName, true);
 
         if (!result.Success)
         {
@@ -109,6 +111,21 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         BaseResult assignRoleResult = await _teamService.AssignDiscordRoleIdAsync(season.Id, teamName, roleResult.Role!.Id, true);
 
         await FollowupAsync(Stringify(result, roleResult, assignRoleResult));
+    }
+
+    [SlashCommand("update-conference", "Moves a team to another conference (Admin only)")]
+    [RequireAppPermission(PermissionType.Admin)]
+    public async Task UpdateConferenceAsync(
+        [Summary("team-name", "Name of the team")] string teamName,
+        [Summary("conference-name", "Target conference name")] string conferenceName)
+    {
+        await DeferAsync(ephemeral: false);
+
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+        BaseResult result = await _teamService.UpdateConferenceAsync(season.Id, teamName, conferenceName, true);
+
+        await FollowupAsync(Stringify(result));
     }
 
     [SlashCommand("delete", "Deletes team")]
