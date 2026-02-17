@@ -5,3 +5,5 @@
 - Authorization/permissions stay in commands or preconditions - NEVER in Core/Services layer
 - Business validation belongs in services - use parameters like `canBypassValidation` to allow flexibility while enforcing rules
 - Services validate business rules regardless of caller - ensures consistency when called from anywhere
+- Multi-write service flows (e.g., pairing generation) must be atomic; use transaction scope in service layer.
+- Matchup persistence/winner logic stays behind `IMatchupService` abstraction; do not reach matchup repositories from unrelated services.
