@@ -13,16 +13,14 @@ namespace WarLeague.Core.Services
         private readonly TeamRepository _teamRepository;
         private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
         private readonly MatchRepository _matchRepository;
-        private readonly WarLeagueDbContext _context;
-        private readonly RoundRobinService _roundRobinService;
-        public MatchService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, MatchRepository matchRepository, WarLeagueDbContext context, RoundRobinService roundRobinService)
+        private readonly IMatchupService _matchupService;
+        public MatchService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, MatchRepository matchRepository, IMatchupService matchupService)
         {
             _weekRepository = weekRepository;
             _teamRepository = teamRepository;
             _playerSeasonTeamRepository = playerSeasonTeamRepository;
             _matchRepository = matchRepository;
-            _context = context;
-            _roundRobinService = roundRobinService;
+            _matchupService = matchupService;
         }
 
 
@@ -260,7 +258,7 @@ namespace WarLeague.Core.Services
         public async Task<GeneratePairingsResult> GeneratePairingsAsync(int seasonId, Week week, List<Team> teams)
         {
             // Resolve the team-vs-team matchups for this week (deterministic round-robin based on WeekNumber).
-            List<(Team a, Team b)> teamMatchups = _roundRobinService.GetTeamMatchups(teams, week.WeekNumber);
+            List<(Team a, Team b)> teamMatchups = _matchupService.GetTeamMatchups(teams, week.WeekNumber);
             if (teamMatchups.Count == 0)
             {
                 return new GeneratePairingsResult { Success = false, Message = "No team matchups available for this week (did everyone get a bye?)." };
@@ -285,7 +283,7 @@ namespace WarLeague.Core.Services
                 return new GeneratePairingsResult { Success = false, Message = $"Matches already exist for week {week.WeekNumber}. Refusing to generate new pairings to avoid duplicates." };
             }
 
-            var (createdMatches, matchupOutputs) = _roundRobinService.GetIndividualMatchups(week, teamMatchups, submissionsByTeamId);
+            var (createdMatches, matchupOutputs) = _matchupService.GetIndividualMatchups(week, teamMatchups, submissionsByTeamId);
 
             if (createdMatches.Count == 0)
             {

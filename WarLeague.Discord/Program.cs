@@ -63,7 +63,7 @@ builder.Services.AddScoped<MatchService>();
 builder.Services.AddScoped<SubstitutionService>();
 builder.Services.AddScoped<TeamService>();
 builder.Services.AddScoped<TeamValidationService>();
-builder.Services.AddScoped<RoundRobinService>();
+builder.Services.AddScoped<IMatchupService, RoundRobinService>();
 
 
 // Services (discord)

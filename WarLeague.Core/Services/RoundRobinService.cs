@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using WarLeague.Data.Entities;
+﻿using WarLeague.Data.Entities;
 using WarLeague.Data.Enums;
 using WarLeague.Core.Model;
 
 namespace WarLeague.Core.Services
 {
-    public class RoundRobinService
+    public class RoundRobinService : IMatchupService
     {
         public (List<Match> createdMatches, List<WeeklyMatchup> matchupOutputs) GetIndividualMatchups(Week week, List<(Team a, Team b)> teamMatchups, Dictionary<int, List<DeckSubmission>> submissionsByTeamId)
         {
@@ -104,15 +101,6 @@ namespace WarLeague.Core.Services
                 arr[i] = arr[i - 1];
             }
             arr[1] = last;
-        }
-
-        private static void ShuffleInPlace<T>(IList<T> list, Random rng)
-        {
-            for (int i = list.Count - 1; i > 0; i--)
-            {
-                int j = rng.Next(i + 1);
-                (list[i], list[j]) = (list[j], list[i]);
-            }
         }
     }
 }
