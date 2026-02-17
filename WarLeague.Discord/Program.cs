@@ -42,6 +42,7 @@ builder.Services.AddDbContext<WarLeagueDbContext>(options =>
 builder.Services.AddScoped<TeamRepository>();
 builder.Services.AddScoped<PlayerRepository>();
 builder.Services.AddScoped<MatchRepository>();
+builder.Services.AddScoped<RoundRobinMatchupRepository>();
 builder.Services.AddScoped<WeekRepository>();
 builder.Services.AddScoped<DeckSubmissionRepository>();
 builder.Services.AddScoped<FormatRepository>();

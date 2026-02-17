@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WarLeague.Data;
 
@@ -11,9 +12,11 @@ using WarLeague.Data;
 namespace WarLeague.Data.Migrations
 {
     [DbContext(typeof(WarLeagueDbContext))]
-    partial class WarLeagueDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260217161356_RoundRobinMatchups")]
+    partial class RoundRobinMatchups
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -66,9 +69,6 @@ namespace WarLeague.Data.Migrations
                     b.Property<int>("Team2Id")
                         .HasColumnType("int");
 
-                    b.Property<int?>("TeamWinnerId")
-                        .HasColumnType("int");
-
                     b.Property<int>("WeekId")
                         .HasColumnType("int");
 
@@ -77,8 +77,6 @@ namespace WarLeague.Data.Migrations
                     b.HasIndex("Team1Id");
 
                     b.HasIndex("Team2Id");
-
-                    b.HasIndex("TeamWinnerId");
 
                     b.HasIndex("WeekId");
 
@@ -397,11 +395,6 @@ namespace WarLeague.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("WarLeague.Data.Entities.Team", "TeamWinner")
-                        .WithMany()
-                        .HasForeignKey("TeamWinnerId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("WarLeague.Data.Entities.Week", "Week")
                         .WithMany("RoundRobinMatchups")
                         .HasForeignKey("WeekId")
@@ -411,8 +404,6 @@ namespace WarLeague.Data.Migrations
                     b.Navigation("Team1");
 
                     b.Navigation("Team2");
-
-                    b.Navigation("TeamWinner");
 
                     b.Navigation("Week");
                 });

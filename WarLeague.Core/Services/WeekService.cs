@@ -14,15 +14,17 @@ namespace WarLeague.Core.Services
         private readonly MatchRepository _matchRepository;
         private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
         private readonly SeasonRepository _seasonRepository;
+        private readonly IMatchupService _matchupService;
         private readonly MatchService _matchService;
         private readonly WarLeagueDbContext _context;
-        public WeekService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, MatchRepository matchRepository, SeasonRepository seasonRepository, WarLeagueDbContext context, MatchService matchService)
+        public WeekService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, MatchRepository matchRepository, SeasonRepository seasonRepository, IMatchupService matchupService, WarLeagueDbContext context, MatchService matchService)
         {
             _weekRepository = weekRepository;
             _teamRepository = teamRepository;
             _playerSeasonTeamRepository = playerSeasonTeamRepository;
             _matchRepository = matchRepository;
             _seasonRepository = seasonRepository;
+            _matchupService = matchupService;
             _context = context;
             _matchService = matchService;
         }
@@ -274,6 +276,12 @@ namespace WarLeague.Core.Services
             {
                 var pendingCount = matches.Count(m => m.Status != MatchStatus.Reported);
                 return new BaseResult { Success = false, Message = $"Cannot close week: {pendingCount} match(es) not reported." };
+            }
+
+            BaseResult updateWinnersResult = await _matchupService.UpdateMatchupWinnersForWeekAsync(activeWeek, matches);
+            if (!updateWinnersResult.Success)
+            {
+                return updateWinnersResult;
             }
 
             activeWeek.Status = WeekStatus.Completed;

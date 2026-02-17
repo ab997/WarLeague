@@ -259,6 +259,25 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        public async Task WhenCompletingWeek_ThenRoundRobinMatchupWinnerIsUpdated()
+        {
+            // Arrange
+            int seasonId = await PrepareReadyToCloseWeek();
+
+            // Act
+            var result = await _weekService.TransitionToCompletedAsync(seasonId);
+
+            // Assert
+            result.Success.ShouldBeTrue();
+
+            var matchup = _context.RoundRobinMatchups.Single();
+            matchup.TeamWinnerId.HasValue.ShouldBeTrue();
+
+            var match = _context.Matches.Single();
+            matchup.TeamWinnerId.ShouldBe(match.WinnerTeamId);
+        }
+
+        [Fact]
         public async Task WhenCompletingWeek_WithNotAllMatchesReported_ThenReturnsFail()
         {
             // Arrange
@@ -271,6 +290,36 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeFalse();
+        }
+
+        [Fact]
+        public async Task WhenCompletingWeek_WithTiedRoundRobinMatchup_ThenReturnsFail()
+        {
+            // Arrange
+            var (seasonId, _) = await CreateSeasonWithTeamsAndSubmissions(teamCount: 2, playersPerTeam: 2);
+            await CloseSubmissions(seasonId);
+            var pairingResult = await _weekService.TransitionToInProgressAsync(seasonId);
+            pairingResult.Success.ShouldBeTrue();
+
+            var matches = _context.Matches.ToList();
+            matches.Count.ShouldBe(2);
+
+            // Make results 1-1 by awarding one match to each team.
+            var firstMatch = matches[0];
+            var secondMatch = matches[1];
+
+            var firstReport = await _matchService.ReportResultAsync(seasonId, firstMatch.Player1Id, firstMatch.Player2Id, "https://example.com/replay-1");
+            firstReport.Success.ShouldBeTrue();
+
+            var secondReport = await _matchService.ReportResultAsync(seasonId, secondMatch.Player2Id, secondMatch.Player1Id, "https://example.com/replay-2");
+            secondReport.Success.ShouldBeTrue();
+
+            // Act
+            var closeResult = await _weekService.TransitionToCompletedAsync(seasonId);
+
+            // Assert
+            closeResult.Success.ShouldBeFalse();
+            closeResult.Message.ShouldContain("is tied", Case.Insensitive);
         }
 
 

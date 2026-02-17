@@ -1,3 +1,4 @@
+using WarLeague.Data.Data.Entities;
 using WarLeague.Data.Enums;
 
 namespace WarLeague.Data.Entities;
@@ -12,7 +13,8 @@ public class Week
     public DateTime EndDate { get; set; }
     public WeekStatus Status { get; set; } = WeekStatus.Open;
     public DateTime? SubmissionsClosedDate { get; set; }
-    public List<Match> Matches { get; set; } = null!;
-    public List<DeckSubmission> DeckSubmissions { get; set; } = null!;
+    public IEnumerable<Match> Matches { get; set; } = null!;
+    public IEnumerable<DeckSubmission> DeckSubmissions { get; set; } = null!;
     public int SubmissionsRequired { get; set; }
+    public IEnumerable<RoundRobinMatchup> RoundRobinMatchups { get; set; } = null!;
 }

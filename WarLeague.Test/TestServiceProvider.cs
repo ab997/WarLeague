@@ -26,6 +26,7 @@ public static class TestServiceProvider
         services.AddScoped<TeamRepository>();
         services.AddScoped<PlayerSeasonTeamRepository>();
         services.AddScoped<MatchRepository>();
+        services.AddScoped<RoundRobinMatchupRepository>();
         services.AddScoped<PlayerRepository>();
         services.AddScoped<DeckSubmissionRepository>();
 
@@ -35,7 +36,7 @@ public static class TestServiceProvider
         services.AddScoped<WeekService>();
         services.AddScoped<TeamService>();
         services.AddScoped<TeamValidationService>();
-        services.AddScoped<RoundRobinService>();
+        services.AddScoped<IMatchupService, RoundRobinService>();
         services.AddScoped<MatchService>();
         services.AddScoped<DeckSubmissionService>();
         services.AddScoped<SubstitutionService>();

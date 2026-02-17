@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using WarLeague.Data.Data.Enums;
 
 namespace WarLeague.Test
 {
@@ -83,6 +84,27 @@ namespace WarLeague.Test
 
             // Assert
             result.Success.ShouldBeFalse();
+        }
+
+        [Fact]
+        public async Task WhenGeneratingPairings_ThenRoundRobinMatchupsAreSaved()
+        {
+            // Arrange
+            var (seasonId, weekId) = await CreateSeasonWithTeamsAndSubmissions(teamCount: 4, playersPerTeam: 2);
+            await CloseSubmissions(seasonId);
+
+            // Act
+            var result = await _weekService.TransitionToInProgressAsync(seasonId);
+
+            // Assert
+            result.Success.ShouldBeTrue();
+
+            var roundRobinMatchups = _context.RoundRobinMatchups
+                .Where(m => m.WeekId == weekId)
+                .ToList();
+
+            roundRobinMatchups.Count.ShouldBe(2);
+            roundRobinMatchups.All(m => m.MatchupType == MatchupType.Normal).ShouldBeTrue();
         }
 
         #endregion

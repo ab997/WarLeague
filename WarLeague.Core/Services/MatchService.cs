@@ -290,7 +290,14 @@ namespace WarLeague.Core.Services
                 return new GeneratePairingsResult { Success = false, Message = "No pairings generated. Likely missing deck submissions for the teams playing this week." };
             }
 
+            BaseResult saveTeamMatchupsResult = await _matchupService.SaveTeamMatchupsAsync(week, teams, teamMatchups);
+            if (!saveTeamMatchupsResult.Success)
+            {
+                return new GeneratePairingsResult { Success = false, Message = saveTeamMatchupsResult.Message };
+            }
+
             await _matchRepository.AddRangeAsync(createdMatches);
+
             return new GeneratePairingsResult
             {
                 Success = true,
