@@ -260,7 +260,7 @@ namespace WarLeague.Core.Services
         public async Task<GeneratePairingsResult> GeneratePairingsAsync(int seasonId, Week week, List<Team> teams)
         {
             // Resolve the team-vs-team matchups for this week (deterministic round-robin based on WeekNumber).
-            var teamMatchups = RoundRobinService.GetRoundRobinTeamMatchupsForWeek(teams, week.WeekNumber);
+            List<(Team a, Team b)> teamMatchups = _roundRobinService.GetTeamMatchups(teams, week.WeekNumber);
             if (teamMatchups.Count == 0)
             {
                 return new GeneratePairingsResult { Success = false, Message = "No team matchups available for this week (did everyone get a bye?)." };
@@ -285,7 +285,7 @@ namespace WarLeague.Core.Services
                 return new GeneratePairingsResult { Success = false, Message = $"Matches already exist for week {week.WeekNumber}. Refusing to generate new pairings to avoid duplicates." };
             }
 
-            var (createdMatches, matchupOutputs) = _roundRobinService.Run(week, teamMatchups, submissionsByTeamId);
+            var (createdMatches, matchupOutputs) = _roundRobinService.GetIndividualMatchups(week, teamMatchups, submissionsByTeamId);
 
             if (createdMatches.Count == 0)
             {

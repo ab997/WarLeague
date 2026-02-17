@@ -9,7 +9,7 @@ namespace WarLeague.Core.Services
 {
     public class RoundRobinService
     {
-        public (List<Match> createdMatches, List<WeeklyMatchup> matchupOutputs) Run(Week week, List<(Team a, Team b)> teamMatchups, Dictionary<int, List<DeckSubmission>> submissionsByTeamId)
+        public (List<Match> createdMatches, List<WeeklyMatchup> matchupOutputs) GetIndividualMatchups(Week week, List<(Team a, Team b)> teamMatchups, Dictionary<int, List<DeckSubmission>> submissionsByTeamId)
         {
             var createdMatches = new List<Match>();
 
@@ -53,7 +53,7 @@ namespace WarLeague.Core.Services
             return (createdMatches, matchupOutputs);
         }
 
-        public static List<(Team a, Team b)> GetRoundRobinTeamMatchupsForWeek(IReadOnlyList<Team> teams, int weekNumber)
+        public List<(Team a, Team b)> GetTeamMatchups(IReadOnlyList<Team> teams, int weekNumber)
         {
             // Deterministic ordering so reruns yield same team matchups.
             var ordered = teams
