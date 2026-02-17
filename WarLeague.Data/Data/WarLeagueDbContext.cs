@@ -101,6 +101,10 @@ public class WarLeagueDbContext : DbContext
             .Property(w => w.Status)
             .HasConversion<string>();
 
+        modelBuilder.Entity<Match>()
+            .Property(w => w.MatchResultType)
+            .HasConversion<string>();
+
         modelBuilder.Entity<RolePermissionMapping>()
             .Property(w => w.PermissionType)
             .HasConversion<string>();
