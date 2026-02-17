@@ -5,11 +5,11 @@ using WarLeague.Data.Entities;
 using WarLeague.Data.Enums;
 using WarLeague.Core.Model;
 
-namespace WarLeague.Core.Helpers
+namespace WarLeague.Core.Services
 {
-    public static class RoundRobin
+    public class RoundRobinService
     {
-        public static (List<Match> createdMatches, List<WeeklyMatchup> matchupOutputs) Run(Week week, List<(Team a, Team b)> teamMatchups, Dictionary<int, List<DeckSubmission>> submissionsByTeamId)
+        public (List<Match> createdMatches, List<WeeklyMatchup> matchupOutputs) Run(Week week, List<(Team a, Team b)> teamMatchups, Dictionary<int, List<DeckSubmission>> submissionsByTeamId)
         {
             var createdMatches = new List<Match>();
 

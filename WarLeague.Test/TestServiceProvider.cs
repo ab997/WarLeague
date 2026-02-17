@@ -35,7 +35,7 @@ public static class TestServiceProvider
         services.AddScoped<WeekService>();
         services.AddScoped<TeamService>();
         services.AddScoped<TeamValidationService>();
-        services.AddScoped<IRoundRobinService, RoundRobinService>();
+        services.AddScoped<RoundRobinService>();
         services.AddScoped<MatchService>();
         services.AddScoped<DeckSubmissionService>();
         services.AddScoped<SubstitutionService>();
