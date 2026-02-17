@@ -10,6 +10,7 @@ public class WarLeagueDbContext : DbContext
     public WarLeagueDbContext(DbContextOptions<WarLeagueDbContext> options) : base(options)
     {
     }
+    public DbSet<Conference> Conferences { get; set; }
     public DbSet<DeckSubmission> DeckSubmissions { get; set; }
     public DbSet<Format> Formats { get; set; }
     public DbSet<Match> Matches { get; set; }
