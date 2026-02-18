@@ -70,6 +70,8 @@ builder.Services.AddScoped<TeamValidationService>();
 builder.Services.AddScoped<RoundRobinService>();
 builder.Services.AddScoped<PlayoffService>();
 builder.Services.AddScoped<MatchupServiceFactory>();
+builder.Services.AddScoped<StandingsService>();
+builder.Services.AddScoped<PlayoffBracketService>();
 
 
 // Services (discord)

@@ -5,14 +5,18 @@ using Microsoft.EntityFrameworkCore;
 using System.Text;
 using WarLeague.Data.Entities;
 using WarLeague.Core.Repositories;
+using WarLeague.Core.Model;
+using WarLeague.Core.Services;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
-using Format = WarLeague.Data.Entities.Format;
+using WarLeague.Discord.Helpers;
+using WarLeague.Data.Data.Enums;
 using WarLeague.Data.Enums;
+using Format = WarLeague.Data.Entities.Format;
 
 namespace WarLeague.Discord.Commands
 {
-    [Group("peep", "Peep commands")]
+    [Group("peep", "Information and display commands")]
     [InitializeGuildContext]
     public class PeepCommands : InteractionModuleBase<SocketInteractionContext>
     {
@@ -24,6 +28,10 @@ namespace WarLeague.Discord.Commands
         private readonly MatchRepository _matchRepository;
         private readonly DiscordPlayerService _playerService;
         private readonly DiscordApiHelperService _helperService;
+        private readonly StandingsService _standingsService;
+        private readonly PlayoffBracketService _bracketService;
+        private readonly ConferenceService _conferenceService;
+        private readonly WeekService _weekService;
 
         public PeepCommands(
             SeasonRepository seasonRepository,
@@ -33,7 +41,11 @@ namespace WarLeague.Discord.Commands
             MatchRepository matchRepository,
             DiscordPlayerService playerService,
             DiscordApiHelperService helperService,
-            FormatRepository formatRepository)
+            FormatRepository formatRepository,
+            StandingsService standingsService,
+            PlayoffBracketService bracketService,
+            ConferenceService conferenceService,
+            WeekService weekService)
         {
             _seasonRepository = seasonRepository;
             _weekRepository = weekRepository;
@@ -43,6 +55,10 @@ namespace WarLeague.Discord.Commands
             _playerService = playerService;
             _helperService = helperService;
             _formatRepository = formatRepository;
+            _standingsService = standingsService;
+            _bracketService = bracketService;
+            _conferenceService = conferenceService;
+            _weekService = weekService;
         }
 
         [SlashCommand("format-info", "Shows information about the current format and its seasons")]
@@ -100,6 +116,226 @@ namespace WarLeague.Discord.Commands
             }
 
             await FollowupAsync(sb.ToString());
+        }
+
+        [SlashCommand("admin-help", "Administrator operational guide")]
+        [RequireAppPermission(PermissionType.Admin)]
+        public async Task AdminHelpAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            var eb = new EmbedBuilder()
+                .WithTitle("Administrator Operational Guide")
+                .WithColor(new Color(88, 101, 242));
+
+            eb.AddField("Scope",
+                "- Admin-only actions\n- Multiple formats supported\n- Actions executed inside a format category are implicitly scoped to that format",
+                inline: false);
+
+            eb.AddField("Formats",
+                "- Create a format first\n- Creating a format automatically provisions a category named after the format and an initial channel inside it\n- Perform all actions (seasons, weeks, matches) inside the format's category; actions are scoped to that format" +
+                "\n- Alternatively, use a special command to designate a single format per server. Every command will be assumed to reference only that format.",
+                inline: false);
+
+            eb.AddField("Seasons",
+                "- Seasons are created manually and identified by a number\n- A new season starts inactive\n- An admin must explicitly activate a season\n- Only one season per format can be active at a time",
+                inline: false);
+
+            eb.AddField("Weeks",
+                "- Weeks are created manually inside a season\n- A season may contain multiple weeks\n- Exactly one active week per season is allowed at any time\n- Active = any status except NotOpenYet\n- Multiple Completed weeks may exist; only one working week (Open, SubmissionsClosed, or InProgress) is allowed\n- Application validations enforce this rule",
+                inline: false);
+
+            eb.AddField(
+                "Week Statuses and Allowed Actions",
+                @"- NotOpenYet
+  • Week exists; no actions are allowed yet
+
+- Open
+  • Players and captains can prepare lineups; deck submissions are permitted
+
+- SubmissionsClosed
+  • All teams have submitted
+  • Deck changes are no longer allowed
+
+- InProgress
+  • Pairings have been generated
+  • Players must report match results
+  • Reporting is only allowed during InProgress
+  • After pairings are generated, each player may report results only for their own single open match
+  • Admins may report on behalf of any player with an open match
+  • Players report their own losses
+
+- Completed
+  • Week is finished",
+                inline: false);
+
+            eb.AddField("Recommended Lifecycle Example",
+                "1) Create format\n2) Create season\n3) Activate season\n4) Create weeks\n5) Open a week (enable deck submissions)\n6) Close submissions (lock decks)\n7) Generate pairings (move week to InProgress)\n8) Players report matches (only their own, only losses)\n9) Complete the week\n10) Repeat for the next week",
+                inline: false);
+
+            await FollowupAsync(embeds: new[] { eb.Build() });
+        }
+
+        [SlashCommand("standings-round-robin", "Show current round-robin standings (W–L per team)")]
+        [RequireAppPermission(PermissionType.Admin)]
+        [EnsureChannelIsInFormatCategory]
+        [EnsureSingleActiveSeason]
+        public async Task StandingsRoundRobinAsync(
+            [Summary("per-conference", "Group standings by conference")] bool perConference = false)
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+            var entries = await _standingsService.GetRoundRobinStandingsAsync(season.Id);
+
+            if (entries.Count == 0)
+            {
+                await FollowupAsync("No teams or no completed round-robin weeks yet. Standings will appear after weeks are completed.");
+                return;
+            }
+
+            const int maxFieldValueLength = 1024;
+            var embeds = new List<Embed>();
+
+            if (perConference)
+            {
+                var byConference = entries
+                    .Where(e => !string.IsNullOrEmpty(e.ConferenceName))
+                    .GroupBy(e => e.ConferenceName)
+                    .OrderBy(g => g.Key)
+                    .ToList();
+
+                if (byConference.Count == 0)
+                {
+                    var body = FormatStandingsTable(entries);
+                    var eb = new EmbedBuilder()
+                        .WithTitle("Round-robin standings")
+                        .WithDescription("All teams (no conference set)")
+                        .WithColor(new Color(88, 101, 242));
+                    if (body.Length <= maxFieldValueLength)
+                        eb.AddField("W–L", body, inline: false);
+                    else
+                        SplitStandingsField(eb, "W–L", body, maxFieldValueLength);
+                    embeds.Add(eb.Build());
+                }
+                else
+                {
+                    foreach (var group in byConference)
+                    {
+                        var list = group.OrderByDescending(e => e.Wins).ThenBy(e => e.Losses).ThenBy(e => e.TeamId).ToList();
+                        var body = FormatStandingsTable(list);
+                        var eb = new EmbedBuilder()
+                            .WithTitle($"Standings — {group.Key}")
+                            .WithColor(new Color(88, 101, 242));
+                        if (body.Length <= maxFieldValueLength)
+                            eb.AddField("W–L", body, inline: false);
+                        else
+                            SplitStandingsField(eb, "W–L", body, maxFieldValueLength);
+                        embeds.Add(eb.Build());
+                    }
+                }
+            }
+            else
+            {
+                var body = FormatStandingsTable(entries);
+                var eb = new EmbedBuilder()
+                    .WithTitle("Round-robin standings")
+                    .WithColor(new Color(88, 101, 242));
+                if (body.Length <= maxFieldValueLength)
+                    eb.AddField("W–L", body, inline: false);
+                else
+                    SplitStandingsField(eb, "W–L", body, maxFieldValueLength);
+                embeds.Add(eb.Build());
+            }
+
+            await _helperService.SendEmbedsInBatchesAsync(Context, embeds);
+        }
+
+        [SlashCommand("bracket", "Show playoff bracket (matchups, winners, advancement)")]
+        [RequireAppPermission(PermissionType.Admin)]
+        [EnsureChannelIsInFormatCategory]
+        [EnsureSingleActiveSeason]
+        public async Task BracketAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+            var matchups = await _bracketService.GetBracketAsync(season.Id);
+
+            if (matchups.Count == 0)
+            {
+                await FollowupAsync("No playoff bracket data for this season. Switch to playoffs and generate pairings for at least one playoff week to see the bracket.");
+                return;
+            }
+
+            var byRound = matchups.GroupBy(m => (m.Round, m.WeekNumber)).OrderBy(g => g.Key.WeekNumber).ThenBy(g => g.Key.Round).ToList();
+            const int maxFieldValueLength = 1024;
+            var embeds = new List<Embed>();
+
+            foreach (var group in byRound)
+            {
+                var roundLabel = $"Round {group.Key.Round} (Week {group.Key.WeekNumber})";
+                var lines = new List<string>();
+                foreach (var m in group.OrderBy(x => x.BracketPosition))
+                {
+                    if (m.IsBye)
+                        lines.Add($"• **{m.Team1Name}** (BYE)" + (m.WinnerName != null ? $" → **{m.WinnerName}**" : ""));
+                    else
+                        lines.Add($"• **{m.Team1Name}** vs **{m.Team2Name}**" + (m.WinnerName != null ? $" → **{m.WinnerName}**" : ""));
+                }
+                var body = string.Join("\n", lines);
+                var eb = new EmbedBuilder()
+                    .WithTitle("Playoff bracket")
+                    .WithColor(new Color(88, 101, 242));
+                if (body.Length <= maxFieldValueLength)
+                    eb.AddField(roundLabel, body, inline: false);
+                else
+                    SplitStandingsField(eb, roundLabel, body, maxFieldValueLength);
+                embeds.Add(eb.Build());
+            }
+
+            await _helperService.SendEmbedsInBatchesAsync(Context, embeds);
+        }
+
+        [SlashCommand("conference-list", "Lists conferences in the active season")]
+        [RequireAppPermission(PermissionType.Admin)]
+        [EnsureChannelIsInFormatCategory]
+        [EnsureSingleActiveSeason]
+        public async Task ConferenceListAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+            BaseResult result = await _conferenceService.ListAsync(season.Id);
+            await FollowupAsync(ResultHelper.Stringify(result));
+        }
+
+        [SlashCommand("week-list", "Lists all weeks of the active season with status and dates")]
+        [RequireAppPermission(PermissionType.Admin)]
+        [EnsureChannelIsInFormatCategory]
+        [EnsureSingleActiveSeason]
+        public async Task WeekListAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+            var weeks = await _weekService.GetWeeksBySeasonAsync(season.Id);
+            var phaseText = season.Phase == SeasonPhase.Playoffs ? "Playoffs" : "Round Robin";
+
+            if (weeks.Count == 0)
+            {
+                await FollowupAsync($"Season {season.SeasonNumber} ({phaseText}): no weeks yet.");
+                return;
+            }
+
+            static string Fmt(DateTime d) => d.ToString("MM-dd");
+            var lines = weeks
+                .OrderBy(w => w.WeekNumber)
+                .Select(w => $"W{w.WeekNumber}: {w.Status} ({Fmt(w.StartDate)}→{Fmt(w.EndDate)})")
+                .ToList();
+
+            var message = $"Season {season.SeasonNumber} • {phaseText}\n**Weeks:**\n" + string.Join("\n", lines);
+            await FollowupAsync(message);
         }
 
         [SlashCommand("week-results", "Shows played and pending matches for the current week")]
@@ -520,6 +756,37 @@ namespace WarLeague.Discord.Commands
             }
 
             return week;
+        }
+
+        private static string FormatStandingsTable(IReadOnlyList<RoundRobinStandingsEntry> entries)
+        {
+            var lines = entries.Select((e, i) =>
+            {
+                var rank = (i + 1).ToString();
+                return $"{rank}. **{e.TeamName}** — {e.Wins}–{e.Losses}";
+            });
+            return string.Join("\n", lines);
+        }
+
+        private static void SplitStandingsField(EmbedBuilder eb, string fieldName, string body, int maxLen)
+        {
+            var chunk = new List<char>(maxLen);
+            var chunks = new List<string>();
+            foreach (var line in body.Split('\n'))
+            {
+                var lineWithNewline = line + "\n";
+                if (chunk.Count + lineWithNewline.Length > maxLen && chunk.Count > 0)
+                {
+                    chunks.Add(new string(chunk.ToArray()).TrimEnd());
+                    chunk.Clear();
+                }
+                foreach (var c in lineWithNewline)
+                    chunk.Add(c);
+            }
+            if (chunk.Count > 0)
+                chunks.Add(new string(chunk.ToArray()).TrimEnd());
+            for (int i = 0; i < chunks.Count; i++)
+                eb.AddField(i == 0 ? fieldName : $"{fieldName} (cont.)", chunks[i], inline: false);
         }
 
         private static List<string> SplitIntoFieldChunks(string text, int maxChars)

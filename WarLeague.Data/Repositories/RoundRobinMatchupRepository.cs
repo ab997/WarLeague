@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WarLeague.Data;
 using WarLeague.Data.Data.Entities;
+using WarLeague.Data.Enums;
 
 namespace WarLeague.Core.Repositories;
 
@@ -17,6 +18,18 @@ public class RoundRobinMatchupRepository
     {
         return await _context.RoundRobinMatchups
             .Where(m => m.WeekId == weekId)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Gets all round-robin matchups for completed weeks in the given season (for standings).
+    /// </summary>
+    public async Task<List<RoundRobinMatchup>> GetBySeasonIdForCompletedWeeksAsync(int seasonId)
+    {
+        return await _context.RoundRobinMatchups
+            .Include(m => m.Week)
+            .Where(m => m.Week.SeasonId == seasonId && m.Week.Status == WeekStatus.Completed)
+            .OrderBy(m => m.Week.WeekNumber)
             .ToListAsync();
     }
 

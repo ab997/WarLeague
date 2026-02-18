@@ -1,6 +1,7 @@
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Data.Data.Entities;
+using WarLeague.Data.Data.Enums;
 using WarLeague.Data.Entities;
 using WarLeague.Data.Enums;
 
