@@ -243,12 +243,26 @@ namespace WarLeague.Core.Services
             return round;
         }
 
+        private static bool IsPowerOfTwo(int value)
+        {
+            return value > 0 && (value & (value - 1)) == 0;
+        }
+
         public async Task<BaseResult> SaveTeamMatchupsAsync(Week week, IReadOnlyList<Team> teams, IReadOnlyList<(Team a, Team b)> teamMatchups)
         {
             var existingPlayoffMatchups = await _playoffMatchupRepository.GetByWeekIdAsync(week.Id);
             if (existingPlayoffMatchups.Count > 0)
             {
                 return new BaseResult(false, $"Playoff matchups already exist for week {week.WeekNumber}. Refusing to generate new pairings to avoid duplicates.");
+            }
+
+            // Ensure the total number of playoff teams (2 * matchups) is a power of two
+            var participatingTeamCount = teamMatchups.Count * 2;
+            if (!IsPowerOfTwo(participatingTeamCount))
+            {
+                return new BaseResult(false,
+                    $"Playoff bracket requires a power-of-two number of teams, but found {participatingTeamCount}. " +
+                    "Adjust conference playoff team counts so the total number of playoff teams is 2, 4, 8, 16, etc.");
             }
 
             // Determine round number based on number of matchups
