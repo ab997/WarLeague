@@ -12,8 +12,8 @@ using WarLeague.Data;
 namespace WarLeague.Data.Migrations
 {
     [DbContext(typeof(WarLeagueDbContext))]
-    [Migration("20260218183451_DatesNUll")]
-    partial class DatesNUll
+    [Migration("20260218192540_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

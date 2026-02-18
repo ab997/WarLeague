@@ -431,5 +431,58 @@ namespace WarLeague.Core.Services
             }
             return list.Count == 0 ? null : list;
         }
+
+        public async Task<BaseResult> ValidateTeamCanSubmitForWeekAsync(Season season, Week week, int teamId)
+        {
+            var teams = await _teamRepository.GetBySeasonAsync(season.Id);
+            var teamById = teams.ToDictionary(t => t.Id);
+            if (!teamById.ContainsKey(teamId))
+            {
+                return new BaseResult(false, "Team is not in this season.");
+            }
+
+            // (a) First playoff week (or any week where matchups are already generated): use existing matchups for this week.
+            var existingMatchups = await GetExistingTeamMatchupsAsync(week, teams);
+            if (existingMatchups != null && existingMatchups.Count > 0)
+            {
+                var eligibleIds = existingMatchups
+                    .SelectMany(m => new[] { m.a.Id, m.b.Id })
+                    .ToHashSet();
+                if (eligibleIds.Contains(teamId))
+                    return new BaseResult(true, "Team may submit.");
+                return new BaseResult(false, "Only teams that are in this week's playoff matchups may submit decks.");
+            }
+
+            // (b) Matchups not yet generated: determine eligible teams from context.
+            var existingPlayoffMatchupsForSeason = await _playoffMatchupRepository.GetBySeasonIdAsync(season.Id);
+            if (existingPlayoffMatchupsForSeason.Count == 0)
+            {
+                // First playoff week: eligible = teams that qualified for playoffs (from GetTeamMatchups logic).
+                var matchups = await GetTeamMatchups(teams, week.WeekNumber);
+                var eligibleIds = matchups.SelectMany(m => new[] { m.a.Id, m.b.Id }).ToHashSet();
+                if (eligibleIds.Contains(teamId))
+                    return new BaseResult(true, "Team may submit.");
+                return new BaseResult(false, "Only teams that qualified for playoffs may submit decks for this week.");
+            }
+
+            // Subsequent playoff week: eligible = winners from the previous playoff week.
+            var allWeeks = await _weekRepository.GetBySeasonAsync(season.Id);
+            var previousPlayoffWeek = allWeeks
+                .Where(w => w.WeekNumber < week.WeekNumber)
+                .OrderByDescending(w => w.WeekNumber)
+                .FirstOrDefault();
+            if (previousPlayoffWeek == null)
+            {
+                return new BaseResult(false, "No previous playoff week found; cannot determine eligible teams.");
+            }
+            var previousMatchups = await _playoffMatchupRepository.GetByWeekIdAsync(previousPlayoffWeek.Id);
+            var winnerIds = previousMatchups
+                .Where(m => m.TeamWinnerId.HasValue)
+                .Select(m => m.TeamWinnerId!.Value)
+                .ToHashSet();
+            if (winnerIds.Contains(teamId))
+                return new BaseResult(true, "Team may submit.");
+            return new BaseResult(false, "Only teams that advanced from the previous playoff round may submit decks for this week.");
+        }
     }
 }

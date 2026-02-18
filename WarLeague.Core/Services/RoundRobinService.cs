@@ -287,6 +287,12 @@ namespace WarLeague.Core.Services
             return list.Count == 0 ? null : list;
         }
 
+        public Task<BaseResult> ValidateTeamCanSubmitForWeekAsync(Season season, Week week, int teamId)
+        {
+            // Round-robin: any team in the season may submit.
+            return Task.FromResult(new BaseResult(true, "Team may submit."));
+        }
+
         // Circle method rotation: keep index 0 fixed, rotate the rest.
         // Example [A, B, C, D] -> [A, D, B, C]
         private static void RotateRoundRobinInPlace(List<Team> arr)

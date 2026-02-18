@@ -4,6 +4,7 @@ using WarLeague.Data.Entities;
 using WarLeague.Data.Enums;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
+using WarLeague.Data;
 
 namespace WarLeague.Core.Services
 {
@@ -16,8 +17,9 @@ namespace WarLeague.Core.Services
         private readonly WeekService _weekService;
         private readonly PlayoffService _playoffService;
         private readonly TeamRepository _teamRepository;
+        private readonly WarLeagueDbContext _context;
 
-        public SeasonService(SeasonRepository seasonRepository, FormatRepository formatRepository, ConferenceRepository conferenceRepository, WeekRepository weekRepository, WeekService weekService, PlayoffService playoffService, TeamRepository teamRepository)
+        public SeasonService(SeasonRepository seasonRepository, FormatRepository formatRepository, ConferenceRepository conferenceRepository, WeekRepository weekRepository, WeekService weekService, PlayoffService playoffService, TeamRepository teamRepository, WarLeagueDbContext context)
         {
             _seasonRepository = seasonRepository;
             _formatRepository = formatRepository;
@@ -26,6 +28,7 @@ namespace WarLeague.Core.Services
             _weekService = weekService;
             _playoffService = playoffService;
             _teamRepository = teamRepository;
+            _context = context;
         }
 
         public async Task<BaseResult> CreateAsync(int formatId, int seasonNumber, int minTeamMembers)
@@ -101,6 +104,8 @@ namespace WarLeague.Core.Services
 
         public async Task<BaseResult> SetPhaseToPlayoffsAsync(int seasonId)
         {
+            //TODO: transaction
+            using var transaction = await _context.Database.BeginTransactionAsync();
             var season = await _seasonRepository.GetByIdOrDefault(seasonId);
             if (season == null)
             {
@@ -170,6 +175,9 @@ namespace WarLeague.Core.Services
             var playoffNames = playoffTeams.Count > 0 ? string.Join(", ", playoffTeams.Select(t => t.Name)) : "(none)";
             var nonPlayoffNames = nonPlayoffTeams.Count > 0 ? string.Join(", ", nonPlayoffTeams.Select(t => t.Name)) : "(none)";
             string message = $"Season {season.SeasonNumber} switched to Playoffs phase. Week {nextWeekNumber} created (NotOpenYet) with first-round playoff pairings pre-created.\n\n**Playoff teams:** {playoffNames}\n\n**Did not qualify:** {nonPlayoffNames}";
+
+            await transaction.CommitAsync();
+
             return new BaseResult(true, message);
         }
     }

@@ -31,5 +31,11 @@ namespace WarLeague.Core.Services
         /// Returns existing team-vs-team matchups for the week if they were pre-generated (e.g. round-robin schedule). Otherwise null.
         /// </summary>
         Task<List<(Team a, Team b)>?> GetExistingTeamMatchupsAsync(Week week, IReadOnlyList<Team> teams);
+
+        /// <summary>
+        /// Validates whether a team is allowed to submit decks for the given week.
+        /// Round-robin: any team in the season may submit. Playoffs: only teams that made it to (this round of) playoffs may submit.
+        /// </summary>
+        Task<BaseResult> ValidateTeamCanSubmitForWeekAsync(Season season, Week week, int teamId);
     }
 }

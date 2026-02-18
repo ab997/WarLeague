@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text;
@@ -15,12 +15,23 @@ namespace WarLeague.Core.Services
         private readonly TeamRepository _teamRepository;
         private readonly WeekRepository _weekRepository;
         private readonly DeckSubmissionRepository _deckSubmissionRepository;
-        public DeckSubmissionService(PlayerSeasonTeamRepository playerSeasonTeamRepository, TeamRepository teamRepository, WeekRepository weekRepository, DeckSubmissionRepository deckSubmissionRepository)
+        private readonly MatchupServiceFactory _matchupServiceFactory;
+        private readonly SeasonRepository _seasonRepository;
+
+        public DeckSubmissionService(
+            PlayerSeasonTeamRepository playerSeasonTeamRepository,
+            TeamRepository teamRepository,
+            WeekRepository weekRepository,
+            DeckSubmissionRepository deckSubmissionRepository,
+            MatchupServiceFactory matchupServiceFactory,
+            SeasonRepository seasonRepository)
         {
             _playerSeasonTeamRepository = playerSeasonTeamRepository;
             _teamRepository = teamRepository;
             _weekRepository = weekRepository;
             _deckSubmissionRepository = deckSubmissionRepository;
+            _matchupServiceFactory = matchupServiceFactory;
+            _seasonRepository = seasonRepository;
         }
         public async Task<BaseResult> SubmitAsync(int seasonId, int playerId, string deckContent, int seatNumber)
         {
@@ -43,6 +54,18 @@ namespace WarLeague.Core.Services
             if (pst is null)
             {
                 return new BaseResult { Success = false, Message = "Player is not on any team for the active season." };
+            }
+
+            var season = await _seasonRepository.GetByIdOrDefault(openWeek.SeasonId);
+            if (season is null)
+            {
+                return new BaseResult { Success = false, Message = "Season not found for the open week." };
+            }
+            var matchupService = _matchupServiceFactory.GetMatchupService(season);
+            var canSubmitResult = await matchupService.ValidateTeamCanSubmitForWeekAsync(season, openWeek, pst.TeamId);
+            if (!canSubmitResult.Success)
+            {
+                return canSubmitResult;
             }
 
             // Check if seat is already taken by a different player on the team
