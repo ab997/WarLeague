@@ -15,7 +15,7 @@ public class ConferenceService
         _seasonRepository = seasonRepository;
     }
 
-    public async Task<BaseResult> CreateAsync(int seasonId, string name)
+    public async Task<BaseResult> CreateAsync(int seasonId, string name, int playoffTeamsCount = 0)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -34,27 +34,38 @@ public class ConferenceService
             return new BaseResult(false, $"Conference '{name}' already exists.");
         }
 
+        // Validate playoff team count
+        const int maxPlayoffTeams = 32;
+        if (playoffTeamsCount < 0)
+        {
+            return new BaseResult(false, "Playoff team count cannot be negative.");
+        }
+        if (playoffTeamsCount > maxPlayoffTeams)
+        {
+            return new BaseResult(false, $"Playoff team count cannot exceed {maxPlayoffTeams}.");
+        }
+
         Conference conference = new Conference
         {
             Name = name.Trim(),
-            SeasonId = seasonId
+            SeasonId = seasonId,
+            PlayoffTeamsCount = playoffTeamsCount
         };
 
         await _conferenceRepository.AddAsync(conference);
 
-        return new BaseResult(true, $"Conference '{conference.Name}' created.");
+        string message = playoffTeamsCount > 0
+            ? $"Conference '{conference.Name}' created (playoff teams: {playoffTeamsCount})."
+            : $"Conference '{conference.Name}' created (no playoffs).";
+
+        return new BaseResult(true, message);
     }
 
-    public async Task<BaseResult> UpdateAsync(int seasonId, string currentName, string newName)
+    public async Task<BaseResult> UpdateAsync(int seasonId, string currentName, string? newName = null, int? playoffTeamsCount = null)
     {
         if (string.IsNullOrWhiteSpace(currentName))
         {
             return new BaseResult(false, "Current conference name is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(newName))
-        {
-            return new BaseResult(false, "New conference name is required.");
         }
 
         Conference? conference = await _conferenceRepository.GetByNameAndSeasonAsync(currentName.Trim(), seasonId);
@@ -63,16 +74,57 @@ public class ConferenceService
             return new BaseResult(false, $"Conference '{currentName}' was not found.");
         }
 
-        Conference? conflict = await _conferenceRepository.GetByNameAndSeasonAsync(newName.Trim(), seasonId);
-        if (conflict is not null)
+        bool hasChanges = false;
+        var changes = new List<string>();
+
+        // Update name if provided
+        if (!string.IsNullOrWhiteSpace(newName))
         {
-            return new BaseResult(false, $"Conference '{newName}' already exists.");
+            Conference? conflict = await _conferenceRepository.GetByNameAndSeasonAsync(newName.Trim(), seasonId);
+            if (conflict is not null && conflict.Id != conference.Id)
+            {
+                return new BaseResult(false, $"Conference '{newName}' already exists.");
+            }
+
+            conference.Name = newName.Trim();
+            hasChanges = true;
+            changes.Add($"renamed to '{conference.Name}'");
         }
 
-        conference.Name = newName.Trim();
+        // Update playoff team count if provided
+        if (playoffTeamsCount.HasValue)
+        {
+            const int maxPlayoffTeams = 32;
+            if (playoffTeamsCount.Value < 0)
+            {
+                return new BaseResult(false, "Playoff team count cannot be negative.");
+            }
+            if (playoffTeamsCount.Value > maxPlayoffTeams)
+            {
+                return new BaseResult(false, $"Playoff team count cannot exceed {maxPlayoffTeams}.");
+            }
+
+            conference.PlayoffTeamsCount = playoffTeamsCount.Value;
+            hasChanges = true;
+            if (playoffTeamsCount.Value > 0)
+            {
+                changes.Add($"playoff teams set to {playoffTeamsCount.Value}");
+            }
+            else
+            {
+                changes.Add("playoff teams cleared");
+            }
+        }
+
+        if (!hasChanges)
+        {
+            return new BaseResult(false, "No changes specified.");
+        }
+
         await _conferenceRepository.UpdateAsync(conference);
 
-        return new BaseResult(true, $"Conference '{currentName}' renamed to '{conference.Name}'.");
+        string message = $"Conference '{currentName}' {string.Join(", ", changes)}.";
+        return new BaseResult(true, message);
     }
 
     public async Task<BaseResult> DeleteAsync(int seasonId, string name)
@@ -113,8 +165,19 @@ public class ConferenceService
             return new BaseResult(true, "No conferences found for the active season.");
         }
 
-        string conferenceLines = string.Join(Environment.NewLine, conferences.Select(c => $"- {c.Name}"));
+        string conferenceLines = string.Join(Environment.NewLine, conferences.Select(c =>
+        {
+            if (c.PlayoffTeamsCount > 0)
+            {
+                return $"- {c.Name} (playoff teams: {c.PlayoffTeamsCount})";
+            }
+            else
+            {
+                return $"- {c.Name} (no playoffs)";
+            }
+        }));
 
         return new BaseResult(true, $"Conferences:{Environment.NewLine}{conferenceLines}");
     }
+
 }

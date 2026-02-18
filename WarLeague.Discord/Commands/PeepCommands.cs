@@ -63,7 +63,9 @@ namespace WarLeague.Discord.Commands
                 sb.AppendLine("Seasons:");
                 foreach (var s in seasons.OrderBy(x => x.SeasonNumber))
                 {
-                    sb.AppendLine($"- Season {s.SeasonNumber}" + (s.Active ? " (active)" : string.Empty));
+                    var phaseText = s.Phase == WarLeague.Data.Enums.SeasonPhase.Playoffs ? "Playoffs" : "Round Robin";
+                    var activeText = s.Active ? " (active)" : string.Empty;
+                    sb.AppendLine($"- Season {s.SeasonNumber}{activeText} • {phaseText}");
                 }
             }
             else
@@ -137,7 +139,8 @@ namespace WarLeague.Discord.Commands
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
             var sb = new StringBuilder();
-            sb.AppendLine($"Active Season: {season.SeasonNumber}");
+            var phaseText = season.Phase == WarLeague.Data.Enums.SeasonPhase.Playoffs ? "Playoffs" : "Round Robin";
+            sb.AppendLine($"Active Season: {season.SeasonNumber} • {phaseText}");
             sb.AppendLine($"Team modifications enabled: {(!season.DisableTeamModification ? "Yes" : "No")}");
 
             if (_helperService.IsUserAdmin(Context))
@@ -307,9 +310,10 @@ namespace WarLeague.Discord.Commands
                         .GroupBy(p => p.Team!.Id)
                         .ToDictionary(g => g.Key, g => g.Select(x => x.Player).ToList());
 
+                    var phaseText = season.Phase == WarLeague.Data.Enums.SeasonPhase.Playoffs ? "Playoffs" : "Round Robin";
                     var seasonTitle = season.Active
-                        ? $"Season {season.SeasonNumber} • Active"
-                        : $"Season {season.SeasonNumber}";
+                        ? $"Season {season.SeasonNumber} • Active • {phaseText}"
+                        : $"Season {season.SeasonNumber} • {phaseText}";
 
                     string seasonBody;
                     var lines = new List<string>(capacity: Math.Max(teams.Count + 3, 3));

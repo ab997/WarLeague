@@ -152,13 +152,13 @@ namespace WarLeague.Core.Services
 
             foreach (var conference in conferences)
             {
-                if (conference.PlayoffTeamsCount.HasValue && conference.PlayoffTeamsCount.Value > 0)
+                if (conference.PlayoffTeamsCount > 0)
                 {
                     var conferenceTeams = teams.Where(t => t.ConferenceId == conference.Id).ToList();
                     var seededTeamsLocal = conferenceTeams
                         .OrderByDescending(t => standings.GetValueOrDefault(t.Id, 0))
                         .ThenBy(t => t.Id) // Tiebreaker: lower ID
-                        .Take(conference.PlayoffTeamsCount.Value)
+                        .Take(conference.PlayoffTeamsCount)
                         .ToList();
 
                     playoffTeams.AddRange(seededTeamsLocal);

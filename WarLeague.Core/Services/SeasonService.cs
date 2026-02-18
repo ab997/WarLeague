@@ -1,6 +1,7 @@
-﻿
+
 using Microsoft.SqlServer.Server;
 using WarLeague.Data.Entities;
+using WarLeague.Data.Enums;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 
@@ -10,10 +11,12 @@ namespace WarLeague.Core.Services
     {
         private readonly SeasonRepository _seasonRepository;
         private readonly FormatRepository _formatRepository;
-        public SeasonService(SeasonRepository seasonRepository, FormatRepository formatRepository)
+        private readonly ConferenceRepository _conferenceRepository;
+        public SeasonService(SeasonRepository seasonRepository, FormatRepository formatRepository, ConferenceRepository conferenceRepository)
         {
             _seasonRepository = seasonRepository;
             _formatRepository = formatRepository;
+            _conferenceRepository = conferenceRepository;
         }
 
         public async Task<BaseResult> CreateAsync(int formatId, int seasonNumber, int minTeamMembers)
@@ -85,6 +88,34 @@ namespace WarLeague.Core.Services
 
             await _seasonRepository.UpdateAsync(season);
             return new SeasonResult{ Success = true, Message = $"Captain team modifications have been {(enabled ? "enabled" : "disabled")} for season {season.SeasonNumber}.", Season = season };
+        }
+
+        public async Task<BaseResult> SetPhaseToPlayoffsAsync(int seasonId)
+        {
+            var season = await _seasonRepository.GetByIdOrDefault(seasonId);
+            if (season == null)
+            {
+                return new BaseResult(false, $"Season with ID '{seasonId}' not found.");
+            }
+
+            if (season.Phase == SeasonPhase.Playoffs)
+            {
+                return new BaseResult(false, "Season is already in Playoffs phase. Phase cannot be reversed.");
+            }
+
+            // Validate that at least one conference has playoff team count configured
+            var conferences = await _conferenceRepository.GetBySeasonAsync(seasonId);
+            bool hasPlayoffConfig = conferences.Any(c => c.PlayoffTeamsCount > 0);
+            
+            if (!hasPlayoffConfig)
+            {
+                return new BaseResult(false, "Cannot switch to Playoffs: Set at least one conference's playoff team count before switching to Playoffs.");
+            }
+
+            season.Phase = SeasonPhase.Playoffs;
+            await _seasonRepository.UpdateAsync(season);
+
+            return new BaseResult(true, $"Season {season.SeasonNumber} switched to Playoffs phase.");
         }
     }
 }

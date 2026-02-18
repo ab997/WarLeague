@@ -1,4 +1,4 @@
-﻿
+
 
 using Discord.Interactions;
 using WarLeague.Data.Entities;
@@ -70,6 +70,19 @@ namespace WarLeague.Discord.Commands
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
             BaseResult result = await _seasonService.SetTeamModificationsAsync(season.Id, enabled);
+
+            await FollowupAsync(ResultHelper.Stringify(result));
+        }
+
+        [SlashCommand("switch-to-playoffs", "Switch the active season to Playoffs phase (cannot be reversed)")]
+        [EnsureSingleActiveSeason]
+        public async Task SwitchToPlayoffsAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+            BaseResult result = await _seasonService.SetPhaseToPlayoffsAsync(season.Id);
 
             await FollowupAsync(ResultHelper.Stringify(result));
         }
