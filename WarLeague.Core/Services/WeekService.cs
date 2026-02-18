@@ -29,10 +29,10 @@ namespace WarLeague.Core.Services
             _matchService = matchService;
         }
 
-        public async Task<BaseResult> CreateAsync(int seasonId, int weekNumber, DateTime startDate, DateTime endDate, DateTime? subCloseDate, int submissionsRequired)
+        public async Task<BaseResult> CreateAsync(int seasonId, int weekNumber, DateTime? startDate, DateTime? endDate, DateTime? subCloseDate, int submissionsRequired)
         {
-            // Validate date ordering
-            if (startDate > endDate)
+            // Validate date ordering when both are provided
+            if (startDate.HasValue && endDate.HasValue && startDate.Value > endDate.Value)
             {
                 return new BaseResult(false, "Start date must be before end date.");
             }

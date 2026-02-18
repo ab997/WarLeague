@@ -42,20 +42,32 @@ namespace WarLeague.Discord.Commands
         }
         [SlashCommand("create", "1 -> Creates a week (Status: null -> NotOpenYet)")]
         public async Task Create(int weekNumber,
-            [Summary("submissions-required", "Number of submissions (players per team) required for the week")] int submissionsRequired, 
-            [Summary("start-date", "Start date (YYYY-MM-DD)")] string startDateStr,
-            [Summary("end-date", "End date (YYYY-MM-DD)")] string endDateStr,
-            [Summary("submissions-close-date", "Submissions close date (YYYY-MM-DD)")] string subCloseDateStr
+            [Summary("submissions-required", "Number of submissions (players per team) required for the week")] int submissionsRequired,
+            [Summary("start-date", "Start date (YYYY-MM-DD)")] string? startDateStr = null,
+            [Summary("end-date", "End date (YYYY-MM-DD)")] string? endDateStr = null,
+            [Summary("submissions-close-date", "Submissions close date (YYYY-MM-DD)")] string? subCloseDateStr = null
             )
         {
             await DeferAsync(ephemeral: false);
 
-            if (!DateTime.TryParse(startDateStr, out var startDate) ||
-                !DateTime.TryParse(endDateStr, out var endDate) ||
-                !DateTime.TryParse(subCloseDateStr, out var subCloseDate))
+            DateTime? startDate = null;
+            DateTime? endDate = null;
+            DateTime? subCloseDate = null;
+
+            if (startDateStr is { } s1)
             {
-                await FollowupAsync("Invalid date format. Use YYYY-MM-DD.");
-                return;
+                if (!DateTime.TryParse(s1, out var parsed)) { await FollowupAsync("Invalid start date format. Use YYYY-MM-DD."); return; }
+                startDate = parsed;
+            }
+            if (endDateStr is { } s2)
+            {
+                if (!DateTime.TryParse(s2, out var parsed)) { await FollowupAsync("Invalid end date format. Use YYYY-MM-DD."); return; }
+                endDate = parsed;
+            }
+            if (subCloseDateStr is { } s3)
+            {
+                if (!DateTime.TryParse(s3, out var parsed)) { await FollowupAsync("Invalid submissions close date format. Use YYYY-MM-DD."); return; }
+                subCloseDate = parsed;
             }
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);

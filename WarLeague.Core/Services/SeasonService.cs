@@ -13,13 +13,19 @@ namespace WarLeague.Core.Services
         private readonly FormatRepository _formatRepository;
         private readonly ConferenceRepository _conferenceRepository;
         private readonly WeekRepository _weekRepository;
+        private readonly WeekService _weekService;
+        private readonly PlayoffService _playoffService;
+        private readonly TeamRepository _teamRepository;
 
-        public SeasonService(SeasonRepository seasonRepository, FormatRepository formatRepository, ConferenceRepository conferenceRepository, WeekRepository weekRepository)
+        public SeasonService(SeasonRepository seasonRepository, FormatRepository formatRepository, ConferenceRepository conferenceRepository, WeekRepository weekRepository, WeekService weekService, PlayoffService playoffService, TeamRepository teamRepository)
         {
             _seasonRepository = seasonRepository;
             _formatRepository = formatRepository;
             _conferenceRepository = conferenceRepository;
             _weekRepository = weekRepository;
+            _weekService = weekService;
+            _playoffService = playoffService;
+            _teamRepository = teamRepository;
         }
 
         public async Task<BaseResult> CreateAsync(int formatId, int seasonNumber, int minTeamMembers)
@@ -131,7 +137,40 @@ namespace WarLeague.Core.Services
             season.Phase = SeasonPhase.Playoffs;
             await _seasonRepository.UpdateAsync(season);
 
-            return new BaseResult(true, $"Season {season.SeasonNumber} switched to Playoffs phase.");
+            // Auto-create next week and first-round playoff pairings
+            int nextWeekNumber = weeks.Count == 0 ? 1 : weeks.Max(w => w.WeekNumber) + 1;
+            int submissionsRequired = weeks.Count > 0
+                ? weeks.OrderByDescending(w => w.WeekNumber).First().SubmissionsRequired
+                : season.MinimumTeamMembers;
+
+            BaseResult createWeekResult = await _weekService.CreateAsync(seasonId, nextWeekNumber, null, null, null, submissionsRequired);
+            if (!createWeekResult.Success)
+            {
+                return new BaseResult(false, $"Season {season.SeasonNumber} switched to Playoffs phase, but creating Week {nextWeekNumber} failed: {createWeekResult.Message}. Create the week manually and add playoff pairings if needed.");
+            }
+
+            Week? week = await _weekRepository.GetByWeekNumberAndSeasonAsync(nextWeekNumber, seasonId);
+            if (week == null)
+            {
+                return new BaseResult(false, $"Season {season.SeasonNumber} switched to Playoffs phase and Week {nextWeekNumber} was created, but the week could not be loaded. Please retry or create the week manually.");
+            }
+
+            var (teamMatchups, playoffTeams, nonPlayoffTeams) = await _playoffService.GetFirstPlayoffWeekMatchupsAndQualifiersAsync(seasonId);
+            var teams = await _teamRepository.GetBySeasonAsync(seasonId);
+
+            if (teamMatchups.Count >= 1)
+            {
+                BaseResult saveResult = await _playoffService.SaveTeamMatchupsAsync(week, teams, teamMatchups);
+                if (!saveResult.Success)
+                {
+                    return new BaseResult(false, $"Season {season.SeasonNumber} switched to Playoffs phase. Week {nextWeekNumber} created (NotOpenYet). Saving first-round pairings failed: {saveResult.Message}. You can run generate-pairings after opening and closing the week to create pairings from standings.");
+                }
+            }
+
+            var playoffNames = playoffTeams.Count > 0 ? string.Join(", ", playoffTeams.Select(t => t.Name)) : "(none)";
+            var nonPlayoffNames = nonPlayoffTeams.Count > 0 ? string.Join(", ", nonPlayoffTeams.Select(t => t.Name)) : "(none)";
+            string message = $"Season {season.SeasonNumber} switched to Playoffs phase. Week {nextWeekNumber} created (NotOpenYet) with first-round playoff pairings pre-created.\n\n**Playoff teams:** {playoffNames}\n\n**Did not qualify:** {nonPlayoffNames}";
+            return new BaseResult(true, message);
         }
     }
 }

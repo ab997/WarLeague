@@ -133,6 +133,16 @@ namespace WarLeague.Core.Services
 
         private async Task<List<(Team a, Team b)>> GetFirstPlayoffWeekMatchupsAsync(Season season, IReadOnlyList<Team> teams)
         {
+            var (matchups, _) = await GetFirstPlayoffWeekMatchupsAndPlayoffTeamsAsync(season, teams);
+            return matchups;
+        }
+
+        /// <summary>
+        /// Returns first-round playoff matchups and the list of teams that qualified for playoffs.
+        /// Used by GetFirstPlayoffWeekMatchupsAsync and by switch-to-playoffs for reporting.
+        /// </summary>
+        private async Task<(List<(Team a, Team b)> matchups, List<Team> playoffTeams)> GetFirstPlayoffWeekMatchupsAndPlayoffTeamsAsync(Season season, IReadOnlyList<Team> teams)
+        {
             // Get all completed round-robin weeks
             var allWeeks = await _weekRepository.GetBySeasonAsync(season.Id);
             var completedWeeks = allWeeks
@@ -177,7 +187,7 @@ namespace WarLeague.Core.Services
 
             if (playoffTeams.Count < 2)
             {
-                return new List<(Team, Team)>();
+                return (new List<(Team, Team)>(), playoffTeams);
             }
 
             // Generate bracket matchups (single elimination seeding: 1 vs N, 2 vs N-1, etc.)
@@ -186,7 +196,26 @@ namespace WarLeague.Core.Services
                 .ThenBy(t => t.Id)
                 .ToList();
 
-            return GenerateBracketMatchups(seededTeams, round: 1);
+            var matchups = GenerateBracketMatchups(seededTeams, round: 1);
+            return (matchups, playoffTeams);
+        }
+
+        /// <summary>
+        /// Returns first-round playoff matchups and qualifier lists for the season (for switch-to-playoffs reporting).
+        /// </summary>
+        public async Task<(List<(Team a, Team b)> matchups, List<Team> playoffTeams, List<Team> nonPlayoffTeams)> GetFirstPlayoffWeekMatchupsAndQualifiersAsync(int seasonId)
+        {
+            var season = await _seasonRepository.GetByIdOrDefault(seasonId);
+            if (season == null)
+            {
+                return (new List<(Team, Team)>(), new List<Team>(), new List<Team>());
+            }
+
+            var teams = await _teamRepository.GetBySeasonAsync(seasonId);
+            var (matchups, playoffTeams) = await GetFirstPlayoffWeekMatchupsAndPlayoffTeamsAsync(season, teams);
+            var playoffIds = playoffTeams.Select(t => t.Id).ToHashSet();
+            var nonPlayoffTeams = teams.Where(t => !playoffIds.Contains(t.Id)).ToList();
+            return (matchups, playoffTeams, nonPlayoffTeams);
         }
 
         private async Task<List<(Team a, Team b)>> GetSubsequentPlayoffWeekMatchupsAsync(Week previousWeek, int currentWeekNumber)
@@ -378,6 +407,29 @@ namespace WarLeague.Core.Services
 
         public Task<RoundRobinSuggestionResult?> GetSuggestedRoundsAsync(int seasonId) => Task.FromResult<RoundRobinSuggestionResult?>(null);
 
-        public Task<List<(Team a, Team b)>?> GetExistingTeamMatchupsAsync(Week week, IReadOnlyList<Team> teams) => Task.FromResult<List<(Team a, Team b)>?>(null);
+        public async Task<List<(Team a, Team b)>?> GetExistingTeamMatchupsAsync(Week week, IReadOnlyList<Team> teams)
+        {
+            var existingMatchups = await _playoffMatchupRepository.GetByWeekIdAsync(week.Id);
+            if (existingMatchups.Count == 0)
+                return null;
+
+            var teamById = teams.ToDictionary(t => t.Id);
+            var list = new List<(Team a, Team b)>();
+            foreach (var m in existingMatchups.OrderBy(x => x.BracketPosition))
+            {
+                if (!teamById.TryGetValue(m.Team1Id, out var t1))
+                    continue;
+                bool isBye = m.MatchupType == MatchupType.Bye || m.Team1Id == m.Team2Id;
+                if (isBye)
+                {
+                    list.Add((t1, t1));
+                    continue;
+                }
+                if (!teamById.TryGetValue(m.Team2Id, out var t2))
+                    continue;
+                list.Add((t1, t2));
+            }
+            return list.Count == 0 ? null : list;
+        }
     }
 }
