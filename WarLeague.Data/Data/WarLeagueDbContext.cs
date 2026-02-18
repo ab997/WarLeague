@@ -104,9 +104,9 @@ public class WarLeagueDbContext : DbContext
         //--------------------------------------
         // check constraints
         //--------------------------------------
-        // Match: prevent self-play
+        // Match: canonical order (Player1Id < Player2Id) so unique (WeekId, Player1Id, Player2Id) prevents duplicate pair per week
         modelBuilder.Entity<Match>()
-            .ToTable(t => t.HasCheckConstraint("CK_Match_NoSelfPlay", "[Player1Id] <> [Player2Id]"));
+            .ToTable(t => t.HasCheckConstraint("CK_Match_CanonicalOrder", "[Player1Id] < [Player2Id]"));
 
         //--------------------------------------
         // enums as strings
@@ -195,6 +195,17 @@ public class WarLeagueDbContext : DbContext
         modelBuilder.Entity<DeckSubmission>()
             .HasIndex(x => new { x.PlayerId, x.WeekId })
             .IsUnique();
+
+        // Match: one match per (week, player pair) — app must store Player1Id < Player2Id (see CK_Match_CanonicalOrder)
+        modelBuilder.Entity<Match>()
+            .HasIndex(m => new { m.WeekId, m.Player1Id, m.Player2Id })
+            .IsUnique();
+
+        // Team: one Discord role per team per season when assigned
+        modelBuilder.Entity<Team>()
+            .HasIndex(t => new { t.SeasonId, t.DiscordRoleId })
+            .IsUnique()
+            .HasFilter("[DiscordRoleId] IS NOT NULL");
 
         modelBuilder.Entity<RolePermissionMapping>()
             .HasIndex(w => new { w.GuildId, w.PermissionType })

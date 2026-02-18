@@ -62,11 +62,14 @@ namespace WarLeague.Core.Services
                     var p2 = sortedB[i];
                     pairs.Add((p1, p2));
 
+                    // Canonical order (Player1Id < Player2Id) for DB unique constraint
+                    var player1Id = Math.Min(p1.Id, p2.Id);
+                    var player2Id = Math.Max(p1.Id, p2.Id);
                     createdMatches.Add(new Match
                     {
                         WeekId = week.Id,
-                        Player1Id = p1.Id,
-                        Player2Id = p2.Id,
+                        Player1Id = player1Id,
+                        Player2Id = player2Id,
                         Team1Id = teamA.Id,
                         Team2Id = teamB.Id,
                         Status = MatchStatus.Scheduled

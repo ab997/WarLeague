@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -124,12 +124,12 @@ namespace WarLeague.Test
             DbContext.Weeks.Add(week1);
             DbContext.SaveChanges();
 
-            // Create 3 Matches for Week 1 (all completed)
+            // Create 3 Matches for Week 1 (all completed). Canonical order: Player1Id < Player2Id.
             var match1 = new Match
             {
                 WeekId = week1.Id,
-                Player1Id = player1.Id,
-                Player2Id = player5.Id,
+                Player1Id = Math.Min(player1.Id, player5.Id),
+                Player2Id = Math.Max(player1.Id, player5.Id),
                 WinnerId = player1.Id,
                 Status = MatchStatus.Reported,
                 ReportedDate = DateTime.UtcNow.AddDays(-10),
@@ -140,8 +140,8 @@ namespace WarLeague.Test
             var match2 = new Match
             {
                 WeekId = week1.Id,
-                Player1Id = player2.Id,
-                Player2Id = player6.Id,
+                Player1Id = Math.Min(player2.Id, player6.Id),
+                Player2Id = Math.Max(player2.Id, player6.Id),
                 WinnerId = player6.Id,
                 Status = MatchStatus.Reported,
                 ReportedDate = DateTime.UtcNow.AddDays(-10),
@@ -152,8 +152,8 @@ namespace WarLeague.Test
             var match3 = new Match
             {
                 WeekId = week1.Id,
-                Player1Id = player3.Id,
-                Player2Id = player7.Id,
+                Player1Id = Math.Min(player3.Id, player7.Id),
+                Player2Id = Math.Max(player3.Id, player7.Id),
                 WinnerId = player3.Id,
                 Status = MatchStatus.Reported,
                 ReportedDate = DateTime.UtcNow.AddDays(-10),

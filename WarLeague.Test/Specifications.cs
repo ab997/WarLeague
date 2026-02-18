@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -262,11 +262,14 @@ namespace WarLeague.Test
             var week = await _context.Weeks.FirstOrDefaultAsync(w => w.SeasonId == seasonId && w.WeekNumber == weekNumber);
             if (week == null) return;
             
+            // Canonical order (Player1Id < Player2Id) for DB unique constraint
+            var p1 = Math.Min(player1Id, player2Id);
+            var p2 = Math.Max(player1Id, player2Id);
             _context.Matches.Add(new Match
             {
                 WeekId = week.Id,
-                Player1Id = player1Id,
-                Player2Id = player2Id,
+                Player1Id = p1,
+                Player2Id = p2,
                 Status = MatchStatus.Scheduled,
                 Team1Id = teamId,
                 Team2Id = opponentTeamId
