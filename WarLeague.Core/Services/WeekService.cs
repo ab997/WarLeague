@@ -209,16 +209,27 @@ namespace WarLeague.Core.Services
                 return new BaseResult { Success = false, Message = "Not enough teams to start the week." };
             }
 
+            // Phase-agnostic: only require submissions from teams that participate this week (delegated to matchup service)
+            var season = await _seasonRepository.GetByIdOrDefault(seasonId);
+            if (season is null)
+            {
+                return new BaseResult { Success = false, Message = "Season not found." };
+            }
+
+            var matchupService = _matchupServiceFactory.GetMatchupService(season);
+            var requiredTeamIds = await matchupService.GetTeamIdsRequiredForSubmissionsAsync(teams, openWeek.WeekNumber);
+            var teamsRequired = teams.Where(t => requiredTeamIds.Contains(t.Id)).ToList();
+
             var psts = await _playerSeasonTeamRepository.GetBySeasonAsync(seasonId);
 
-            var invalidTeams = ValidateTeamDeckSubmissions(openWeek, teams, psts);
+            var invalidTeams = ValidateTeamDeckSubmissions(openWeek, teamsRequired, psts);
 
             if (invalidTeams.Count > 0)
             {
                 return new BaseResult
                 {
                     Success = false,
-                    Message = $"Cannot start week because not all teams have exactly {openWeek.SubmissionsRequired} submitted decks:\n" +
+                    Message = $"Cannot start week because not all required teams have exactly {openWeek.SubmissionsRequired} submitted decks:\n" +
                     string.Join("\n", invalidTeams)
                 };
             }
@@ -364,6 +375,11 @@ namespace WarLeague.Core.Services
                 .ToList();
 
             return lines;
+        }
+
+        public async Task<List<Week>> GetWeeksBySeasonAsync(int seasonId)
+        {
+            return await _weekRepository.GetBySeasonAsync(seasonId);
         }
 
         public async Task<BaseResult> DeleteAsync(int seasonId, int weekNumber)

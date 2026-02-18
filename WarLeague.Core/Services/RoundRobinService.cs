@@ -205,6 +205,19 @@ namespace WarLeague.Core.Services
             return new BaseResult(true, "Round-robin winners updated.");
         }
 
+        public Task<List<Team>> GetByeTeamsForPairingsDisplayAsync(IReadOnlyList<(Team a, Team b)> teamMatchups, IReadOnlyList<Team> allTeams)
+        {
+            var participatingIds = teamMatchups.SelectMany(m => new[] { m.a.Id, m.b.Id }).ToHashSet();
+            var byeTeams = allTeams.Where(t => !participatingIds.Contains(t.Id)).ToList();
+            return Task.FromResult(byeTeams);
+        }
+
+        public Task<IReadOnlySet<int>> GetTeamIdsRequiredForSubmissionsAsync(IReadOnlyList<Team> teams, int weekNumber)
+        {
+            var ids = teams.Select(t => t.Id).ToHashSet();
+            return Task.FromResult<IReadOnlySet<int>>(ids);
+        }
+
         // Circle method rotation: keep index 0 fixed, rotate the rest.
         // Example [A, B, C, D] -> [A, D, B, C]
         private static void RotateRoundRobinInPlace(List<Team> arr)

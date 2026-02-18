@@ -296,13 +296,7 @@ namespace WarLeague.Core.Services
 
             var (createdMatches, matchupOutputs) = matchupService.GetIndividualMatchups(week, teamMatchups, submissionsByTeamId);
 
-            var participatingTeamIds = teamMatchups
-                .SelectMany(m => new[] { m.a.Id, m.b.Id })
-                .ToHashSet();
-
-            var byeTeams = teams
-                .Where(t => !participatingTeamIds.Contains(t.Id))
-                .ToList();
+            var byeTeams = await matchupService.GetByeTeamsForPairingsDisplayAsync(teamMatchups, teams);
 
             if (createdMatches.Count == 0)
             {

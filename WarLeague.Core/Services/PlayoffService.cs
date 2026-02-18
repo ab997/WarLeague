@@ -353,5 +353,23 @@ namespace WarLeague.Core.Services
             await _playoffMatchupRepository.UpdateRangeAsync(playoffMatchups);
             return new BaseResult(true, "Playoff winners updated.");
         }
+
+        public Task<List<Team>> GetByeTeamsForPairingsDisplayAsync(IReadOnlyList<(Team a, Team b)> teamMatchups, IReadOnlyList<Team> allTeams)
+        {
+            // BYE matchup = same team on both sides (equivalent to MatchupType.Bye after save)
+            var byeTeams = teamMatchups
+                .Where(m => m.a.Id == m.b.Id)
+                .Select(m => m.a)
+                .Distinct()
+                .ToList();
+            return Task.FromResult(byeTeams);
+        }
+
+        public async Task<IReadOnlySet<int>> GetTeamIdsRequiredForSubmissionsAsync(IReadOnlyList<Team> teams, int weekNumber)
+        {
+            var matchups = await GetTeamMatchups(teams, weekNumber);
+            var ids = matchups.SelectMany(m => new[] { m.a.Id, m.b.Id }).ToHashSet();
+            return ids;
+        }
     }
 }

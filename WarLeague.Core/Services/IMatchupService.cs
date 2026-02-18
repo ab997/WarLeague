@@ -9,5 +9,17 @@ namespace WarLeague.Core.Services
         Task<List<(Team a, Team b)>> GetTeamMatchups(IReadOnlyList<Team> teams, int weekNumber);
         Task<BaseResult> SaveTeamMatchupsAsync(Week week, IReadOnlyList<Team> teams, IReadOnlyList<(Team a, Team b)> teamMatchups);
         Task<BaseResult> UpdateMatchupWinnersForWeekAsync(Week week, IReadOnlyList<Match> matches);
+
+        /// <summary>
+        /// Returns teams that have a bye this week for pairings display.
+        /// Round-robin: teams not in any matchup. Playoffs: teams in a BYE matchup (a.Id == b.Id).
+        /// </summary>
+        Task<List<Team>> GetByeTeamsForPairingsDisplayAsync(IReadOnlyList<(Team a, Team b)> teamMatchups, IReadOnlyList<Team> allTeams);
+
+        /// <summary>
+        /// Returns the set of team IDs that must have deck submissions for the given week.
+        /// Used by close-submissions validation (phase-agnostic: round-robin = all teams, playoffs = participating only).
+        /// </summary>
+        Task<IReadOnlySet<int>> GetTeamIdsRequiredForSubmissionsAsync(IReadOnlyList<Team> teams, int weekNumber);
     }
 }

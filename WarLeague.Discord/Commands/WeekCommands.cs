@@ -60,6 +60,32 @@ namespace WarLeague.Discord.Commands
 
             await FollowupAsync(Stringify(result));
         }
+        [SlashCommand("list", "Lists all weeks of the active season with status and dates")]
+        public async Task ListAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+            var weeks = await _weekService.GetWeeksBySeasonAsync(season.Id);
+            var phaseText = season.Phase == SeasonPhase.Playoffs ? "Playoffs" : "Round Robin";
+
+            if (weeks.Count == 0)
+            {
+                await FollowupAsync($"Season {season.SeasonNumber} ({phaseText}): no weeks yet.");
+                return;
+            }
+
+            static string Fmt(DateTime d) => d.ToString("MM-dd");
+            var lines = weeks
+                .OrderBy(w => w.WeekNumber)
+                .Select(w => $"W{w.WeekNumber}: {w.Status} ({Fmt(w.StartDate)}→{Fmt(w.EndDate)})")
+                .ToList();
+
+            var message = $"Season {season.SeasonNumber} • {phaseText}\n**Weeks:**\n" + string.Join("\n", lines);
+            await FollowupAsync(message);
+        }
+
         [SlashCommand("delete", "Deletes a week")]
         public async Task DeleteAsync(int weekNumber)
         {
@@ -275,7 +301,7 @@ namespace WarLeague.Discord.Commands
                 eb.AddField($"{wm.TeamA.Name} vs {wm.TeamB.Name}", fieldValue, inline: false);
             }
 
-            foreach (Team byeTeam in byeTeams.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase))
+            if (byeTeams.Count > 0)
             {
                 if (eb.Fields.Count >= 25)
                 {
@@ -284,7 +310,8 @@ namespace WarLeague.Discord.Commands
                     eb = NewEmbed(pageNumber);
                 }
 
-                eb.AddField($"{byeTeam.Name} vs BYE", "_Automatic BYE week._", inline: false);
+                var byeNames = string.Join(", ", byeTeams.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).Select(t => t.Name));
+                eb.AddField("Byes (auto-advance)", byeNames, inline: false);
             }
 
             embeds.Add(eb.Build());
