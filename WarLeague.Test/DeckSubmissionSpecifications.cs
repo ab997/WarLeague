@@ -147,7 +147,7 @@ namespace WarLeague.Test
         {
             // Arrange - Create season with team and players
             var (_, seasonId) = await CreateFormatAndSeason();
-            var (player1, player2) = await CreateTwoPlayersOnSameTeam(seasonId, "Team1");
+            var (player1, player2, _) = await CreateTwoPlayersOnSameTeam(seasonId, "Team1");
 
             // Week 1: Create, submit, and close
             await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 1);

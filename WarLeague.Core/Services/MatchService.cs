@@ -2,7 +2,6 @@
 using WarLeague.Data;
 using WarLeague.Data.Entities;
 using WarLeague.Data.Enums;
-using WarLeague.Core.Helpers;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 
@@ -14,19 +13,19 @@ namespace WarLeague.Core.Services
         private readonly TeamRepository _teamRepository;
         private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
         private readonly MatchRepository _matchRepository;
-        private readonly WarLeagueDbContext _context;
-        public MatchService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, MatchRepository matchRepository, WarLeagueDbContext context)
+        private readonly IMatchupService _matchupService;
+        public MatchService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, MatchRepository matchRepository, IMatchupService matchupService)
         {
             _weekRepository = weekRepository;
             _teamRepository = teamRepository;
             _playerSeasonTeamRepository = playerSeasonTeamRepository;
             _matchRepository = matchRepository;
-            _context = context;
+            _matchupService = matchupService;
         }
 
-        
 
-        
+
+
 
         public async Task<BaseResult> ReportLossAsync(int seasonId, int loserId, string replayUrl)
         {
@@ -259,7 +258,7 @@ namespace WarLeague.Core.Services
         public async Task<GeneratePairingsResult> GeneratePairingsAsync(int seasonId, Week week, List<Team> teams)
         {
             // Resolve the team-vs-team matchups for this week (deterministic round-robin based on WeekNumber).
-            var teamMatchups = RoundRobin.GetRoundRobinTeamMatchupsForWeek(teams, week.WeekNumber);
+            List<(Team a, Team b)> teamMatchups = _matchupService.GetTeamMatchups(teams, week.WeekNumber);
             if (teamMatchups.Count == 0)
             {
                 return new GeneratePairingsResult { Success = false, Message = "No team matchups available for this week (did everyone get a bye?)." };
@@ -284,21 +283,37 @@ namespace WarLeague.Core.Services
                 return new GeneratePairingsResult { Success = false, Message = $"Matches already exist for week {week.WeekNumber}. Refusing to generate new pairings to avoid duplicates." };
             }
 
-            var (createdMatches, matchupOutputs) = RoundRobin.Run(week, teamMatchups, submissionsByTeamId);
+            var (createdMatches, matchupOutputs) = _matchupService.GetIndividualMatchups(week, teamMatchups, submissionsByTeamId);
+
+            var participatingTeamIds = teamMatchups
+                .SelectMany(m => new[] { m.a.Id, m.b.Id })
+                .ToHashSet();
+
+            var byeTeams = teams
+                .Where(t => !participatingTeamIds.Contains(t.Id))
+                .ToList();
 
             if (createdMatches.Count == 0)
             {
                 return new GeneratePairingsResult { Success = false, Message = "No pairings generated. Likely missing deck submissions for the teams playing this week." };
             }
 
+            BaseResult saveTeamMatchupsResult = await _matchupService.SaveTeamMatchupsAsync(week, teams, teamMatchups);
+            if (!saveTeamMatchupsResult.Success)
+            {
+                return new GeneratePairingsResult { Success = false, Message = saveTeamMatchupsResult.Message };
+            }
+
             await _matchRepository.AddRangeAsync(createdMatches);
+
             return new GeneratePairingsResult
             {
                 Success = true,
                 Message = "Pairings generated successfully.",
                 Week = week,
                 CreatedMatches = createdMatches,
-                WeeklyMatchups = matchupOutputs
+                WeeklyMatchups = matchupOutputs,
+                ByeTeams = byeTeams
             };
         }
 

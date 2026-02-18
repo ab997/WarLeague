@@ -9,5 +9,7 @@ public class Team
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
     public int SeasonId { get; set; }
     public Season Season { get; set; } = null!;
+    public int ConferenceId { get; set; }
+    public Conference Conference { get; set; } = null!;
     public ulong? DiscordRoleId { get; set; }
 }

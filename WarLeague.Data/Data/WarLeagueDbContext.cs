@@ -10,6 +10,7 @@ public class WarLeagueDbContext : DbContext
     public WarLeagueDbContext(DbContextOptions<WarLeagueDbContext> options) : base(options)
     {
     }
+    public DbSet<Conference> Conferences { get; set; }
     public DbSet<DeckSubmission> DeckSubmissions { get; set; }
     public DbSet<Format> Formats { get; set; }
     public DbSet<Match> Matches { get; set; }
@@ -19,6 +20,7 @@ public class WarLeagueDbContext : DbContext
     public DbSet<Week> Weeks { get; set; }
     public DbSet<PlayerSeasonTeam> PlayerSeasonTeams { get; set; }
     public DbSet<RolePermissionMapping> RolePermissionMappings { get; set; }
+    public DbSet<RoundRobinMatchup> RoundRobinMatchups { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -67,6 +69,21 @@ public class WarLeagueDbContext : DbContext
            .WithMany()
            .HasForeignKey(m => m.WinnerTeamId);
 
+        modelBuilder.Entity<RoundRobinMatchup>()
+           .HasOne(m => m.Team1)
+           .WithMany()
+           .HasForeignKey(m => m.Team1Id);
+
+        modelBuilder.Entity<RoundRobinMatchup>()
+           .HasOne(m => m.Team2)
+           .WithMany()
+           .HasForeignKey(m => m.Team2Id);
+
+        modelBuilder.Entity<RoundRobinMatchup>()
+          .HasOne(m => m.TeamWinner)
+          .WithMany()
+          .HasForeignKey(m => m.TeamWinnerId);
+
         //--------------------------------------
         // check constraints
         //--------------------------------------
@@ -78,16 +95,24 @@ public class WarLeagueDbContext : DbContext
         // enums as strings
         //--------------------------------------
         modelBuilder.Entity<Week>()
-        .Property(w => w.Status)
-        .HasConversion<string>();
+            .Property(w => w.Status)
+            .HasConversion<string>();
 
         modelBuilder.Entity<Match>()
-        .Property(w => w.Status)
-        .HasConversion<string>();
+            .Property(w => w.Status)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<Match>()
+            .Property(w => w.MatchResultType)
+            .HasConversion<string>();
 
         modelBuilder.Entity<RolePermissionMapping>()
-        .Property(w => w.PermissionType)
-        .HasConversion<string>();
+            .Property(w => w.PermissionType)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<RoundRobinMatchup>()
+            .Property(w => w.MatchupType)
+            .HasConversion<string>();
 
         //--------------------------------------
         // unique indexes
@@ -115,6 +140,10 @@ public class WarLeagueDbContext : DbContext
 
         modelBuilder.Entity<Season>()
             .HasIndex(s => new { s.FormatId, s.SeasonNumber })
+            .IsUnique();
+
+        modelBuilder.Entity<Conference>()
+            .HasIndex(c => new { c.SeasonId, c.Name })
             .IsUnique();
 
         modelBuilder.Entity<Season>()

@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using WarLeague.Data;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
+using WarLeague.Data.Data;
 
 namespace WarLeague.Test;
 
@@ -23,8 +24,10 @@ public static class TestServiceProvider
         services.AddScoped<SeasonRepository>();
         services.AddScoped<WeekRepository>();
         services.AddScoped<TeamRepository>();
+        services.AddScoped<ConferenceRepository>();
         services.AddScoped<PlayerSeasonTeamRepository>();
         services.AddScoped<MatchRepository>();
+        services.AddScoped<RoundRobinMatchupRepository>();
         services.AddScoped<PlayerRepository>();
         services.AddScoped<DeckSubmissionRepository>();
 
@@ -34,9 +37,12 @@ public static class TestServiceProvider
         services.AddScoped<WeekService>();
         services.AddScoped<TeamService>();
         services.AddScoped<TeamValidationService>();
+        services.AddScoped<IMatchupService, RoundRobinService>();
         services.AddScoped<MatchService>();
         services.AddScoped<DeckSubmissionService>();
         services.AddScoped<SubstitutionService>();
+
+        services.AddScoped<GuildContextService>();
 
         return services.BuildServiceProvider();
     }

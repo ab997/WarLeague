@@ -88,7 +88,7 @@ namespace WarLeague.Test
         private async Task<(int seasonId, int player1Id, int player2Id)> CreateSeasonWithTeamAndTwoPlayersAndOpenWeek()
         {
             var (_, seasonId) = await CreateFormatAndSeason();
-            var (player1, player2) = await CreateTwoPlayersOnSameTeam(seasonId, "Team1");
+            var (player1, player2, _) = await CreateTwoPlayersOnSameTeam(seasonId, "Team1");
             await CreateOpenWeek(seasonId);
             return (seasonId, player1.Id, player2.Id);
         }
@@ -97,7 +97,7 @@ namespace WarLeague.Test
         {
             var (_, seasonId) = await CreateFormatAndSeason();
             var teamName = "Team1";
-            var (player1, player2) = await CreateTwoPlayersOnSameTeam(seasonId, teamName);
+            var (player1, player2, teamId) = await CreateTwoPlayersOnSameTeam(seasonId, teamName);
             
             await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 2);
             await _weekService.UpdateAsync(seasonId, 1, null, null, null, WeekStatus.InProgress, 2);
@@ -105,7 +105,7 @@ namespace WarLeague.Test
             var opponent = await CreatePlayer(777777);
             var opponentTeamId = await CreateTeam(seasonId, "OpponentTeam", opponent.Id);
             
-            await CreateMatch(seasonId, 1, player1.Id, opponent.Id);
+            await CreateMatch(seasonId, 1, player1.Id, opponent.Id, teamId, opponentTeamId);
             await CreateDeckSubmission(seasonId, 1, player1.Id, 1);
             
             return (seasonId, teamName, player2.Id, player1.Id);
@@ -115,7 +115,7 @@ namespace WarLeague.Test
         {
             var (_, seasonId) = await CreateFormatAndSeason();
             var teamName = "Team1";
-            var (player1, player2) = await CreateTwoPlayersOnSameTeam(seasonId, teamName);
+            var (player1, player2, teamId) = await CreateTwoPlayersOnSameTeam(seasonId, teamName);
             
             await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 2);
             await _weekService.UpdateAsync(seasonId, 1, null, null, null, WeekStatus.InProgress, 2);
@@ -126,10 +126,10 @@ namespace WarLeague.Test
             var opponent2 = await CreatePlayer(888882);
             var opponentTeamId = await CreateTeam(seasonId, "OpponentTeam", opponent1.Id);
             await AddPlayerToTeam(opponent2.Id, seasonId, opponentTeamId);
-            
-            await CreateMatch(seasonId, 1, player1.Id, opponent1.Id);
-            await CreateMatch(seasonId, 1, player2.Id, opponent2.Id);
-            
+
+            await CreateMatch(seasonId, 1, player1.Id, opponent1.Id, teamId, opponentTeamId);
+            await CreateMatch(seasonId, 1, player2.Id, opponent2.Id, teamId, opponentTeamId);
+
             return (seasonId, teamName, player1.Id, player2.Id, week.Id);
         }
 
@@ -177,7 +177,7 @@ namespace WarLeague.Test
             return player.Id;
         }
 
-        private async Task<(Player player1, Player player2)> CreateTwoPlayersOnSameTeam(int seasonId, string teamName)
+        private async Task<(Player player1, Player player2, int teamId)> CreateTwoPlayersOnSameTeam(int seasonId, string teamName)
         {
             var captain = await CreatePlayer(111111);
             var teamId = await CreateTeam(seasonId, teamName, captain.Id);
@@ -185,7 +185,7 @@ namespace WarLeague.Test
             var player2 = await CreatePlayer(333333);
             await AddPlayerToTeam(player1.Id, seasonId, teamId);
             await AddPlayerToTeam(player2.Id, seasonId, teamId);
-            return (player1, player2);
+            return (player1, player2, teamId);
         }
 
         private async Task CreateOpenWeek(int seasonId, int submissionsRequired = 3)
@@ -209,16 +209,41 @@ namespace WarLeague.Test
 
         private async Task<int> CreateTeam(int seasonId, string teamName, int captainId)
         {
+            int conferenceId = await GetOrCreateDefaultConferenceId(seasonId);
+
             var team = new Team
             {
                 Name = teamName,
                 CaptainId = captainId,
                 SeasonId = seasonId,
+                ConferenceId = conferenceId,
                 DiscordRoleId = (ulong)(new Random().Next(100000, 999999))
             };
             _context.Teams.Add(team);
             await _context.SaveChangesAsync();
             return team.Id;
+        }
+
+        private async Task<int> GetOrCreateDefaultConferenceId(int seasonId)
+        {
+            var existingConference = await _context.Conferences
+                .SingleOrDefaultAsync(c => c.SeasonId == seasonId && c.Name == "Default");
+
+            if (existingConference is not null)
+            {
+                return existingConference.Id;
+            }
+
+            var conference = new Conference
+            {
+                SeasonId = seasonId,
+                Name = "Default"
+            };
+
+            _context.Conferences.Add(conference);
+            await _context.SaveChangesAsync();
+
+            return conference.Id;
         }
 
         private async Task AddPlayerToTeam(int playerId, int seasonId, int teamId)
@@ -232,7 +257,7 @@ namespace WarLeague.Test
             await _context.SaveChangesAsync();
         }
 
-        private async Task CreateMatch(int seasonId, int weekNumber, int player1Id, int player2Id)
+        private async Task CreateMatch(int seasonId, int weekNumber, int player1Id, int player2Id, int teamId, int opponentTeamId)
         {
             var week = await _context.Weeks.FirstOrDefaultAsync(w => w.SeasonId == seasonId && w.WeekNumber == weekNumber);
             if (week == null) return;
@@ -242,7 +267,9 @@ namespace WarLeague.Test
                 WeekId = week.Id,
                 Player1Id = player1Id,
                 Player2Id = player2Id,
-                Status = MatchStatus.Scheduled
+                Status = MatchStatus.Scheduled,
+                Team1Id = teamId,
+                Team2Id = opponentTeamId
             });
             await _context.SaveChangesAsync();
         }

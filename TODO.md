@@ -42,14 +42,15 @@
 
 ## BYE WEEKS & PLAYOFFS & CONFERENCES
 
-- [ ] Add TeamWeekBye table (TeamId, WeekId) for explicit bye tracking
-- [ ] Add Conference table (Id, SeasonId, Name)
-- [ ] Add ConferenceId (nullable) to Team table
+- [x] Add Matchup table for explicit tracking
+- [x] Add Conference table (Id, SeasonId, Name)
+- [x] Add ConferenceId (nullable) to Team table
+- [x] Update RoundRobin pairing to filter by conference when applicable
+- [ ] Update MatchService.GeneratePairingsAsync to handle conference-filtered pairings
+
 - [ ] Add PlayoffMatchup table (SeasonId, Round, BracketPosition, Team1Id, Team2Id, WinnerTeamId, AdvancesToMatchupId, Status)
 - [ ] Update Match table: WeekId nullable, add PlayoffMatchupId nullable
-- [ ] Update RoundRobin pairing to filter by conference when applicable
 - [ ] Implement SingleEliminationPairing strategy for playoffs
-- [ ] Update MatchService.GeneratePairingsAsync to handle conference-filtered pairings
 - [ ] Playoff bracket creation and advancement logic
 - [ ] Database constraints:
   - [ ] Match: Check constraint - exactly one of WeekId or PlayoffMatchupId must be set (not both null, not both set)

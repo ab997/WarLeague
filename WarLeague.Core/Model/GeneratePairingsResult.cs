@@ -20,5 +20,6 @@ namespace WarLeague.Core.Model
         public Week? Week { get; set; }
         public List<Match>? CreatedMatches { get; set; }
         public List<WeeklyMatchup>? WeeklyMatchups { get; set; }
+        public List<Team>? ByeTeams { get; set; }
     }
 }

@@ -113,7 +113,7 @@ namespace WarLeague.Discord.Commands
             }
 
             // Build embeds (Discord limits: 25 fields/embed, 10 embeds/message).
-            var embeds = BuildPairingsEmbeds(season, result.Week, result.WeeklyMatchups, result.CreatedMatches.Count);
+            var embeds = BuildPairingsEmbeds(season, result.Week, result.WeeklyMatchups, result.CreatedMatches.Count, result.ByeTeams ?? new List<Team>());
             await SendEmbedsInBatchesAsync(embeds);
         }
 
@@ -217,7 +217,8 @@ namespace WarLeague.Discord.Commands
             Season season,
             Week week,
             IReadOnlyList<WeeklyMatchup> matchupOutputs,
-            int totalMatchesCreated)
+            int totalMatchesCreated,
+            IReadOnlyList<Team> byeTeams)
         {
             var embeds = new List<Embed>();
 
@@ -226,7 +227,7 @@ namespace WarLeague.Discord.Commands
                     ? $"Week {week.WeekNumber} Pairings � Season {season.SeasonNumber}"
                     : $"Week {week.WeekNumber} Pairings � Season {season.SeasonNumber} (page {page})")
                 .WithColor(new Color(88, 101, 242))
-                .WithDescription($"Generated {totalMatchesCreated} matches. Pairings are random among deck submitters.");
+                .WithDescription($"Generated {totalMatchesCreated} matches. Pairings are by seat number (seat 1 vs seat 1, etc.).");
 
             int pageNumber = 1;
             var eb = NewEmbed(pageNumber);
@@ -272,6 +273,18 @@ namespace WarLeague.Discord.Commands
                 }
 
                 eb.AddField($"{wm.TeamA.Name} vs {wm.TeamB.Name}", fieldValue, inline: false);
+            }
+
+            foreach (Team byeTeam in byeTeams.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                if (eb.Fields.Count >= 25)
+                {
+                    embeds.Add(eb.Build());
+                    pageNumber++;
+                    eb = NewEmbed(pageNumber);
+                }
+
+                eb.AddField($"{byeTeam.Name} vs BYE", "_Automatic BYE week._", inline: false);
             }
 
             embeds.Add(eb.Build());

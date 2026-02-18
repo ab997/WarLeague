@@ -5,3 +5,5 @@
 - Application validation ensures matches always exist when teams are paired (no team pairings without matches).
 - Optional: TeamWeekBye table (TeamId, WeekId) for explicit bye tracking to avoid complex NOT EXISTS queries.
 - With conferences: pairing filters teams by ConferenceId (teams only play within conference).
+- `RoundRobinMatchup` is now persisted when pairings are generated (including BYE matchup rows) through `IMatchupService`.
+- On week close, team winner per matchup is derived from reported match wins; tied team score blocks week completion.

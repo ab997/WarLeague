@@ -19,6 +19,38 @@ namespace WarLeague.Discord.Commands
         {
             _dbContext = dbContext;
         }
+        [SlashCommand("create-deck-submissions", "Creates deck submissions for a specific week and season, FOR TESTING ONLY")]
+        public async Task DeckSubmissionsAsync(int weekId, int seasonId)
+        {
+            await DeferAsync(ephemeral: false);
+
+            Week week = _dbContext.Weeks.Find(weekId)!;
+            List<PlayerSeasonTeam> psts = await _dbContext.PlayerSeasonTeams.Where(x => x.SeasonId == seasonId).Include(x => x.Team).ToListAsync();
+
+            List<Team> teams = psts.Select(x => x.Team).DistinctBy(x => x.Id).ToList();
+
+            foreach (Team team in teams)
+            {
+                List<Player> teamPlayers = await _dbContext.PlayerSeasonTeams.Where(x => x.SeasonId == seasonId && x.TeamId == team.Id).Select(x => x.Player).ToListAsync();
+                int seat = 1;
+                foreach (Player player in teamPlayers)
+                {
+                    DeckSubmission ds = new()
+                    {
+                        WeekId = weekId,
+                        PlayerId = player.Id,
+                        DeckFile = $"deck_{player.UserName}.ydk",
+                        SubmittedDate = DateTime.UtcNow,
+                        SeatNumber = seat
+                    };
+                    _dbContext.DeckSubmissions.Add(ds);
+                    ++seat;
+                }
+            }
+            _dbContext.SaveChanges();
+
+            await FollowupAsync("done");
+        }
         [SlashCommand("initial-data-seed", "Seeds a format, season, week, teams and submited decks")]
         public async Task InitialSeedDataAsync(string testFormatName)
         {
@@ -75,12 +107,22 @@ namespace WarLeague.Discord.Commands
             DbContext.Seasons.Add(season1);
             DbContext.SaveChanges();
 
+            var defaultConference = new Conference
+            {
+                SeasonId = season1.Id,
+                Name = "Default"
+            };
+
+            DbContext.Conferences.Add(defaultConference);
+            DbContext.SaveChanges();
+
             // Create Teams
             var team1 = new Team
             {
                 Name = name+"A",
                 CaptainId = player1.Id,
                 SeasonId = season1.Id,
+                ConferenceId = defaultConference.Id,
                 CreatedDate = DateTime.UtcNow.AddDays(-30),
                 DiscordRoleId = 123456789012345678
             };
@@ -90,6 +132,7 @@ namespace WarLeague.Discord.Commands
                 Name = name+"B",
                 CaptainId = player3.Id,
                 SeasonId = season1.Id,
+                ConferenceId = defaultConference.Id,
                 CreatedDate = DateTime.UtcNow.AddDays(-30),
                 DiscordRoleId = 234567890123456789
             };
@@ -99,6 +142,7 @@ namespace WarLeague.Discord.Commands
                 Name = name+"C",
                 CaptainId = player5.Id,
                 SeasonId = season1.Id,
+                ConferenceId = defaultConference.Id,
                 CreatedDate = DateTime.UtcNow.AddDays(-30),
                 DiscordRoleId = 234567890123456789
             };

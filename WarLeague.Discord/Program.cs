@@ -42,9 +42,11 @@ builder.Services.AddDbContext<WarLeagueDbContext>(options =>
 builder.Services.AddScoped<TeamRepository>();
 builder.Services.AddScoped<PlayerRepository>();
 builder.Services.AddScoped<MatchRepository>();
+builder.Services.AddScoped<RoundRobinMatchupRepository>();
 builder.Services.AddScoped<WeekRepository>();
 builder.Services.AddScoped<DeckSubmissionRepository>();
 builder.Services.AddScoped<FormatRepository>();
+builder.Services.AddScoped<ConferenceRepository>();
 builder.Services.AddScoped<SeasonRepository>();
 builder.Services.AddScoped<PlayerRepository>();
 builder.Services.AddScoped<PlayerSeasonTeamRepository>();
@@ -56,6 +58,7 @@ builder.Services.AddScoped<GuildContextService>();
 // Services (core - domain)
 builder.Services.AddScoped<TeamService>();
 builder.Services.AddScoped<FormatService>();
+builder.Services.AddScoped<ConferenceService>();
 builder.Services.AddScoped<SeasonService>();
 builder.Services.AddScoped<WeekService>();
 builder.Services.AddScoped<DeckSubmissionService>();
@@ -63,6 +66,7 @@ builder.Services.AddScoped<MatchService>();
 builder.Services.AddScoped<SubstitutionService>();
 builder.Services.AddScoped<TeamService>();
 builder.Services.AddScoped<TeamValidationService>();
+builder.Services.AddScoped<IMatchupService, RoundRobinService>();
 
 
 // Services (discord)
