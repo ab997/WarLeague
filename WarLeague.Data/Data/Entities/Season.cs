@@ -1,4 +1,4 @@
-﻿using WarLeague.Data.Enums;
+using WarLeague.Data.Enums;
 
 namespace WarLeague.Data.Entities;
 
@@ -14,4 +14,5 @@ public class Season
     public bool Active { get; set; }
     public bool DisableTeamModification { get; set; }
     public int MinimumTeamMembers { get; set; }
+    public SeasonPhase Phase { get; set; } = SeasonPhase.RoundRobin;
 }

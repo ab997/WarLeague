@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Data;
@@ -14,17 +14,17 @@ namespace WarLeague.Core.Services
         private readonly MatchRepository _matchRepository;
         private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
         private readonly SeasonRepository _seasonRepository;
-        private readonly IMatchupService _matchupService;
+        private readonly MatchupServiceFactory _matchupServiceFactory;
         private readonly MatchService _matchService;
         private readonly WarLeagueDbContext _context;
-        public WeekService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, MatchRepository matchRepository, SeasonRepository seasonRepository, IMatchupService matchupService, WarLeagueDbContext context, MatchService matchService)
+        public WeekService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, MatchRepository matchRepository, SeasonRepository seasonRepository, MatchupServiceFactory matchupServiceFactory, WarLeagueDbContext context, MatchService matchService)
         {
             _weekRepository = weekRepository;
             _teamRepository = teamRepository;
             _playerSeasonTeamRepository = playerSeasonTeamRepository;
             _matchRepository = matchRepository;
             _seasonRepository = seasonRepository;
-            _matchupService = matchupService;
+            _matchupServiceFactory = matchupServiceFactory;
             _context = context;
             _matchService = matchService;
         }
@@ -278,7 +278,15 @@ namespace WarLeague.Core.Services
                 return new BaseResult { Success = false, Message = $"Cannot close week: {pendingCount} match(es) not reported." };
             }
 
-            BaseResult updateWinnersResult = await _matchupService.UpdateMatchupWinnersForWeekAsync(activeWeek, matches);
+            // Get season to determine which matchup service to use
+            var season = await _seasonRepository.GetByIdOrDefault(seasonId);
+            if (season == null)
+            {
+                return new BaseResult { Success = false, Message = "Season not found." };
+            }
+
+            var matchupService = _matchupServiceFactory.GetMatchupService(season);
+            BaseResult updateWinnersResult = await matchupService.UpdateMatchupWinnersForWeekAsync(activeWeek, matches);
             if (!updateWinnersResult.Success)
             {
                 return updateWinnersResult;

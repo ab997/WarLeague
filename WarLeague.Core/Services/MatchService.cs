@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using WarLeague.Data;
 using WarLeague.Data.Entities;
 using WarLeague.Data.Enums;
@@ -13,14 +13,16 @@ namespace WarLeague.Core.Services
         private readonly TeamRepository _teamRepository;
         private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
         private readonly MatchRepository _matchRepository;
-        private readonly IMatchupService _matchupService;
-        public MatchService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, MatchRepository matchRepository, IMatchupService matchupService)
+        private readonly MatchupServiceFactory _matchupServiceFactory;
+        private readonly SeasonRepository _seasonRepository;
+        public MatchService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, MatchRepository matchRepository, MatchupServiceFactory matchupServiceFactory, SeasonRepository seasonRepository)
         {
             _weekRepository = weekRepository;
             _teamRepository = teamRepository;
             _playerSeasonTeamRepository = playerSeasonTeamRepository;
             _matchRepository = matchRepository;
-            _matchupService = matchupService;
+            _matchupServiceFactory = matchupServiceFactory;
+            _seasonRepository = seasonRepository;
         }
 
 
@@ -257,8 +259,17 @@ namespace WarLeague.Core.Services
 
         public async Task<GeneratePairingsResult> GeneratePairingsAsync(int seasonId, Week week, List<Team> teams)
         {
+            // Get season to determine which matchup service to use
+            var season = await _seasonRepository.GetByIdOrDefault(seasonId);
+            if (season == null)
+            {
+                return new GeneratePairingsResult { Success = false, Message = "Season not found." };
+            }
+
+            var matchupService = _matchupServiceFactory.GetMatchupService(season);
+
             // Resolve the team-vs-team matchups for this week (deterministic round-robin based on WeekNumber).
-            List<(Team a, Team b)> teamMatchups = _matchupService.GetTeamMatchups(teams, week.WeekNumber);
+            List<(Team a, Team b)> teamMatchups = await matchupService.GetTeamMatchups(teams, week.WeekNumber);
             if (teamMatchups.Count == 0)
             {
                 return new GeneratePairingsResult { Success = false, Message = "No team matchups available for this week (did everyone get a bye?)." };
@@ -283,7 +294,7 @@ namespace WarLeague.Core.Services
                 return new GeneratePairingsResult { Success = false, Message = $"Matches already exist for week {week.WeekNumber}. Refusing to generate new pairings to avoid duplicates." };
             }
 
-            var (createdMatches, matchupOutputs) = _matchupService.GetIndividualMatchups(week, teamMatchups, submissionsByTeamId);
+            var (createdMatches, matchupOutputs) = matchupService.GetIndividualMatchups(week, teamMatchups, submissionsByTeamId);
 
             var participatingTeamIds = teamMatchups
                 .SelectMany(m => new[] { m.a.Id, m.b.Id })
@@ -298,7 +309,7 @@ namespace WarLeague.Core.Services
                 return new GeneratePairingsResult { Success = false, Message = "No pairings generated. Likely missing deck submissions for the teams playing this week." };
             }
 
-            BaseResult saveTeamMatchupsResult = await _matchupService.SaveTeamMatchupsAsync(week, teams, teamMatchups);
+            BaseResult saveTeamMatchupsResult = await matchupService.SaveTeamMatchupsAsync(week, teams, teamMatchups);
             if (!saveTeamMatchupsResult.Success)
             {
                 return new GeneratePairingsResult { Success = false, Message = saveTeamMatchupsResult.Message };

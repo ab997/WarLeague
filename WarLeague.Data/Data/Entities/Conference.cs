@@ -6,4 +6,5 @@ public class Conference
     public int SeasonId { get; set; }
     public Season Season { get; set; } = null!;
     public string Name { get; set; } = string.Empty;
+    public int? PlayoffTeamsCount { get; set; }
 }

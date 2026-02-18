@@ -1,4 +1,4 @@
-﻿using WarLeague.Core.Model;
+using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Data.Data.Entities;
 using WarLeague.Data.Data.Enums;
@@ -60,7 +60,7 @@ namespace WarLeague.Core.Services
             return (createdMatches, matchupOutputs);
         }
 
-        public List<(Team a, Team b)> GetTeamMatchups(IReadOnlyList<Team> teams, int weekNumber)
+        public Task<List<(Team a, Team b)>> GetTeamMatchups(IReadOnlyList<Team> teams, int weekNumber)
         {
             var conferenceGroups = teams
                 .GroupBy(t => t.ConferenceId)
@@ -75,7 +75,7 @@ namespace WarLeague.Core.Services
                 allMatchups.AddRange(conferenceMatchups);
             }
 
-            return allMatchups;
+            return Task.FromResult(allMatchups);
         }
 
         private static List<(Team a, Team b)> GetConferenceTeamMatchups(IEnumerable<Team> conferenceTeams, int weekNumber)
@@ -131,12 +131,18 @@ namespace WarLeague.Core.Services
             }
 
             var roundRobinMatchups = teamMatchups
-                .Select(m => new RoundRobinMatchup
+                .Select(m =>
                 {
-                    WeekId = week.Id,
-                    Team1Id = m.a.Id,
-                    Team2Id = m.b.Id,
-                    MatchupType = MatchupType.Normal
+                    // Normalize team order: ensure Team1Id <= Team2Id for unique index
+                    var team1Id = Math.Min(m.a.Id, m.b.Id);
+                    var team2Id = Math.Max(m.a.Id, m.b.Id);
+                    return new RoundRobinMatchup
+                    {
+                        WeekId = week.Id,
+                        Team1Id = team1Id,
+                        Team2Id = team2Id,
+                        MatchupType = MatchupType.Normal
+                    };
                 })
                 .ToList();
 

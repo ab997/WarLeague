@@ -1,6 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using WarLeague.Data.Data.Entities;
 using WarLeague.Data.Entities;
+using WarLeague.Data.Enums;
 
 
 namespace WarLeague.Data;
@@ -21,6 +22,7 @@ public class WarLeagueDbContext : DbContext
     public DbSet<PlayerSeasonTeam> PlayerSeasonTeams { get; set; }
     public DbSet<RolePermissionMapping> RolePermissionMappings { get; set; }
     public DbSet<RoundRobinMatchup> RoundRobinMatchups { get; set; }
+    public DbSet<PlayoffMatchup> PlayoffMatchups { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -84,6 +86,21 @@ public class WarLeagueDbContext : DbContext
           .WithMany()
           .HasForeignKey(m => m.TeamWinnerId);
 
+        modelBuilder.Entity<PlayoffMatchup>()
+           .HasOne(m => m.Team1)
+           .WithMany()
+           .HasForeignKey(m => m.Team1Id);
+
+        modelBuilder.Entity<PlayoffMatchup>()
+           .HasOne(m => m.Team2)
+           .WithMany()
+           .HasForeignKey(m => m.Team2Id);
+
+        modelBuilder.Entity<PlayoffMatchup>()
+          .HasOne(m => m.TeamWinner)
+          .WithMany()
+          .HasForeignKey(m => m.TeamWinnerId);
+
         //--------------------------------------
         // check constraints
         //--------------------------------------
@@ -112,6 +129,10 @@ public class WarLeagueDbContext : DbContext
 
         modelBuilder.Entity<RoundRobinMatchup>()
             .Property(w => w.MatchupType)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<Season>()
+            .Property(s => s.Phase)
             .HasConversion<string>();
 
         //--------------------------------------
@@ -173,6 +194,24 @@ public class WarLeagueDbContext : DbContext
 
         modelBuilder.Entity<RolePermissionMapping>()
             .HasIndex(w => new { w.GuildId, w.PermissionType })
+            .IsUnique();
+
+        // RoundRobinMatchup: prevent duplicate team matchups per week
+        // Note: BYE matchups (Team1Id == Team2Id) are allowed, but normal matchups must be unique
+        // We ensure Team1Id <= Team2Id in application code, so this index prevents duplicates
+        modelBuilder.Entity<RoundRobinMatchup>()
+            .HasIndex(r => new { r.WeekId, r.Team1Id, r.Team2Id })
+            .IsUnique();
+
+        // PlayoffMatchup: unique bracket position per week
+        modelBuilder.Entity<PlayoffMatchup>()
+            .HasIndex(p => new { p.WeekId, p.BracketPosition })
+            .IsUnique();
+
+        // PlayoffMatchup: prevent duplicate team matchups per week
+        // Similar to RoundRobinMatchup, we ensure Team1Id < Team2Id in application code
+        modelBuilder.Entity<PlayoffMatchup>()
+            .HasIndex(p => new { p.WeekId, p.Team1Id, p.Team2Id })
             .IsUnique();
 
         //--------------------------------------

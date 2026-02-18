@@ -17,4 +17,5 @@ public class Week
     public IEnumerable<DeckSubmission> DeckSubmissions { get; set; } = null!;
     public int SubmissionsRequired { get; set; }
     public IEnumerable<RoundRobinMatchup> RoundRobinMatchups { get; set; } = null!;
+    public IEnumerable<PlayoffMatchup> PlayoffMatchups { get; set; } = null!;
 }

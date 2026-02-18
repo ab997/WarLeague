@@ -43,6 +43,7 @@ builder.Services.AddScoped<TeamRepository>();
 builder.Services.AddScoped<PlayerRepository>();
 builder.Services.AddScoped<MatchRepository>();
 builder.Services.AddScoped<RoundRobinMatchupRepository>();
+builder.Services.AddScoped<PlayoffMatchupRepository>();
 builder.Services.AddScoped<WeekRepository>();
 builder.Services.AddScoped<DeckSubmissionRepository>();
 builder.Services.AddScoped<FormatRepository>();
@@ -66,7 +67,9 @@ builder.Services.AddScoped<MatchService>();
 builder.Services.AddScoped<SubstitutionService>();
 builder.Services.AddScoped<TeamService>();
 builder.Services.AddScoped<TeamValidationService>();
-builder.Services.AddScoped<IMatchupService, RoundRobinService>();
+builder.Services.AddScoped<RoundRobinService>();
+builder.Services.AddScoped<PlayoffService>();
+builder.Services.AddScoped<MatchupServiceFactory>();
 
 
 // Services (discord)
