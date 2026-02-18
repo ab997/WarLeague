@@ -12,8 +12,8 @@ using WarLeague.Data;
 namespace WarLeague.Data.Migrations
 {
     [DbContext(typeof(WarLeagueDbContext))]
-    [Migration("20260217170842_MatchResultType")]
-    partial class MatchResultType
+    [Migration("20260218180835_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,53 @@ namespace WarLeague.Data.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("WarLeague.Data.Data.Entities.PlayoffMatchup", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BracketPosition")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MatchupType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Round")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Team1Id")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Team2Id")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeamWinnerId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WeekId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Team1Id");
+
+                    b.HasIndex("Team2Id");
+
+                    b.HasIndex("TeamWinnerId");
+
+                    b.HasIndex("WeekId", "BracketPosition")
+                        .IsUnique();
+
+                    b.HasIndex("WeekId", "Team1Id", "Team2Id")
+                        .IsUnique();
+
+                    b.ToTable("PlayoffMatchups");
+                });
 
             modelBuilder.Entity("WarLeague.Data.Data.Entities.RolePermissionMapping", b =>
                 {
@@ -83,9 +130,36 @@ namespace WarLeague.Data.Migrations
 
                     b.HasIndex("TeamWinnerId");
 
-                    b.HasIndex("WeekId");
+                    b.HasIndex("WeekId", "Team1Id", "Team2Id")
+                        .IsUnique();
 
                     b.ToTable("RoundRobinMatchups");
+                });
+
+            modelBuilder.Entity("WarLeague.Data.Entities.Conference", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("PlayoffTeamsCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SeasonId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SeasonId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Conferences");
                 });
 
             modelBuilder.Entity("WarLeague.Data.Entities.DeckSubmission", b =>
@@ -208,15 +282,16 @@ namespace WarLeague.Data.Migrations
 
                     b.HasIndex("Team2Id");
 
-                    b.HasIndex("WeekId");
-
                     b.HasIndex("WinnerId");
 
                     b.HasIndex("WinnerTeamId");
 
+                    b.HasIndex("WeekId", "Player1Id", "Player2Id")
+                        .IsUnique();
+
                     b.ToTable("Matches", t =>
                         {
-                            t.HasCheckConstraint("CK_Match_NoSelfPlay", "[Player1Id] <> [Player2Id]");
+                            t.HasCheckConstraint("CK_Match_CanonicalOrder", "[Player1Id] < [Player2Id]");
                         });
                 });
 
@@ -292,6 +367,10 @@ namespace WarLeague.Data.Migrations
                     b.Property<int>("MinimumTeamMembers")
                         .HasColumnType("int");
 
+                    b.Property<string>("Phase")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("SeasonNumber")
                         .HasColumnType("int");
 
@@ -318,6 +397,9 @@ namespace WarLeague.Data.Migrations
                     b.Property<int>("CaptainId")
                         .HasColumnType("int");
 
+                    b.Property<int>("ConferenceId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
@@ -335,8 +417,14 @@ namespace WarLeague.Data.Migrations
 
                     b.HasIndex("CaptainId");
 
+                    b.HasIndex("ConferenceId");
+
                     b.HasIndex("SeasonId", "CaptainId")
                         .IsUnique();
+
+                    b.HasIndex("SeasonId", "DiscordRoleId")
+                        .IsUnique()
+                        .HasFilter("[DiscordRoleId] IS NOT NULL");
 
                     b.HasIndex("SeasonId", "Name")
                         .IsUnique();
@@ -386,6 +474,40 @@ namespace WarLeague.Data.Migrations
                     b.ToTable("Weeks");
                 });
 
+            modelBuilder.Entity("WarLeague.Data.Data.Entities.PlayoffMatchup", b =>
+                {
+                    b.HasOne("WarLeague.Data.Entities.Team", "Team1")
+                        .WithMany()
+                        .HasForeignKey("Team1Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarLeague.Data.Entities.Team", "Team2")
+                        .WithMany()
+                        .HasForeignKey("Team2Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarLeague.Data.Entities.Team", "TeamWinner")
+                        .WithMany()
+                        .HasForeignKey("TeamWinnerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WarLeague.Data.Entities.Week", "Week")
+                        .WithMany("PlayoffMatchups")
+                        .HasForeignKey("WeekId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Team1");
+
+                    b.Navigation("Team2");
+
+                    b.Navigation("TeamWinner");
+
+                    b.Navigation("Week");
+                });
+
             modelBuilder.Entity("WarLeague.Data.Data.Entities.RoundRobinMatchup", b =>
                 {
                     b.HasOne("WarLeague.Data.Entities.Team", "Team1")
@@ -418,6 +540,17 @@ namespace WarLeague.Data.Migrations
                     b.Navigation("TeamWinner");
 
                     b.Navigation("Week");
+                });
+
+            modelBuilder.Entity("WarLeague.Data.Entities.Conference", b =>
+                {
+                    b.HasOne("WarLeague.Data.Entities.Season", "Season")
+                        .WithMany("Conferences")
+                        .HasForeignKey("SeasonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Season");
                 });
 
             modelBuilder.Entity("WarLeague.Data.Entities.DeckSubmission", b =>
@@ -542,6 +675,12 @@ namespace WarLeague.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("WarLeague.Data.Entities.Conference", "Conference")
+                        .WithMany()
+                        .HasForeignKey("ConferenceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("WarLeague.Data.Entities.Season", "Season")
                         .WithMany("Teams")
                         .HasForeignKey("SeasonId")
@@ -549,6 +688,8 @@ namespace WarLeague.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Captain");
+
+                    b.Navigation("Conference");
 
                     b.Navigation("Season");
                 });
@@ -576,6 +717,8 @@ namespace WarLeague.Data.Migrations
 
             modelBuilder.Entity("WarLeague.Data.Entities.Season", b =>
                 {
+                    b.Navigation("Conferences");
+
                     b.Navigation("Teams");
 
                     b.Navigation("Weeks");
@@ -586,6 +729,8 @@ namespace WarLeague.Data.Migrations
                     b.Navigation("DeckSubmissions");
 
                     b.Navigation("Matches");
+
+                    b.Navigation("PlayoffMatchups");
 
                     b.Navigation("RoundRobinMatchups");
                 });
