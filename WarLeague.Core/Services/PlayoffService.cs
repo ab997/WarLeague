@@ -375,5 +375,9 @@ namespace WarLeague.Core.Services
             var ids = matchups.SelectMany(m => new[] { m.a.Id, m.b.Id }).ToHashSet();
             return ids;
         }
+
+        public Task<RoundRobinSuggestionResult?> GetSuggestedRoundsAsync(int seasonId) => Task.FromResult<RoundRobinSuggestionResult?>(null);
+
+        public Task<List<(Team a, Team b)>?> GetExistingTeamMatchupsAsync(Week week, IReadOnlyList<Team> teams) => Task.FromResult<List<(Team a, Team b)>?>(null);
     }
 }

@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Text;
 using WarLeague.Data.Entities;
 using WarLeague.Data.Enums;
+using WarLeague.Data.Data.Enums;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
@@ -12,7 +13,6 @@ using WarLeague.Core.Services;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 using static WarLeague.Discord.Helpers.ResultHelper;
-using WarLeague.Data.Data.Enums;
 
 namespace WarLeague.Discord.Commands
 {
@@ -27,14 +27,18 @@ namespace WarLeague.Discord.Commands
         private readonly WeekService _weekService;
         private readonly DiscordApiHelperService _helperService;
         private readonly MatchService _matchService;
+        private readonly MatchupServiceFactory _matchupServiceFactory;
+
         public WeekCommands(
             DiscordApiHelperService helperService,
             WeekService weekService,
-            MatchService matchService)
+            MatchService matchService,
+            MatchupServiceFactory matchupServiceFactory)
         {
             _helperService = helperService;
             _weekService = weekService;
             _matchService = matchService;
+            _matchupServiceFactory = matchupServiceFactory;
         }
         [SlashCommand("create", "1 -> Creates a week (Status: null -> NotOpenYet)")]
         public async Task Create(int weekNumber,
@@ -128,6 +132,50 @@ namespace WarLeague.Discord.Commands
 
             BaseResult result = await _weekService.TransitionToCompletedAsync(season.Id);
 
+            await FollowupAsync(Stringify(result));
+        }
+
+        [SlashCommand("suggest-round-robin", "Shows suggested number of round-robin weeks based on teams per conference")]
+        public async Task SuggestRoundRobinAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+            if (season.Phase != SeasonPhase.RoundRobin)
+            {
+                await FollowupAsync("This command is only for round-robin seasons. Current season phase is Playoffs.");
+                return;
+            }
+
+            var matchupService = _matchupServiceFactory.GetMatchupService(season);
+            var suggestion = await matchupService.GetSuggestedRoundsAsync(season.Id);
+            if (suggestion == null || suggestion.Conferences.Count == 0)
+            {
+                await FollowupAsync("Not enough teams or conferences to suggest round-robin weeks. Add at least 2 teams in at least one conference.");
+                return;
+            }
+
+            var lines = suggestion.Conferences
+                .Select(c => $"**{c.ConferenceName}**: {c.TeamCount} teams → {c.Rounds} rounds");
+            var message = $"Suggested round-robin: **{suggestion.TotalSuggestedWeeks} weeks**.\n" + string.Join("\n", lines) +
+                "\n\nUse `/week generate-round-robin-schedule` to create these weeks and pre-generate team-vs-team pairings.";
+            await FollowupAsync(message);
+        }
+
+        [SlashCommand("generate-round-robin-schedule", "Creates weeks 1..N (if missing) and pre-generates team-vs-team pairings for each round-robin week")]
+        public async Task GenerateRoundRobinScheduleAsync(
+            [Summary("weeks", "Number of weeks to ensure (1 through this number)")] int weeks)
+        {
+            await DeferAsync(ephemeral: false);
+
+            if (weeks < 1)
+            {
+                await FollowupAsync("Number of weeks must be at least 1.");
+                return;
+            }
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+            BaseResult result = await _weekService.GenerateRoundRobinScheduleAsync(season.Id, weeks);
             await FollowupAsync(Stringify(result));
         }
 

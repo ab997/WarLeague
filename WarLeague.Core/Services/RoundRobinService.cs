@@ -10,10 +10,26 @@ namespace WarLeague.Core.Services
     public class RoundRobinService : IMatchupService
     {
         private readonly RoundRobinMatchupRepository _roundRobinMatchupRepository;
+        private readonly TeamRepository _teamRepository;
+        private readonly ConferenceRepository _conferenceRepository;
 
-        public RoundRobinService(RoundRobinMatchupRepository roundRobinMatchupRepository)
+        public RoundRobinService(
+            RoundRobinMatchupRepository roundRobinMatchupRepository,
+            TeamRepository teamRepository,
+            ConferenceRepository conferenceRepository)
         {
             _roundRobinMatchupRepository = roundRobinMatchupRepository;
+            _teamRepository = teamRepository;
+            _conferenceRepository = conferenceRepository;
+        }
+
+        /// <summary>
+        /// Number of rounds needed for a single round-robin in a conference (circle method: N-1 if even, N if odd with bye).
+        /// </summary>
+        public static int GetRoundsForConferenceSize(int teamCount)
+        {
+            if (teamCount < 2) return 0;
+            return teamCount % 2 == 0 ? teamCount - 1 : teamCount;
         }
 
         public (List<Match> createdMatches, List<WeeklyMatchup> matchupOutputs) GetIndividualMatchups(Week week, List<(Team a, Team b)> teamMatchups, Dictionary<int, List<DeckSubmission>> submissionsByTeamId)
@@ -219,6 +235,56 @@ namespace WarLeague.Core.Services
         {
             var ids = teams.Select(t => t.Id).ToHashSet();
             return Task.FromResult<IReadOnlySet<int>>(ids);
+        }
+
+        public async Task<RoundRobinSuggestionResult?> GetSuggestedRoundsAsync(int seasonId)
+        {
+            var teams = await _teamRepository.GetBySeasonAsync(seasonId);
+            var conferences = await _conferenceRepository.GetBySeasonAsync(seasonId);
+            var conferenceById = conferences.ToDictionary(c => c.Id);
+
+            var byConference = teams
+                .GroupBy(t => t.ConferenceId)
+                .OrderBy(g => g.Key)
+                .ToList();
+
+            var result = new RoundRobinSuggestionResult();
+            foreach (var grp in byConference)
+            {
+                int count = grp.Count();
+                if (count < 2) continue;
+                string name = conferenceById.TryGetValue(grp.Key, out var c) ? c.Name : $"Conference {grp.Key}";
+                result.Conferences.Add(new RoundRobinConferenceSuggestion
+                {
+                    ConferenceName = name,
+                    TeamCount = count,
+                    Rounds = GetRoundsForConferenceSize(count)
+                });
+            }
+
+            if (result.Conferences.Count == 0)
+                return null;
+
+            result.TotalSuggestedWeeks = result.Conferences.Max(x => x.Rounds);
+            return result;
+        }
+
+        public async Task<List<(Team a, Team b)>?> GetExistingTeamMatchupsAsync(Week week, IReadOnlyList<Team> teams)
+        {
+            var matchups = await _roundRobinMatchupRepository.GetByWeekIdAsync(week.Id);
+            if (matchups.Count == 0) return null;
+
+            var teamById = teams.ToDictionary(t => t.Id);
+            var list = new List<(Team a, Team b)>();
+            foreach (var m in matchups)
+            {
+                if (m.MatchupType == MatchupType.Bye) continue;
+                if (!teamById.TryGetValue(m.Team1Id, out var t1) || !teamById.TryGetValue(m.Team2Id, out var t2))
+                    continue;
+                list.Add((t1, t2));
+            }
+
+            return list.Count == 0 ? null : list;
         }
 
         // Circle method rotation: keep index 0 fixed, rotate the rest.

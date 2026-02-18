@@ -328,7 +328,7 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            static string Fmt(DateTime d) => d.ToString("MM-dd");
+            static string Fmt(DateTime? d) => d.HasValue ? d.Value.ToString("MM-dd") : "—";
             var lines = weeks
                 .OrderBy(w => w.WeekNumber)
                 .Select(w => $"W{w.WeekNumber}: {w.Status} ({Fmt(w.StartDate)}→{Fmt(w.EndDate)})")
@@ -405,12 +405,12 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            string fmt(DateTime d) => d.ToString("yyyy-MM-dd");
+            string fmt(DateTime? d) => d.HasValue ? d.Value.ToString("yyyy-MM-dd") : "—";
             var sb = new StringBuilder();
             sb.AppendLine($"Week {week.WeekNumber}");
             sb.AppendLine($"Start: {fmt(week.StartDate)}");
             sb.AppendLine($"End: {fmt(week.EndDate)}");
-            sb.AppendLine($"Submissions close: {fmt(week.SubmissionsClosedDate!.Value)}");
+            sb.AppendLine($"Submissions close: {fmt(week.SubmissionsClosedDate)}");
             sb.AppendLine($"Status: {week.Status}");
 
             if (_helperService.IsUserAdmin(Context))
@@ -561,7 +561,7 @@ namespace WarLeague.Discord.Commands
                     }
                     else
                     {
-                        static string fmt(DateTime d) => d.ToString("MM-dd");
+                        static string fmt(DateTime? d) => d.HasValue ? d.Value.ToString("MM-dd") : "—";
 
                         // Example: W1(Open 01-01→01-07), W2(SubmissionsClosed 01-08→01-14)
                         var weekParts = weeks

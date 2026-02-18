@@ -268,8 +268,15 @@ namespace WarLeague.Core.Services
 
             var matchupService = _matchupServiceFactory.GetMatchupService(season);
 
-            // Resolve the team-vs-team matchups for this week (deterministic round-robin based on WeekNumber).
-            List<(Team a, Team b)> teamMatchups = await matchupService.GetTeamMatchups(teams, week.WeekNumber);
+            // Use pre-saved team matchups if available (e.g. from generate-round-robin-schedule); otherwise compute from week number.
+            List<(Team a, Team b)>? existingMatchups = await matchupService.GetExistingTeamMatchupsAsync(week, teams);
+            List<(Team a, Team b)> teamMatchups;
+            bool usePreSavedMatchups = existingMatchups != null && existingMatchups.Count > 0;
+            if (usePreSavedMatchups)
+                teamMatchups = existingMatchups!;
+            else
+                teamMatchups = await matchupService.GetTeamMatchups(teams, week.WeekNumber);
+
             if (teamMatchups.Count == 0)
             {
                 return new GeneratePairingsResult { Success = false, Message = "No team matchups available for this week (did everyone get a bye?)." };
@@ -303,10 +310,14 @@ namespace WarLeague.Core.Services
                 return new GeneratePairingsResult { Success = false, Message = "No pairings generated. Likely missing deck submissions for the teams playing this week." };
             }
 
-            BaseResult saveTeamMatchupsResult = await matchupService.SaveTeamMatchupsAsync(week, teams, teamMatchups);
-            if (!saveTeamMatchupsResult.Success)
+            // Only persist team matchups if not already pre-saved (e.g. by generate-round-robin-schedule).
+            if (!usePreSavedMatchups)
             {
-                return new GeneratePairingsResult { Success = false, Message = saveTeamMatchupsResult.Message };
+                BaseResult saveTeamMatchupsResult = await matchupService.SaveTeamMatchupsAsync(week, teams, teamMatchups);
+                if (!saveTeamMatchupsResult.Success)
+                {
+                    return new GeneratePairingsResult { Success = false, Message = saveTeamMatchupsResult.Message };
+                }
             }
 
             await _matchRepository.AddRangeAsync(createdMatches);

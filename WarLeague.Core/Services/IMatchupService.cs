@@ -21,5 +21,15 @@ namespace WarLeague.Core.Services
         /// Used by close-submissions validation (phase-agnostic: round-robin = all teams, playoffs = participating only).
         /// </summary>
         Task<IReadOnlySet<int>> GetTeamIdsRequiredForSubmissionsAsync(IReadOnlyList<Team> teams, int weekNumber);
+
+        /// <summary>
+        /// Returns round-robin suggestion (rounds per conference, total suggested weeks). Non-round-robin phases return null.
+        /// </summary>
+        Task<RoundRobinSuggestionResult?> GetSuggestedRoundsAsync(int seasonId);
+
+        /// <summary>
+        /// Returns existing team-vs-team matchups for the week if they were pre-generated (e.g. round-robin schedule). Otherwise null.
+        /// </summary>
+        Task<List<(Team a, Team b)>?> GetExistingTeamMatchupsAsync(Week week, IReadOnlyList<Team> teams);
     }
 }

@@ -121,7 +121,20 @@ namespace WarLeague.Core.Services
                 season.DisableTeamModification = true;
                 await _seasonRepository.UpdateAsync(season);
                 additionalMessage = "\nTeam modifications have been automatically disabled for the season.";
+
+                // When in round-robin phase, append suggestion for how many weeks to run (based on teams per conference).
+                if (season.Phase == SeasonPhase.RoundRobin)
+                {
+                    var suggestion = await _matchupServiceFactory.GetMatchupService(season).GetSuggestedRoundsAsync(seasonId);
+                    if (suggestion != null && suggestion.Conferences.Count > 0)
+                    {
+                        var parts = suggestion.Conferences.Select(c => $"{c.ConferenceName}: {c.TeamCount} teams → {c.Rounds} rounds");
+                        additionalMessage += $"\nSuggested round-robin: **{suggestion.TotalSuggestedWeeks} weeks** (" + string.Join("; ", parts) + "). Use `/week suggest-round-robin` for details or `/week generate-round-robin-schedule` to create weeks and pairings in advance.";
+                    }
+                }
             }
+
+
 
             await transaction.CommitAsync();
 
@@ -137,11 +150,10 @@ namespace WarLeague.Core.Services
                 return new BaseResult(false, $"Week with number {weekNumber} does not exist.");
             }
 
-            // Validate date ordering if both are being updated
-            DateTime effectiveStartDate = startDate ?? week.StartDate;
-            DateTime effectiveEndDate = endDate ?? week.EndDate;
-            
-            if (effectiveStartDate > effectiveEndDate)
+            // Validate date ordering when both start and end are present (either from update or existing)
+            DateTime? effectiveStartDate = startDate ?? week.StartDate;
+            DateTime? effectiveEndDate = endDate ?? week.EndDate;
+            if (effectiveStartDate.HasValue && effectiveEndDate.HasValue && effectiveStartDate.Value > effectiveEndDate.Value)
             {
                 return new BaseResult(false, "Start date must be before end date.");
             }
@@ -394,6 +406,72 @@ namespace WarLeague.Core.Services
             await _weekRepository.DeleteAsync(week);
 
             return new BaseResult(true, "Week deleted.");
+        }
+
+        /// <summary>
+        /// Creates weeks 1..numberOfWeeks (if missing) with status NotOpenYet and pre-generates team-vs-team round-robin pairings for each.
+        /// Requires season to be in RoundRobin phase. Week dates are optional (null if no template week exists).
+        /// </summary>
+        public async Task<BaseResult> GenerateRoundRobinScheduleAsync(int seasonId, int numberOfWeeks)
+        {
+            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
+            if (season is null)
+                return new BaseResult(false, "Season not found.");
+            if (season.Phase != SeasonPhase.RoundRobin)
+                return new BaseResult(false, "Season is not in Round Robin phase. This command is only for round-robin seasons.");
+
+            var teams = await _teamRepository.GetBySeasonAsync(seasonId);
+            if (teams.Count < 2)
+                return new BaseResult(false, "Need at least 2 teams to generate a round-robin schedule.");
+
+            var existingWeeks = await _weekRepository.GetBySeasonAsync(seasonId);
+            Week? templateWeek = existingWeeks.OrderBy(w => w.WeekNumber).FirstOrDefault();
+
+            var matchupService = _matchupServiceFactory.GetMatchupService(season);
+            int weeksCreated = 0;
+            int pairingsSaved = 0;
+
+            for (int weekNumber = 1; weekNumber <= numberOfWeeks; weekNumber++)
+            {
+                Week? week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, seasonId);
+                if (week is null)
+                {
+                    int submissionsRequired = templateWeek?.SubmissionsRequired ?? season.MinimumTeamMembers;
+                    DateTime? startDate = null;
+                    DateTime? endDate = null;
+                    DateTime? subCloseDate = null;
+                    if (templateWeek?.StartDate is { } ts && templateWeek?.EndDate is { } te)
+                    {
+                        var offsetDays = (weekNumber - templateWeek.WeekNumber) * 7;
+                        startDate = ts.AddDays(offsetDays);
+                        endDate = te.AddDays(offsetDays);
+                        subCloseDate = templateWeek.SubmissionsClosedDate?.AddDays(offsetDays);
+                    }
+
+                    week = new Week
+                    {
+                        WeekNumber = weekNumber,
+                        SeasonId = seasonId,
+                        StartDate = startDate,
+                        EndDate = endDate,
+                        SubmissionsClosedDate = subCloseDate,
+                        Status = WeekStatus.NotOpenYet,
+                        SubmissionsRequired = submissionsRequired
+                    };
+                    await _weekRepository.AddAsync(week);
+                    weeksCreated++;
+                }
+
+                var teamMatchups = await matchupService.GetTeamMatchups(teams, weekNumber);
+                if (teamMatchups.Count == 0)
+                    continue;
+
+                var saveResult = await matchupService.SaveTeamMatchupsAsync(week, teams, teamMatchups);
+                if (saveResult.Success)
+                    pairingsSaved++;
+            }
+
+            return new BaseResult(true, $"Round-robin schedule: {weeksCreated} week(s) created, team-vs-team pairings saved for {pairingsSaved} week(s). Weeks 1–{numberOfWeeks} are ready; use /week generate-pairings when each week reaches SubmissionsClosed to create player matches.");
         }
     }
 }
