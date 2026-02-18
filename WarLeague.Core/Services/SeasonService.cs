@@ -112,15 +112,6 @@ namespace WarLeague.Core.Services
                 return new BaseResult(false, "Cannot switch to Playoffs: there are conferences who have not set the number of teams to advance to playoffs");
             }
 
-            // Validate that the total number of playoff teams across all conferences is a power of two
-            var totalPlayoffTeams = conferences.Sum(c => c.PlayoffTeamsCount);
-            if (totalPlayoffTeams <= 0 || (totalPlayoffTeams & (totalPlayoffTeams - 1)) != 0)
-            {
-                return new BaseResult(false,
-                    $"Cannot switch to Playoffs: total playoff team slots across all conferences must be a power of two (2, 4, 8, 16, etc.), " +
-                    $"but found {totalPlayoffTeams}. Adjust conference playoff team counts accordingly.");
-            }
-
             season.Phase = SeasonPhase.Playoffs;
             await _seasonRepository.UpdateAsync(season);
 

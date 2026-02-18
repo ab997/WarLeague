@@ -131,6 +131,10 @@ public class WarLeagueDbContext : DbContext
             .Property(w => w.MatchupType)
             .HasConversion<string>();
 
+        modelBuilder.Entity<PlayoffMatchup>()
+            .Property(p => p.MatchupType)
+            .HasConversion<string>();
+
         modelBuilder.Entity<Season>()
             .Property(s => s.Phase)
             .HasConversion<string>();
@@ -209,7 +213,8 @@ public class WarLeagueDbContext : DbContext
             .IsUnique();
 
         // PlayoffMatchup: prevent duplicate team matchups per week
-        // Similar to RoundRobinMatchup, we ensure Team1Id < Team2Id in application code
+        // Note: BYE matchups (Team1Id == Team2Id) are allowed, but normal matchups must be unique
+        // We ensure Team1Id <= Team2Id in application code, so this index prevents duplicates
         modelBuilder.Entity<PlayoffMatchup>()
             .HasIndex(p => new { p.WeekId, p.Team1Id, p.Team2Id })
             .IsUnique();

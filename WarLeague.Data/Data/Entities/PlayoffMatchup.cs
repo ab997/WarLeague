@@ -1,3 +1,4 @@
+using WarLeague.Data.Data.Enums;
 using WarLeague.Data.Entities;
 
 namespace WarLeague.Data.Data.Entities
@@ -11,6 +12,7 @@ namespace WarLeague.Data.Data.Entities
         public Team Team1 { get; set; } = null!;
         public int Team2Id { get; set; }
         public Team Team2 { get; set; } = null!;
+        public MatchupType MatchupType { get; set; }
         public int? TeamWinnerId { get; set; }
         public Team? TeamWinner { get; set; }
         public int Round { get; set; }

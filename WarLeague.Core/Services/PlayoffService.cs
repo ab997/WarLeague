@@ -39,6 +39,12 @@ namespace WarLeague.Core.Services
             var matchupOutputs = new List<WeeklyMatchup>();
             foreach (var (teamA, teamB) in teamMatchups)
             {
+                // Skip BYE matchups (where teamA == teamB) - no matches need to be created
+                if (teamA.Id == teamB.Id)
+                {
+                    continue;
+                }
+
                 var submissionsA = submissionsByTeamId.TryGetValue(teamA.Id, out var aSubmissions) ? aSubmissions : new List<DeckSubmission>();
                 var submissionsB = submissionsByTeamId.TryGetValue(teamB.Id, out var bSubmissions) ? bSubmissions : new List<DeckSubmission>();
 
@@ -207,13 +213,33 @@ namespace WarLeague.Core.Services
         {
             var matchups = new List<(Team, Team)>();
             
-            // Single elimination bracket: pair teams (1st vs last, 2nd vs 2nd-to-last, etc.)
-            // Maintain order from previous round (winners should be ordered by their bracket position)
             int count = teams.Count;
-            for (int i = 0; i < count / 2; i++)
+            
+            // Calculate next power of 2 to determine bracket size
+            int nextPowerOfTwo = 1;
+            while (nextPowerOfTwo < count)
+            {
+                nextPowerOfTwo *= 2;
+            }
+            
+            // Number of teams that get byes (asymmetric top cut)
+            int byeCount = nextPowerOfTwo - count;
+            
+            // Top seeds get byes - create BYE matchups (team vs itself)
+            for (int i = 0; i < byeCount; i++)
+            {
+                matchups.Add((teams[i], teams[i])); // BYE matchup: team vs itself
+            }
+            
+            // Remaining teams play in round 1
+            // Pair teams: (byeCount) vs (count-1), (byeCount+1) vs (count-2), etc.
+            int playingTeamsStart = byeCount;
+            int playingTeamsEnd = count - 1;
+            
+            for (int i = playingTeamsStart; i < playingTeamsStart + (count - byeCount) / 2; i++)
             {
                 var teamA = teams[i];
-                var teamB = teams[count - 1 - i];
+                var teamB = teams[playingTeamsEnd - (i - playingTeamsStart)];
                 matchups.Add((teamA, teamB));
             }
 
@@ -243,26 +269,12 @@ namespace WarLeague.Core.Services
             return round;
         }
 
-        private static bool IsPowerOfTwo(int value)
-        {
-            return value > 0 && (value & (value - 1)) == 0;
-        }
-
         public async Task<BaseResult> SaveTeamMatchupsAsync(Week week, IReadOnlyList<Team> teams, IReadOnlyList<(Team a, Team b)> teamMatchups)
         {
             var existingPlayoffMatchups = await _playoffMatchupRepository.GetByWeekIdAsync(week.Id);
             if (existingPlayoffMatchups.Count > 0)
             {
                 return new BaseResult(false, $"Playoff matchups already exist for week {week.WeekNumber}. Refusing to generate new pairings to avoid duplicates.");
-            }
-
-            // Ensure the total number of playoff teams (2 * matchups) is a power of two
-            var participatingTeamCount = teamMatchups.Count * 2;
-            if (!IsPowerOfTwo(participatingTeamCount))
-            {
-                return new BaseResult(false,
-                    $"Playoff bracket requires a power-of-two number of teams, but found {participatingTeamCount}. " +
-                    "Adjust conference playoff team counts so the total number of playoff teams is 2, 4, 8, 16, etc.");
             }
 
             // Determine round number based on number of matchups
@@ -272,14 +284,26 @@ namespace WarLeague.Core.Services
             var playoffMatchups = teamMatchups
                 .Select((m, index) =>
                 {
-                    // Normalize team order: ensure Team1Id < Team2Id for unique index
-                    var team1Id = Math.Min(m.a.Id, m.b.Id);
-                    var team2Id = Math.Max(m.a.Id, m.b.Id);
+                    // Check if this is a BYE matchup (team vs itself)
+                    bool isBye = m.a.Id == m.b.Id;
+                    
+                    // For BYE matchups, use the team as both Team1Id and Team2Id
+                    // For normal matchups, normalize team order: ensure Team1Id <= Team2Id for unique index
+                    var team1Id = m.a.Id;
+                    var team2Id = isBye ? m.a.Id : m.b.Id;
+                    
+                    // For normal matchups, ensure Team1Id <= Team2Id
+                    if (!isBye && team1Id > team2Id)
+                    {
+                        (team1Id, team2Id) = (team2Id, team1Id);
+                    }
+                    
                     return new PlayoffMatchup
                     {
                         WeekId = week.Id,
                         Team1Id = team1Id,
                         Team2Id = team2Id,
+                        MatchupType = isBye ? MatchupType.Bye : MatchupType.Normal,
                         Round = round,
                         BracketPosition = index
                     };
@@ -301,6 +325,13 @@ namespace WarLeague.Core.Services
 
             foreach (var matchup in playoffMatchups)
             {
+                // Handle BYE matchups: team automatically advances
+                if (matchup.MatchupType == MatchupType.Bye)
+                {
+                    matchup.TeamWinnerId = matchup.Team1Id; // Team gets the bye and advances
+                    continue;
+                }
+
                 var teamMatches = matches.Where(m =>
                     (m.Team1Id == matchup.Team1Id && m.Team2Id == matchup.Team2Id)
                     || (m.Team1Id == matchup.Team2Id && m.Team2Id == matchup.Team1Id))
