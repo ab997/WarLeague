@@ -12,11 +12,14 @@ namespace WarLeague.Core.Services
         private readonly SeasonRepository _seasonRepository;
         private readonly FormatRepository _formatRepository;
         private readonly ConferenceRepository _conferenceRepository;
-        public SeasonService(SeasonRepository seasonRepository, FormatRepository formatRepository, ConferenceRepository conferenceRepository)
+        private readonly WeekRepository _weekRepository;
+
+        public SeasonService(SeasonRepository seasonRepository, FormatRepository formatRepository, ConferenceRepository conferenceRepository, WeekRepository weekRepository)
         {
             _seasonRepository = seasonRepository;
             _formatRepository = formatRepository;
             _conferenceRepository = conferenceRepository;
+            _weekRepository = weekRepository;
         }
 
         public async Task<BaseResult> CreateAsync(int formatId, int seasonNumber, int minTeamMembers)
@@ -101,6 +104,19 @@ namespace WarLeague.Core.Services
             if (season.Phase == SeasonPhase.Playoffs)
             {
                 return new BaseResult(false, "Season is already in Playoffs phase. Phase cannot be reversed.");
+            }
+
+            var weeks = await _weekRepository.GetBySeasonAsync(seasonId);
+            var unfinishedWeeks = weeks.Where(w => w.Status != WeekStatus.Completed).ToList();
+            if (unfinishedWeeks.Count > 0)
+            {
+                var weekNumbers = string.Join(", ", unfinishedWeeks.Select(w => $"Week {w.WeekNumber} ({w.Status})"));
+                return new BaseResult(false, $"Cannot switch to Playoffs: all round-robin weeks must be completed. Unfinished: {weekNumbers}.");
+            }
+
+            if (weeks.Count == 0)
+            {
+                return new BaseResult(false, "Cannot switch to Playoffs: season has no weeks. Create and complete at least one round-robin week first.");
             }
 
             // Validate that at least one conference has playoff team count configured
