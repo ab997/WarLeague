@@ -10,6 +10,7 @@ public class WarLeagueDbContext : DbContext
     public WarLeagueDbContext(DbContextOptions<WarLeagueDbContext> options) : base(options)
     {
     }
+    public DbSet<Conference> Conferences { get; set; }
     public DbSet<DeckSubmission> DeckSubmissions { get; set; }
     public DbSet<Format> Formats { get; set; }
     public DbSet<Match> Matches { get; set; }
@@ -139,6 +140,10 @@ public class WarLeagueDbContext : DbContext
 
         modelBuilder.Entity<Season>()
             .HasIndex(s => new { s.FormatId, s.SeasonNumber })
+            .IsUnique();
+
+        modelBuilder.Entity<Conference>()
+            .HasIndex(c => new { c.SeasonId, c.Name })
             .IsUnique();
 
         modelBuilder.Entity<Season>()

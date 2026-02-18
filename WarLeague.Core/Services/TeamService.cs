@@ -17,16 +17,18 @@ namespace WarLeague.Core.Services
         private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
         private readonly SeasonRepository _seasonRepository;
         private readonly PlayerRepository _playerRepository;
-        public TeamService(WarLeagueDbContext context, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, SeasonRepository seasonRepository, PlayerRepository playerRepository)
+        private readonly ConferenceRepository _conferenceRepository;
+        public TeamService(WarLeagueDbContext context, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, SeasonRepository seasonRepository, PlayerRepository playerRepository, ConferenceRepository conferenceRepository)
         {
             _context = context;
             _teamRepository = teamRepository;
             _playerSeasonTeamRepository = playerSeasonTeamRepository;
             _seasonRepository = seasonRepository;
             _playerRepository = playerRepository;
+            _conferenceRepository = conferenceRepository;
         }
 
-        public async Task<BaseResult> CreateAsync(int seasonId, string teamName, int captainId, bool canBypassTeamModificationCheck, ulong? discordRoleId = null)
+        public async Task<BaseResult> CreateAsync(int seasonId, string teamName, int captainId, string conferenceName, bool canBypassTeamModificationCheck, ulong? discordRoleId = null)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -40,6 +42,11 @@ namespace WarLeague.Core.Services
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
                 return new BaseResult { Success = false, Message = "Team modifications are currently disabled for this season." };
+            }
+
+            if (string.IsNullOrWhiteSpace(conferenceName))
+            {
+                return new BaseResult { Success = false, Message = "Conference name is required." };
             }
 
             Team? check = await _teamRepository.GetByNameAndSeasonAsync(teamName, seasonId);
@@ -58,12 +65,19 @@ namespace WarLeague.Core.Services
                 return new BaseResult { Success = false, Message = $"Player {player.UserName} already a member of another team." };
             }
 
+            Conference? conference = await _conferenceRepository.GetByNameAndSeasonAsync(conferenceName.Trim(), seasonId);
+            if (conference is null)
+            {
+                return new BaseResult { Success = false, Message = $"Conference '{conferenceName}' does not exist in this season." };
+            }
+
             Team team = new Team
             {
                 Name = teamName,
                 Captain = player,
                 CreatedDate = DateTime.UtcNow,
                 Season = season,
+                ConferenceId = conference.Id,
                 DiscordRoleId = discordRoleId
             };
 
@@ -416,6 +430,47 @@ namespace WarLeague.Core.Services
             await _teamRepository.UpdateAsync(team);
 
             return new BaseResult { Success = true, Message = $"Discord role assigned to team '{teamName}' successfully." };
+        }
+
+        public async Task<BaseResult> UpdateConferenceAsync(int seasonId, string teamName, string conferenceName, bool canBypassTeamModificationCheck)
+        {
+            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
+            if (season is null)
+            {
+                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
+            }
+
+            if (season.DisableTeamModification && !canBypassTeamModificationCheck)
+            {
+                return new BaseResult { Success = false, Message = "Team modifications are currently disabled for this season." };
+            }
+
+            if (string.IsNullOrWhiteSpace(conferenceName))
+            {
+                return new BaseResult { Success = false, Message = "Conference name is required." };
+            }
+
+            Team? team = await _teamRepository.GetByNameAndSeasonAsync(teamName, seasonId);
+            if (team is null)
+            {
+                return new BaseResult { Success = false, Message = $"Team with name '{teamName}' does not exist in this season." };
+            }
+
+            Conference? conference = await _conferenceRepository.GetByNameAndSeasonAsync(conferenceName.Trim(), seasonId);
+            if (conference is null)
+            {
+                return new BaseResult { Success = false, Message = $"Conference '{conferenceName}' does not exist in this season." };
+            }
+
+            if (team.ConferenceId == conference.Id)
+            {
+                return new BaseResult { Success = true, Message = $"Team '{teamName}' is already in conference '{conference.Name}'." };
+            }
+
+            team.ConferenceId = conference.Id;
+            await _teamRepository.UpdateAsync(team);
+
+            return new BaseResult { Success = true, Message = $"Team '{teamName}' moved to conference '{conference.Name}'." };
         }
     }
 }

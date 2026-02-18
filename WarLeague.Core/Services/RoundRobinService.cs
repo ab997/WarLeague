@@ -62,12 +62,33 @@ namespace WarLeague.Core.Services
 
         public List<(Team a, Team b)> GetTeamMatchups(IReadOnlyList<Team> teams, int weekNumber)
         {
-            // Deterministic ordering so reruns yield same team matchups.
-            var ordered = teams
+            var conferenceGroups = teams
+                .GroupBy(t => t.ConferenceId)
+                .OrderBy(g => g.Key)
+                .ToList();
+
+            var allMatchups = new List<(Team, Team)>();
+
+            foreach (var conferenceGroup in conferenceGroups)
+            {
+                var conferenceMatchups = GetConferenceTeamMatchups(conferenceGroup, weekNumber);
+                allMatchups.AddRange(conferenceMatchups);
+            }
+
+            return allMatchups;
+        }
+
+        private static List<(Team a, Team b)> GetConferenceTeamMatchups(IEnumerable<Team> conferenceTeams, int weekNumber)
+        {
+            var ordered = conferenceTeams
                 .OrderBy(t => t.Id)
                 .ToList();
 
-            // Round-robin "circle method". If odd, add a BYE.
+            if (ordered.Count < 2)
+            {
+                return new List<(Team, Team)>();
+            }
+
             var bye = new Team { Id = -1, Name = "BYE" };
             if (ordered.Count % 2 == 1)
             {
@@ -75,12 +96,9 @@ namespace WarLeague.Core.Services
             }
 
             int n = ordered.Count;
-            if (n < 2) return new List<(Team, Team)>();
-
             int rounds = n - 1;
-            int roundIndex = ((weekNumber - 1) % rounds + rounds) % rounds; // safe modulo
+            int roundIndex = ((weekNumber - 1) % rounds + rounds) % rounds;
 
-            // Start with round 0 arrangement, rotate to requested round.
             var arr = ordered.ToList();
             for (int r = 0; r < roundIndex; r++)
             {
@@ -92,7 +110,12 @@ namespace WarLeague.Core.Services
             {
                 var a = arr[i];
                 var b = arr[n - 1 - i];
-                if (a.Id == bye.Id || b.Id == bye.Id) continue;
+
+                if (a.Id == bye.Id || b.Id == bye.Id)
+                {
+                    continue;
+                }
+
                 matchups.Add((a, b));
             }
 

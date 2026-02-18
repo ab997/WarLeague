@@ -13,3 +13,5 @@
 - NEVER place business logic here directly to command file, ALWAYS delegate to services.
 - NEVER call FollowupAsync in private helper methods, ALWAYS call it in the main command method for clarity.
 - NEVER break this dependency rule: Commands -> Services -> Repositories -> Database. Services can call other services, repositories can call other repositories.
+- NEVER run database migrations or database update.
+- NEVER run tests.

@@ -24,6 +24,7 @@ public static class TestServiceProvider
         services.AddScoped<SeasonRepository>();
         services.AddScoped<WeekRepository>();
         services.AddScoped<TeamRepository>();
+        services.AddScoped<ConferenceRepository>();
         services.AddScoped<PlayerSeasonTeamRepository>();
         services.AddScoped<MatchRepository>();
         services.AddScoped<RoundRobinMatchupRepository>();

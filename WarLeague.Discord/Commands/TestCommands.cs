@@ -107,12 +107,22 @@ namespace WarLeague.Discord.Commands
             DbContext.Seasons.Add(season1);
             DbContext.SaveChanges();
 
+            var defaultConference = new Conference
+            {
+                SeasonId = season1.Id,
+                Name = "Default"
+            };
+
+            DbContext.Conferences.Add(defaultConference);
+            DbContext.SaveChanges();
+
             // Create Teams
             var team1 = new Team
             {
                 Name = name+"A",
                 CaptainId = player1.Id,
                 SeasonId = season1.Id,
+                ConferenceId = defaultConference.Id,
                 CreatedDate = DateTime.UtcNow.AddDays(-30),
                 DiscordRoleId = 123456789012345678
             };
@@ -122,6 +132,7 @@ namespace WarLeague.Discord.Commands
                 Name = name+"B",
                 CaptainId = player3.Id,
                 SeasonId = season1.Id,
+                ConferenceId = defaultConference.Id,
                 CreatedDate = DateTime.UtcNow.AddDays(-30),
                 DiscordRoleId = 234567890123456789
             };
@@ -131,6 +142,7 @@ namespace WarLeague.Discord.Commands
                 Name = name+"C",
                 CaptainId = player5.Id,
                 SeasonId = season1.Id,
+                ConferenceId = defaultConference.Id,
                 CreatedDate = DateTime.UtcNow.AddDays(-30),
                 DiscordRoleId = 234567890123456789
             };

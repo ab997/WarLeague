@@ -209,16 +209,41 @@ namespace WarLeague.Test
 
         private async Task<int> CreateTeam(int seasonId, string teamName, int captainId)
         {
+            int conferenceId = await GetOrCreateDefaultConferenceId(seasonId);
+
             var team = new Team
             {
                 Name = teamName,
                 CaptainId = captainId,
                 SeasonId = seasonId,
+                ConferenceId = conferenceId,
                 DiscordRoleId = (ulong)(new Random().Next(100000, 999999))
             };
             _context.Teams.Add(team);
             await _context.SaveChangesAsync();
             return team.Id;
+        }
+
+        private async Task<int> GetOrCreateDefaultConferenceId(int seasonId)
+        {
+            var existingConference = await _context.Conferences
+                .SingleOrDefaultAsync(c => c.SeasonId == seasonId && c.Name == "Default");
+
+            if (existingConference is not null)
+            {
+                return existingConference.Id;
+            }
+
+            var conference = new Conference
+            {
+                SeasonId = seasonId,
+                Name = "Default"
+            };
+
+            _context.Conferences.Add(conference);
+            await _context.SaveChangesAsync();
+
+            return conference.Id;
         }
 
         private async Task AddPlayerToTeam(int playerId, int seasonId, int teamId)
