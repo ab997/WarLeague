@@ -25,6 +25,7 @@ namespace WarLeague.Test
         private readonly MatchService _matchService;
         private readonly DeckSubmissionService _deckSubmissionService;
         private readonly SubstitutionService _substitutionService;
+        private readonly ConferenceService _conferenceService;
         private readonly WarLeagueDbContext _context;
 
         public Specifications()
@@ -50,6 +51,7 @@ namespace WarLeague.Test
             _matchService = _serviceProvider.GetRequiredService<MatchService>();
             _deckSubmissionService = _serviceProvider.GetRequiredService<DeckSubmissionService>();
             _substitutionService = _serviceProvider.GetRequiredService<SubstitutionService>();
+            _conferenceService = _serviceProvider.GetRequiredService<ConferenceService>();
 
             RecreateDatabase();
         }
