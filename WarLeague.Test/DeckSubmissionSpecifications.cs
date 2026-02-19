@@ -148,6 +148,7 @@ namespace WarLeague.Test
             // Arrange - Create season with team and players
             var (_, seasonId) = await CreateFormatAndSeason();
             var (player1, player2, _) = await CreateTwoPlayersOnSameTeam(seasonId, "Team1");
+            var (player3, player4, _) = await CreateTwoPlayersOnSameTeam(seasonId, "Team2");
 
             // Week 1: Create, submit, and close
             await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 1);
@@ -157,7 +158,7 @@ namespace WarLeague.Test
 
             // Week 2: Create, make open, and submit
             await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(14), null, 1);
-            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.Open, 2);
+            await _weekService.TransitionToOpenWeekAsync(seasonId, 2);
             await _deckSubmissionService.SubmitAsync(seasonId, player1.Id, "week2 deck", 1);
 
             // Act - Delete submission

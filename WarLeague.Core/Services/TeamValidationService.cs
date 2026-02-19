@@ -19,12 +19,7 @@ public class TeamValidationService
 
     public async Task<BaseResult> ValidateAllTeamsInSeasonAsync(int seasonId)
     {
-        Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-
-        if (season is null)
-        {
-            return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
-        }
+        var season = await _seasonRepository.GetById(seasonId);
 
         var teams = await _teamRepository.GetBySeasonAsync(seasonId);
 

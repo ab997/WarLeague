@@ -38,11 +38,7 @@ namespace WarLeague.Core.Services
             }
 
             // Validate submissionsRequired against season minimum
-            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-            if (season is null)
-            {
-                return new BaseResult(false, "Season not found.");
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             if (submissionsRequired > season.MinimumTeamMembers)
             {
@@ -101,11 +97,7 @@ namespace WarLeague.Core.Services
             }
 
             // Get the season to check team modification status
-            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-            if (season is null)
-            {
-                return new BaseResult(false, "Season not found.");
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             // Update week status to Open
             BaseResult updateResult = await UpdateAsync(seasonId, weekNumber, null, null, null, WeekStatus.Open, null);
@@ -134,7 +126,12 @@ namespace WarLeague.Core.Services
                 }
             }
 
-
+            var teams = await _teamRepository.GetBySeasonAsync(seasonId);
+            BaseResult ensureResult = await _matchService.EnsureTeamMatchupsForWeekAsync(seasonId, weekToOpen, teams);
+            if (!ensureResult.Success)
+            {
+                return ensureResult;
+            }
 
             await transaction.CommitAsync();
 
@@ -161,11 +158,7 @@ namespace WarLeague.Core.Services
             // Validate submissionsRequired against season minimum if being updated
             if (submissionsRequired.HasValue)
             {
-                Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-                if (season is null)
-                {
-                    return new BaseResult(false, "Season not found.");
-                }
+                var season = await _seasonRepository.GetById(seasonId);
 
                 if (submissionsRequired.Value > season.MinimumTeamMembers)
                 {
@@ -222,11 +215,7 @@ namespace WarLeague.Core.Services
             }
 
             // Phase-agnostic: only require submissions from teams that participate this week (delegated to matchup service)
-            var season = await _seasonRepository.GetByIdOrDefault(seasonId);
-            if (season is null)
-            {
-                return new BaseResult { Success = false, Message = "Season not found." };
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             var matchupService = _matchupServiceFactory.GetMatchupService(season);
             var requiredTeamIds = await matchupService.GetTeamIdsRequiredForSubmissionsAsync(teams, openWeek.WeekNumber);
@@ -302,11 +291,7 @@ namespace WarLeague.Core.Services
             }
 
             // Get season to determine which matchup service to use
-            var season = await _seasonRepository.GetByIdOrDefault(seasonId);
-            if (season == null)
-            {
-                return new BaseResult { Success = false, Message = "Season not found." };
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             var matchupService = _matchupServiceFactory.GetMatchupService(season);
             BaseResult updateWinnersResult = await matchupService.UpdateMatchupWinnersForWeekAsync(activeWeek, matches);
@@ -414,9 +399,7 @@ namespace WarLeague.Core.Services
         /// </summary>
         public async Task<BaseResult> GenerateRoundRobinScheduleAsync(int seasonId, int numberOfWeeks)
         {
-            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-            if (season is null)
-                return new BaseResult(false, "Season not found.");
+            var season = await _seasonRepository.GetById(seasonId);
             if (season.Phase != SeasonPhase.RoundRobin)
                 return new BaseResult(false, "Season is not in Round Robin phase. This command is only for round-robin seasons.");
 

@@ -150,7 +150,7 @@ namespace WarLeague.Test
             }
             
             await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, playersPerTeam);
-            await _weekService.UpdateAsync(seasonId, 1, null, null, null, WeekStatus.Open, playersPerTeam);
+            await _weekService.TransitionToOpenWeekAsync(seasonId, 1);
             
             var teams = await _context.Teams.Where(t => t.SeasonId == seasonId).ToListAsync();
             var week = await _context.Weeks.FirstAsync(w => w.SeasonId == seasonId && w.WeekNumber == 1);
@@ -176,13 +176,13 @@ namespace WarLeague.Test
             await AddPlayerToTeam(player.Id, seasonId, teamId);
             return player.Id;
         }
-
+        static ulong playerid = 1;
         private async Task<(Player player1, Player player2, int teamId)> CreateTwoPlayersOnSameTeam(int seasonId, string teamName)
         {
-            var captain = await CreatePlayer(111111);
+            var captain = await CreatePlayer(playerid++);
             var teamId = await CreateTeam(seasonId, teamName, captain.Id);
-            var player1 = await CreatePlayer(222222);
-            var player2 = await CreatePlayer(333333);
+            var player1 = await CreatePlayer(playerid++);
+            var player2 = await CreatePlayer(playerid++);
             await AddPlayerToTeam(player1.Id, seasonId, teamId);
             await AddPlayerToTeam(player2.Id, seasonId, teamId);
             return (player1, player2, teamId);
@@ -314,9 +314,9 @@ namespace WarLeague.Test
             int submissionRequired = 1;
             var (_, seasonId) = await CreateFormatAndSeason();
             await _weekService.CreateAsync(seasonId, weekNumber, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, submissionRequired);
-            await _weekService.TransitionToOpenWeekAsync(seasonId, weekNumber);
             int playerId1 = await CreateTeamWithPlayer(seasonId, "Team1");
             int playerId2 = await CreateTeamWithPlayer(seasonId, "Team2");
+            await _weekService.TransitionToOpenWeekAsync(seasonId, weekNumber);
             await _deckSubmissionService.SubmitAsync(seasonId, (int)playerId1, "deck content", 1);
             await _deckSubmissionService.SubmitAsync(seasonId, (int)playerId2, "deck content", 1);
             return seasonId;

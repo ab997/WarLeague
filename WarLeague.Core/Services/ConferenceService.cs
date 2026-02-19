@@ -22,11 +22,7 @@ public class ConferenceService
             return new BaseResult(false, "Conference name is required.");
         }
 
-        Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-        if (season is null)
-        {
-            return new BaseResult(false, $"Season with ID '{seasonId}' does not exist.");
-        }
+        var season = await _seasonRepository.GetById(seasonId);
 
         Conference? existingConference = await _conferenceRepository.GetByNameAndSeasonAsync(name.Trim(), seasonId);
         if (existingConference is not null)
@@ -153,11 +149,7 @@ public class ConferenceService
 
     public async Task<BaseResult> ListAsync(int seasonId)
     {
-        Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-        if (season is null)
-        {
-            return new BaseResult(false, $"Season with ID '{seasonId}' does not exist.");
-        }
+        _ = await _seasonRepository.GetById(seasonId);
 
         List<Conference> conferences = await _conferenceRepository.GetBySeasonAsync(seasonId);
         if (conferences.Count == 0)
