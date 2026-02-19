@@ -36,18 +36,15 @@ namespace WarLeague.Core.Services
                 return new BaseResult { Success = false, Message = "Please provide a valid HTTP/HTTPS replay URL." };
             }
 
-            Week? week;
-            try
+            Week? week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
+
+            if (week is null)
             {
-                week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
-            }
-            catch (InvalidOperationException)
-            {
-                return new BaseResult { Success = false, Message = $"Multiple weeks with status '{WeekStatus.InProgress}' exist for the active season." };
+                return new BaseResult { Success = false, Message = $"There is no week with status '{WeekStatus.InProgress}' for the active season." };
             }
 
             // Only allow reporting for matches where the caller actually has a scheduled match.
-            var callerMatches = await _matchRepository.GetByPlayerAndWeekAsync(loserId, week!.Id);
+            var callerMatches = await _matchRepository.GetByPlayerAndWeekAsync(loserId, week.Id);
 
             var scheduledMatches = callerMatches
                 .Where(m => m.Status == MatchStatus.Scheduled)
@@ -101,15 +98,7 @@ namespace WarLeague.Core.Services
         /// <returns>Result indicating success or error message.</returns>
         public async Task<BaseResult> UndoResultAsync(int seasonId, int player1Id, int player2Id)
         {
-            Week? week;
-            try
-            {
-                week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
-            }
-            catch (InvalidOperationException)
-            {
-                return new BaseResult { Success = false, Message = $"Multiple weeks with status '{WeekStatus.InProgress}' exist for the active season." };
-            }
+            Week? week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
 
             if (week is null)
             {
@@ -168,15 +157,7 @@ namespace WarLeague.Core.Services
                 return new BaseResult { Success = false, Message = "Please provide a valid HTTP/HTTPS replay URL." };
             }
 
-            Week? week;
-            try
-            {
-                week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
-            }
-            catch (InvalidOperationException)
-            {
-                return new BaseResult { Success = false, Message = $"Multiple weeks with status '{WeekStatus.InProgress}' exist for the active season." };
-            }
+            Week? week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
 
             if (week is null)
             {
@@ -215,15 +196,7 @@ namespace WarLeague.Core.Services
 
         public async Task<BaseResult> NoShowAsync(int seasonId, int winnerId, int loserId)
         {
-            Week? week;
-            try
-            {
-                week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
-            }
-            catch (InvalidOperationException)
-            {
-                return new BaseResult { Success = false, Message = $"Multiple weeks with status '{WeekStatus.InProgress}' exist for the active season." };
-            }
+            Week? week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
 
             if (week is null)
             {
