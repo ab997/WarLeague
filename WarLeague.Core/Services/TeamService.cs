@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -32,12 +32,7 @@ namespace WarLeague.Core.Services
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
 
-            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-
-            if (season is null)
-            {
-                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -105,12 +100,7 @@ namespace WarLeague.Core.Services
                 return new BaseResult(false, $"Team with name '{teamName}' not found.");
             }
 
-            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-
-            if (season is null)
-            {
-                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             // no bypass param consciously: not even admins have any reason to delete teams mid season
             if (season.DisableTeamModification)
@@ -131,12 +121,7 @@ namespace WarLeague.Core.Services
         /// <returns></returns>
         public async Task<BaseResult> CaptainAddMemberAsync(int seasonId, int captainId, int playerId, bool canBypassTeamModificationCheck)
         {
-            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-            
-            if (season is null)
-            {
-                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -155,12 +140,7 @@ namespace WarLeague.Core.Services
 
         public async Task<BaseResult> AddMemberAsync(int seasonId, int playerId, string teamName, bool canBypassTeamModificationCheck)
         {
-            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-
-            if (season is null)
-            {
-                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -184,12 +164,7 @@ namespace WarLeague.Core.Services
                 return new BaseResult { Success = false, Message = $"Player with id {playerId} is already a member of another team in this season." };
             }
 
-            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-
-            if (season is null)
-            {
-                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -210,12 +185,7 @@ namespace WarLeague.Core.Services
 
         public async Task<BaseResult> CaptainRemoveMemberAsync(int seasonId, int captainId, int playerId, bool canBypassTeamModificationCheck)
         {
-            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-            
-            if (season is null)
-            {
-                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -240,12 +210,7 @@ namespace WarLeague.Core.Services
                 return new BaseResult { Success = false, Message = "The team captain cannot be removed. Transfer captainship first if needed." };
             }
 
-            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-
-            if (season is null)
-            {
-                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -271,12 +236,7 @@ namespace WarLeague.Core.Services
 
         public async Task<BaseResult> RemoveMemberAsync(int seasonId, int playerId, bool canBypassTeamModificationCheck)
         {
-            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-
-            if (season is null)
-            {
-                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -308,12 +268,7 @@ namespace WarLeague.Core.Services
         }
         public async Task<BaseResult> TransferMemberAsync(int seasonId, int playerId, string teamName, bool canBypassTeamModificationCheck)
         {
-            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-
-            if (season is null)
-            {
-                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -328,12 +283,7 @@ namespace WarLeague.Core.Services
         }
         public async Task<BaseResult> TransferMemberAsync(int seasonId, int playerId, int teamId, bool canBypassTeamModificationCheck)
         {
-            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-
-            if (season is null)
-            {
-                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -370,12 +320,7 @@ namespace WarLeague.Core.Services
 
         public async Task<BaseResult> TransferCaptainshipAsync(int seasonId, int newCaptainId, string teamName, bool canBypassTeamModificationCheck)
         {
-            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-
-            if (season is null)
-            {
-                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -408,12 +353,7 @@ namespace WarLeague.Core.Services
 
         public async Task<BaseResult> AssignDiscordRoleIdAsync(int seasonId, string teamName, ulong discordRoleId, bool canBypassTeamModificationCheck)
         {
-            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-
-            if (season is null)
-            {
-                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -434,11 +374,7 @@ namespace WarLeague.Core.Services
 
         public async Task<BaseResult> UpdateConferenceAsync(int seasonId, string teamName, string conferenceName, bool canBypassTeamModificationCheck)
         {
-            Season? season = await _seasonRepository.GetByIdOrDefault(seasonId);
-            if (season is null)
-            {
-                return new BaseResult { Success = false, Message = $"Season with ID '{seasonId}' does not exist." };
-            }
+            var season = await _seasonRepository.GetById(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {

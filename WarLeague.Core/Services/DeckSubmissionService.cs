@@ -56,11 +56,7 @@ namespace WarLeague.Core.Services
                 return new BaseResult { Success = false, Message = "Player is not on any team for the active season." };
             }
 
-            var season = await _seasonRepository.GetByIdOrDefault(openWeek.SeasonId);
-            if (season is null)
-            {
-                return new BaseResult { Success = false, Message = "Season not found for the open week." };
-            }
+            var season = await _seasonRepository.GetById(openWeek.SeasonId);
             var matchupService = _matchupServiceFactory.GetMatchupService(season);
             var canSubmitResult = await matchupService.ValidateTeamCanSubmitForWeekAsync(season, openWeek, pst.TeamId);
             if (!canSubmitResult.Success)
