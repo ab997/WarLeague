@@ -257,6 +257,35 @@ namespace WarLeague.Core.Services
             return new BaseResult { Success = true, Message = "Match result reported successfully." };
         }
 
+        /// <summary>
+        /// Ensures team-vs-team matchups exist for the week: uses existing if present, otherwise computes and saves them.
+        /// Called when a week is opened so that generate-pairings only creates individual matchups.
+        /// </summary>
+        public async Task<BaseResult> EnsureTeamMatchupsForWeekAsync(int seasonId, Week week, List<Team> teams)
+        {
+            var season = await _seasonRepository.GetByIdOrDefault(seasonId);
+            if (season == null)
+            {
+                return new BaseResult(false, "Season not found.");
+            }
+
+            var matchupService = _matchupServiceFactory.GetMatchupService(season);
+
+            List<(Team a, Team b)>? existingMatchups = await matchupService.GetExistingTeamMatchupsAsync(week, teams);
+            if (existingMatchups != null && existingMatchups.Count > 0)
+            {
+                return new BaseResult(true, "Team pairings already exist for this week.");
+            }
+
+            List<(Team a, Team b)> teamMatchups = await matchupService.GetTeamMatchups(teams, week.WeekNumber);
+            if (teamMatchups.Count == 0)
+            {
+                return new BaseResult(false, "No team pairings were generate, this is probably a bug");
+            }
+
+            return await matchupService.SaveTeamMatchupsAsync(week, teams, teamMatchups);
+        }
+
         public async Task<GeneratePairingsResult> GeneratePairingsAsync(int seasonId, Week week, List<Team> teams)
         {
             // Get season to determine which matchup service to use
@@ -268,19 +297,14 @@ namespace WarLeague.Core.Services
 
             var matchupService = _matchupServiceFactory.GetMatchupService(season);
 
-            // Use pre-saved team matchups if available (e.g. from generate-round-robin-schedule); otherwise compute from week number.
+            // Team matchups are created when the week is opened (or by generate-round-robin-schedule). We only use existing ones here.
             List<(Team a, Team b)>? existingMatchups = await matchupService.GetExistingTeamMatchupsAsync(week, teams);
-            List<(Team a, Team b)> teamMatchups;
-            bool usePreSavedMatchups = existingMatchups != null && existingMatchups.Count > 0;
-            if (usePreSavedMatchups)
-                teamMatchups = existingMatchups!;
-            else
-                teamMatchups = await matchupService.GetTeamMatchups(teams, week.WeekNumber);
-
-            if (teamMatchups.Count == 0)
+            if (existingMatchups == null || existingMatchups.Count == 0)
             {
-                return new GeneratePairingsResult { Success = false, Message = "No team matchups available for this week (did everyone get a bye?)." };
+                return new GeneratePairingsResult { Success = false, Message = "No team pairings for this week. Open the week first to generate team pairings." };
             }
+
+            List<(Team a, Team b)> teamMatchups = existingMatchups;
 
             // Build quick lookup: player -> team for this season.
             var memberships = await _playerSeasonTeamRepository.GetBySeasonAsync(seasonId);
@@ -308,16 +332,6 @@ namespace WarLeague.Core.Services
             if (createdMatches.Count == 0)
             {
                 return new GeneratePairingsResult { Success = false, Message = "No pairings generated. Likely missing deck submissions for the teams playing this week." };
-            }
-
-            // Only persist team matchups if not already pre-saved (e.g. by generate-round-robin-schedule).
-            if (!usePreSavedMatchups)
-            {
-                BaseResult saveTeamMatchupsResult = await matchupService.SaveTeamMatchupsAsync(week, teams, teamMatchups);
-                if (!saveTeamMatchupsResult.Success)
-                {
-                    return new GeneratePairingsResult { Success = false, Message = saveTeamMatchupsResult.Message };
-                }
             }
 
             await _matchRepository.AddRangeAsync(createdMatches);

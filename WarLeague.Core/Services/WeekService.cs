@@ -134,7 +134,12 @@ namespace WarLeague.Core.Services
                 }
             }
 
-
+            var teams = await _teamRepository.GetBySeasonAsync(seasonId);
+            BaseResult ensureResult = await _matchService.EnsureTeamMatchupsForWeekAsync(seasonId, weekToOpen, teams);
+            if (!ensureResult.Success)
+            {
+                return ensureResult;
+            }
 
             await transaction.CommitAsync();
 
