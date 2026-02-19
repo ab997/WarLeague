@@ -15,17 +15,15 @@ namespace WarLeague.Core.Services
         private readonly ConferenceRepository _conferenceRepository;
         private readonly WeekRepository _weekRepository;
         private readonly PlayoffService _playoffService;
-        private readonly TeamRepository _teamRepository;
         private readonly WarLeagueDbContext _context;
 
-        public SeasonService(SeasonRepository seasonRepository, FormatRepository formatRepository, ConferenceRepository conferenceRepository, WeekRepository weekRepository, PlayoffService playoffService, TeamRepository teamRepository, WarLeagueDbContext context)
+        public SeasonService(SeasonRepository seasonRepository, FormatRepository formatRepository, ConferenceRepository conferenceRepository, WeekRepository weekRepository, PlayoffService playoffService, WarLeagueDbContext context)
         {
             _seasonRepository = seasonRepository;
             _formatRepository = formatRepository;
             _conferenceRepository = conferenceRepository;
             _weekRepository = weekRepository;
             _playoffService = playoffService;
-            _teamRepository = teamRepository;
             _context = context;
         }
 
