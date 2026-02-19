@@ -14,6 +14,7 @@ namespace WarLeague.Discord.Commands;
 [Group("deck", "Deck submission commands")]
 [EnsureChannelIsInFormatCategory]
 [EnsureSingleActiveSeason]
+[EnsureSingleValidOpenWeek]
 [RequireAppPermission(PermissionType.Admin, Group = "Permission")]
 [RequireAppPermission(PermissionType.Captain, Group = "Permission")]
 [InitializeGuildContext]
