@@ -170,8 +170,8 @@ namespace WarLeague.Test
             var (_, seasonId) = await CreateFormatAndSeason();
             await _weekService.CreateAsync(seasonId, weekNumber, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, submissionRequired);
             await _weekService.TransitionToOpenWeekAsync(seasonId, weekNumber);
-            int playerId1 = await CreateTeamWithPlayer(seasonId, "Team1");
-            int playerId2 = await CreateTeamWithPlayer(seasonId, "Team2");
+            var (playerId1, _) = await CreateTeamWithPlayer(seasonId, "Team1");
+            var (playerId2, _) = await CreateTeamWithPlayer(seasonId, "Team2");
             await _deckSubmissionService.SubmitAsync(seasonId, (int)playerId1, "deck content", 1);
 
             // Act

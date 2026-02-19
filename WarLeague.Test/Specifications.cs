@@ -79,20 +79,13 @@ namespace WarLeague.Test
             return (format.Id, season.Id);
         }
 
-        private async Task<(int seasonId, int playerId)> CreateSeasonWithTeamAndOpenWeek(int submissionsRequired = 3)
+        private async Task<(int seasonId, int playerId1, int playerId2, int cptId1)> CreateSeasonWithTeamAndOpenWeek(int submissionsRequired = 3)
         {
             var (_, seasonId) = await CreateFormatAndSeason();
-            var playerId = await CreateTeamWithPlayer(seasonId, "Team1");
+            var (playerId1, cptId1) = await CreateTeamWithPlayer(seasonId, "Team1");
+            var (playerId2, cptId2) = await CreateTeamWithPlayer(seasonId, "Team2");
             await CreateOpenWeek(seasonId, submissionsRequired);
-            return (seasonId, playerId);
-        }
-
-        private async Task<(int seasonId, int player1Id, int player2Id)> CreateSeasonWithTeamAndTwoPlayersAndOpenWeek()
-        {
-            var (_, seasonId) = await CreateFormatAndSeason();
-            var (player1, player2, _) = await CreateTwoPlayersOnSameTeam(seasonId, "Team1");
-            await CreateOpenWeek(seasonId);
-            return (seasonId, player1.Id, player2.Id);
+            return (seasonId, playerId1, playerId2, cptId1);
         }
 
         private async Task<(int seasonId, string teamName, int playerInId, int playerOutId)> CreateSubstitutionScenario()
@@ -169,14 +162,13 @@ namespace WarLeague.Test
             return (seasonId, week.Id);
         }
 
-        private async Task<int> CreateTeamWithPlayer(int seasonId, string teamName)
+        private async Task<(int playerId, int captainId)> CreateTeamWithPlayer(int seasonId, string teamName)
         {
-            Random rnd = new Random();
-            var captain = await CreatePlayer((ulong)rnd.Next(100000, 999999));
+            var captain = await CreatePlayer(playerid++);
             var teamId = await CreateTeam(seasonId, teamName, captain.Id);
-            var player = await CreatePlayer((ulong)rnd.Next(100000, 999999));
+            var player = await CreatePlayer(playerid++);
             await AddPlayerToTeam(player.Id, seasonId, teamId);
-            return player.Id;
+            return (player.Id, captain.Id);
         }
         static ulong playerid = 1;
         private async Task<(Player player1, Player player2, int teamId)> CreateTwoPlayersOnSameTeam(int seasonId, string teamName)
@@ -193,7 +185,7 @@ namespace WarLeague.Test
         private async Task CreateOpenWeek(int seasonId, int submissionsRequired = 3)
         {
             await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, submissionsRequired);
-            await _weekService.UpdateAsync(seasonId, 1, null, null, null, WeekStatus.Open, submissionsRequired);
+            await _weekService.TransitionToOpenWeekAsync(seasonId, 1);
         }
 
         private async Task CloseSubmissions(int seasonId)
@@ -316,8 +308,8 @@ namespace WarLeague.Test
             int submissionRequired = 1;
             var (_, seasonId) = await CreateFormatAndSeason();
             await _weekService.CreateAsync(seasonId, weekNumber, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, submissionRequired);
-            int playerId1 = await CreateTeamWithPlayer(seasonId, "Team1");
-            int playerId2 = await CreateTeamWithPlayer(seasonId, "Team2");
+            var (playerId1, _) = await CreateTeamWithPlayer(seasonId, "Team1");
+            var (playerId2, _) = await CreateTeamWithPlayer(seasonId, "Team2");
             await _weekService.TransitionToOpenWeekAsync(seasonId, weekNumber);
             await _deckSubmissionService.SubmitAsync(seasonId, (int)playerId1, "deck content", 1);
             await _deckSubmissionService.SubmitAsync(seasonId, (int)playerId2, "deck content", 1);
