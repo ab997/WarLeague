@@ -436,6 +436,57 @@ namespace WarLeague.Test
         }
 
         /// <summary>
+        /// Prepares a season in Playoffs phase with one conference, N playoff teams, week 1 completed
+        /// (round-robin with reported results), week 2 created as the first playoff week.
+        /// Use for testing EnsureTeamMatchupsForWeekAsync with different playoff team counts (e.g. 4 vs 5).
+        /// </summary>
+        private async Task<(int seasonId, Week week2, List<Team> teams)> GetSeasonWeekAndTeamsForPlayoffsFirstWeekSingleConferenceAsync(int playoffTeamCount, int playersPerTeam = 2)
+        {
+            var (_, seasonId) = await CreateFormatAndSeason();
+            (await _conferenceService.CreateAsync(seasonId, "Default", playoffTeamCount)).Success.ShouldBeTrue();
+            var playerIdBase = 5000u;
+            for (int i = 0; i < playoffTeamCount; i++)
+            {
+                var captain = await CreatePlayer(playerIdBase + (ulong)(i * 100));
+                var teamId = await CreateTeam(seasonId, $"Team{i + 1}", captain.Id);
+                for (int j = 1; j <= playersPerTeam - 1; j++)
+                {
+                    var player = await CreatePlayer(playerIdBase + (ulong)(i * 100 + j));
+                    await AddPlayerToTeam(player.Id, seasonId, teamId);
+                }
+            }
+            await CreateWeekAsync(seasonId, 1, playersPerTeam);
+            await OpenWeekAsync(seasonId, 1);
+            var teams = await GetTeamsAsync(seasonId);
+            foreach (var team in teams)
+            {
+                var teamPlayerIds = await GetTeamPlayerIds(seasonId, team.Id);
+                for (int seat = 1; seat <= playersPerTeam; seat++)
+                    await SubmitDeckAsync(seasonId, teamPlayerIds[seat - 1], seat);
+            }
+            await CloseSubmissionsAsync(seasonId);
+            (await _weekService.TransitionToInProgressAsync(seasonId)).Success.ShouldBeTrue();
+            var week1 = await _weekRepository.GetByWeekNumberAndSeasonAsync(1, seasonId);
+            var matches = await _matchRepository.GetByWeekIdAsync(week1!.Id);
+            foreach (var group in matches.GroupBy(m => new { m.Team1Id, m.Team2Id }))
+            {
+                var loserTeamId = group.Key.Team2Id;
+                var loserPlayerIds = await GetTeamPlayerIds(seasonId, loserTeamId);
+                foreach (var match in group)
+                {
+                    var loserId = loserPlayerIds.Contains(match.Player1Id) ? match.Player1Id : match.Player2Id;
+                    (await _matchService.ReportLossAsync(seasonId, loserId, "https://example.com/seed")).Success.ShouldBeTrue();
+                }
+            }
+            (await _weekService.TransitionToCompletedAsync(seasonId)).Success.ShouldBeTrue();
+            (await _seasonService.SetPhaseToPlayoffsAsync(seasonId)).Success.ShouldBeTrue();
+            await CreateWeekAsync(seasonId, 2, playersPerTeam);
+            var week2 = await _weekRepository.GetByWeekNumberAndSeasonAsync(2, seasonId);
+            teams = await GetTeamsAsync(seasonId);
+            return (seasonId, week2!, teams);
+        }
+
+        /// <summary>
         /// Prepares a season in Playoffs phase with week 1 completed (round-robin with winners),
         /// week 2 created as the first playoff week. Use for testing EnsureTeamMatchupsForWeekAsync
         /// and GeneratePairingsAsync with PlayoffService (MatchupServiceFactory resolves to PlayoffService).
