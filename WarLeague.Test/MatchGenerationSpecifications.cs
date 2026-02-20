@@ -1,4 +1,4 @@
-﻿using Shouldly;
+using Shouldly;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -12,6 +12,7 @@ namespace WarLeague.Test
         #region Match Generation Behavior Specifications
 
         [Fact]
+        [Trait("Category", "MatchGeneration")]
         public async Task WhenGeneratingPairingsWithTwoTeams_ThenCreatesCorrectNumberOfMatches()
         {
             // Arrange
@@ -28,6 +29,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "MatchGeneration")]
         public async Task WhenGeneratingPairingsWithFourTeams_ThenCreatesCorrectNumberOfMatches()
         {
             // Arrange
@@ -43,6 +45,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "MatchGeneration")]
         public async Task WhenGeneratingPairingsWithOddNumberOfTeams_ThenHandlesByeCorrectly()
         {
             // TODO: handle bye with BYE table
@@ -61,6 +64,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "MatchGeneration")]
         public async Task WhenGeneratingPairingsWithOneTeam_ThenReturnsFail()
         {
             // Arrange
@@ -75,6 +79,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "MatchGeneration")]
         public async Task WhenGeneratingPairingsWithNoSubmissionsClosedWeek_ThenReturnsFail()
         {
             // Arrange
@@ -88,6 +93,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "MatchGeneration")]
         public async Task WhenGeneratingPairings_ThenRoundRobinMatchupsAreSaved()
         {
             // Arrange
@@ -109,6 +115,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "MatchGeneration")]
         public async Task WhenGeneratingPairingsWithConferences_ThenOnlyPairsTeamsWithinSameConference()
         {
             // Arrange

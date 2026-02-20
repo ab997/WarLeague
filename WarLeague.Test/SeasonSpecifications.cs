@@ -1,4 +1,4 @@
-﻿using Shouldly;
+using Shouldly;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -11,6 +11,7 @@ namespace WarLeague.Test
         #region Season Behavior Specifications
 
         [Fact]
+        [Trait("Category", "Season")]
         public async Task WhenCreatingSeasonWithValidParameters_ThenReturnsSuccess()
         {
             // Arrange
@@ -25,6 +26,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Season")]
         public async Task WhenCreatingDuplicateSeasonNumber_ThenReturnsFail()
         {
             // Arrange
@@ -40,6 +42,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Season")]
         public async Task WhenSettingSeasonActive_ThenReturnsSuccess()
         {
             // Arrange
@@ -56,6 +59,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Season")]
         public async Task WhenDisablingTeamModifications_ThenReturnsSuccess()
         {
             // Arrange
@@ -73,6 +77,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Season")]
         public async Task WhenEnablingTeamModifications_ThenReturnsSuccess()
         {
             // Arrange
