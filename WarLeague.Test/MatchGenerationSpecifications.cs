@@ -229,6 +229,54 @@ namespace WarLeague.Test
 
         [Fact]
         [Trait("Category", "MatchGeneration")]
+        public async Task WhenPlayoffsWithFiveTeams_SimulateSingleEliminationToFinals_ThenEveryStageHasCorrectBracket()
+        {
+            // Arrange: same as five-team playoffs (round 1 = top-8 bracket: 3 byes + 1 matchup)
+            var (seasonId, week2, teams) = await GetSeasonWeekAndTeamsForPlayoffsFirstWeekSingleConferenceAsync(playoffTeamCount: 5, playersPerTeam: 2);
+            teams.Count.ShouldBe(5);
+            var teamOrder = teams.OrderBy(t => t.Id).ToList(); // Team1=seed1 .. Team5=seed5
+
+            // ——— Stage 1: Top 8 (Round 1) ———
+            var ensure1 = await _matchService.EnsureTeamMatchupsForWeekAsync(seasonId, week2, teams);
+            ensure1.Success.ShouldBeTrue();
+            var round1Matchups = _context.PlayoffMatchups.Where(pm => pm.WeekId == week2.Id).OrderBy(pm => pm.BracketPosition).ToList();
+            round1Matchups.Count.ShouldBe(4, "Round 1 should have 4 bracket slots (3 byes + 1 game)");
+            round1Matchups.Count(pm => pm.MatchupType == MatchupType.Bye).ShouldBe(3);
+            round1Matchups.Count(pm => pm.MatchupType == MatchupType.Normal).ShouldBe(1);
+            round1Matchups.All(pm => pm.Round == 1).ShouldBeTrue();
+
+            await CompletePlayoffWeekAsync(seasonId, 2, teams, loserTeamIdsPerMatchup: new[] { teamOrder[4].Id }); // Team5 loses in the only game
+
+            // ——— Stage 2: Top 4 (Semifinals) ———
+            await CreateWeekAsync(seasonId, 3, 2);
+            var week3 = await _weekRepository.GetByWeekNumberAndSeasonAsync(3, seasonId);
+            week3.ShouldNotBeNull();
+            var ensure2 = await _matchService.EnsureTeamMatchupsForWeekAsync(seasonId, week3!, teams);
+            ensure2.Success.ShouldBeTrue();
+            var round2Matchups = _context.PlayoffMatchups.Where(pm => pm.WeekId == week3!.Id).OrderBy(pm => pm.BracketPosition).ToList();
+            round2Matchups.Count.ShouldBe(2, "Semifinals should have 2 matchups");
+            round2Matchups.Count(pm => pm.MatchupType == MatchupType.Bye).ShouldBe(0);
+            round2Matchups.Count(pm => pm.MatchupType == MatchupType.Normal).ShouldBe(2);
+            round2Matchups.Select(pm => pm.Round).Distinct().Count().ShouldBe(1, "Semifinals should have a single round number");
+            round2Matchups.All(pm => pm.Team1Id != pm.Team2Id).ShouldBeTrue("All semifinal matchups should be team vs team (no byes)");
+
+            // Semifinals: Team3 and Team4 lose so Team1 and Team2 advance to finals
+            await CompletePlayoffWeekAsync(seasonId, 3, teams, loserTeamIdsPerMatchup: new[] { teamOrder[3].Id, teamOrder[2].Id });
+
+            // ——— Stage 3: Top 2 (Finals) ———
+            await CreateWeekAsync(seasonId, 4, 2);
+            var week4 = await _weekRepository.GetByWeekNumberAndSeasonAsync(4, seasonId);
+            week4.ShouldNotBeNull();
+            var ensure3 = await _matchService.EnsureTeamMatchupsForWeekAsync(seasonId, week4!, teams);
+            ensure3.Success.ShouldBeTrue();
+            var round3Matchups = _context.PlayoffMatchups.Where(pm => pm.WeekId == week4!.Id).OrderBy(pm => pm.BracketPosition).ToList();
+            round3Matchups.Count.ShouldBe(1, "Finals should have 1 matchup");
+            round3Matchups[0].MatchupType.ShouldBe(MatchupType.Normal);
+            round3Matchups[0].Team1Id.ShouldNotBe(round3Matchups[0].Team2Id, "Finals should be one team vs another");
+        }
+
+        [Fact]
+        [Trait("Category", "MatchGeneration")]
         public async Task WhenGeneratingPairings_AndPlayoffsPhase_ThenCreatesMatchesFromPlayoffMatchups()
         {
             // Arrange: playoffs first week, ensure team matchups then add deck submissions for playoff teams and generate pairings

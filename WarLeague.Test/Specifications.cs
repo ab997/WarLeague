@@ -2,7 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
+using System.Linq;
 using WarLeague.Data;
+using WarLeague.Data.Data.Entities;
+using WarLeague.Data.Data.Enums;
 using WarLeague.Data.Enums;
 using WarLeague.Core.Services;
 using WarLeague.Core.Repositories;
@@ -516,6 +519,42 @@ namespace WarLeague.Test
             await CreateWeekAsync(seasonId, 2, playersPerTeam);
             var week2 = await _weekRepository.GetByWeekNumberAndSeasonAsync(2, seasonId);
             return (seasonId, week2!, teams);
+        }
+
+        /// <summary>
+        /// Completes a playoff week: open week, add submissions for teams in matchups, close submissions,
+        /// transition to InProgress (generates pairings), report losers for each normal matchup (in bracket order), then complete.
+        /// </summary>
+        private async Task CompletePlayoffWeekAsync(int seasonId, int weekNumber, List<Team> teams, int[] loserTeamIdsPerMatchup)
+        {
+            var week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, seasonId);
+            week.ShouldNotBeNull();
+            (await _weekService.TransitionToOpenWeekAsync(seasonId, weekNumber)).Success.ShouldBeTrue();
+            var playoffMatchups = _context.PlayoffMatchups.Where(pm => pm.WeekId == week!.Id).OrderBy(pm => pm.BracketPosition).ToList();
+            var requiredTeamIds = playoffMatchups.SelectMany(pm => new[] { pm.Team1Id, pm.Team2Id }).Distinct().ToList();
+            foreach (var teamId in requiredTeamIds)
+            {
+                var playerIds = await GetTeamPlayerIds(seasonId, teamId);
+                for (int seat = 1; seat <= playerIds.Count; seat++)
+                    await AddDeckSubmissionForWeekAsync(seasonId, weekNumber, playerIds[seat - 1], seat);
+            }
+            (await _weekService.TransitionToCloseSubmissionsAsync(seasonId)).Success.ShouldBeTrue();
+            (await _weekService.TransitionToInProgressAsync(seasonId)).Success.ShouldBeTrue();
+            var matches = await _matchRepository.GetByWeekIdAsync(week!.Id);
+            int loserIndex = 0;
+            foreach (var pm in playoffMatchups.Where(pm => pm.MatchupType == MatchupType.Normal))
+            {
+                var teamMatchupMatches = matches.Where(m =>
+                    (m.Team1Id == pm.Team1Id && m.Team2Id == pm.Team2Id) || (m.Team1Id == pm.Team2Id && m.Team2Id == pm.Team1Id)).ToList();
+                var loserTeamId = loserTeamIdsPerMatchup[loserIndex++];
+                var loserPlayerIds = await GetTeamPlayerIds(seasonId, loserTeamId);
+                foreach (var match in teamMatchupMatches)
+                {
+                    var loserId = loserPlayerIds.Contains(match.Player1Id) ? match.Player1Id : match.Player2Id;
+                    (await _matchService.ReportLossAsync(seasonId, loserId, "https://example.com/playoff")).Success.ShouldBeTrue();
+                }
+            }
+            (await _weekService.TransitionToCompletedAsync(seasonId)).Success.ShouldBeTrue();
         }
 
         #endregion
