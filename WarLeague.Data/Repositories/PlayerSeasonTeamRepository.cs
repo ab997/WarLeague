@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -71,6 +71,14 @@ namespace WarLeague.Core.Repositories
                         .Include(pst => pst.Team)
                         .Include(pst => pst.Player)
                         .ToListAsync();
+        }
+
+        public async Task<List<int>> GetPlayerIdsByTeamAndSeasonAsync(int teamId, int seasonId)
+        {
+            return await _context.PlayerSeasonTeams
+                .Where(pst => pst.TeamId == teamId && pst.SeasonId == seasonId)
+                .Select(pst => pst.PlayerId)
+                .ToListAsync();
         }
     }
 }

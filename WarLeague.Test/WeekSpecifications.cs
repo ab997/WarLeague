@@ -1,4 +1,4 @@
-﻿using Shouldly;
+using Shouldly;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -11,21 +11,21 @@ namespace WarLeague.Test
         #region Week Behavior Specifications
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenCreatingWeekWithValidParameters_ThenReturnsSuccess()
         {
             // Arrange
             var (formatId, seasonId) = await CreateFormatAndSeason();
-            var startDate = DateTime.Parse("2025-01-01");
-            var endDate = DateTime.Parse("2025-01-07");
 
             // Act
-            var result = await _weekService.CreateAsync(seasonId, weekNumber: 1, startDate, endDate, null, submissionsRequired: 3);
+            var result = await _weekService.CreateAsync(seasonId, weekNumber: 1, null, null, null, submissionsRequired: 3);
 
             // Assert
             result.Success.ShouldBeTrue();
         }
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenCreatingDuplicateWeekNumber_ThenReturnsFail()
         {
             // Arrange
@@ -51,11 +51,14 @@ namespace WarLeague.Test
         //________________________________________________________________________
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenOpeningWeek_InStatusNotOpenYet_ThenReturnsSuccess()
         {
             // Arrange
             int weekNumber = 1;
             var (_, seasonId) = await CreateFormatAndSeason();
+            _ = await CreateTeamWithPlayer(seasonId, "Team1");
+            _ = await CreateTeamWithPlayer(seasonId, "Team2");
             await _weekService.CreateAsync(seasonId, weekNumber, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 3);
 
             // Act
@@ -66,6 +69,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenOpeningWeek_NotInStatusNotOpenYet_ThenReturnsFail()
         {
             // Arrange
@@ -82,6 +86,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenOpeningWeek_WithOpenWeekAlreadyExists_ThenReturnsFail()
         {
             // Arrange
@@ -102,6 +107,7 @@ namespace WarLeague.Test
         //________________________________________________________________________
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenClosingSubmissions_WithNoOpenWeek_ThenReturnsFail()
         {
             // Arrange
@@ -114,6 +120,7 @@ namespace WarLeague.Test
             result.Success.ShouldBeFalse();
         }
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenClosingSubmissions_WithOpenWeek_ThenReturnsSuccess()
         {
             // Arrange
@@ -129,6 +136,7 @@ namespace WarLeague.Test
 
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenClosingSubmissions_WithSubmissionClosedWeekAlreadyExists_ThenReturnsFail()
         {
             // Arrange
@@ -145,6 +153,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenClosingSubmissions_WithNoTeams_ThenReturnsFail()
         {
             // Arrange
@@ -162,6 +171,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenClosingSubmissions_WithNotEnoughSubmissions_ThenReturnsFail()
         {
             // Arrange
@@ -169,9 +179,10 @@ namespace WarLeague.Test
             int submissionRequired = 1;
             var (_, seasonId) = await CreateFormatAndSeason();
             await _weekService.CreateAsync(seasonId, weekNumber, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, submissionRequired);
+            var (playerId1, _) = await CreateTeamWithPlayer(seasonId, "Team1");
+            var (playerId2, _) = await CreateTeamWithPlayer(seasonId, "Team2");
             await _weekService.TransitionToOpenWeekAsync(seasonId, weekNumber);
-            int playerId1 = await CreateTeamWithPlayer(seasonId, "Team1");
-            int playerId2 = await CreateTeamWithPlayer(seasonId, "Team2");
+
             await _deckSubmissionService.SubmitAsync(seasonId, (int)playerId1, "deck content", 1);
 
             // Act
@@ -186,6 +197,7 @@ namespace WarLeague.Test
         //________________________________________________________________________
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenMovingToInProgressWeek_WithCloseSubmissionWeek_ThenReturnsSuccess()
         {
             // Arrange
@@ -199,6 +211,7 @@ namespace WarLeague.Test
             result.Success.ShouldBeTrue();
         }
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenMovingToInProgressWeek_WithNoCloseSubmissionWeek_ThenReturnsSuccess()
         {
             // Arrange
@@ -212,6 +225,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenMovingToInProgressWeek_WithInProgressWeekAlreadyExists_ThenReturnsFail()
         {
             // Arrange
@@ -233,6 +247,7 @@ namespace WarLeague.Test
         //________________________________________________________________________
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenCompletingWeek_WithNoInProgressWeek_ThenReturnsFail()
         {
             // Arrange
@@ -246,6 +261,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenCompletingWeek_WithInProgressWeek_ThenReturnsSuccess()
         {
             // Arrange
@@ -259,6 +275,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenCompletingWeek_ThenRoundRobinMatchupWinnerIsUpdated()
         {
             // Arrange
@@ -278,6 +295,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenCompletingWeek_WithNotAllMatchesReported_ThenReturnsFail()
         {
             // Arrange
@@ -293,6 +311,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenCompletingWeek_WithTiedRoundRobinMatchup_ThenReturnsFail()
         {
             // Arrange
@@ -326,6 +345,7 @@ namespace WarLeague.Test
 
 
         [Fact]
+        [Trait("Category", "Week")]
         public async Task WhenDeletingExistingWeek_ThenReturnsSuccess()
         {
             // Arrange

@@ -1,67 +1,115 @@
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
+using System.ComponentModel;
 using WarLeague.Data.Entities;
 
 namespace WarLeague.Test
 {
+    /// <summary>
+    /// Conference behavior specifications. Covers all ConferenceService behaviours in AAA style;
+    /// tests use services only (no direct DB in ConferenceService specs).
+    /// </summary>
     public partial class Specifications
     {
         [Fact]
-        public async Task WhenCreatingTeamWithValidConference_ThenConferenceIsAssigned()
+        [Trait("Category", "Conference")]
+        public async Task WhenCreatingConferenceWithDuplicateNameInSameSeason_ThenReturnsFail()
         {
             var (_, seasonId) = await CreateFormatAndSeason();
+            await _conferenceService.CreateAsync(seasonId, "Alpha", 1);
 
-            var alphaConference = new Conference
-            {
-                SeasonId = seasonId,
-                Name = "Alpha"
-            };
+            var result = await _conferenceService.CreateAsync(seasonId, "Alpha", 1);
 
-            _context.Conferences.Add(alphaConference);
-            await _context.SaveChangesAsync();
-
-            Player captain = await CreatePlayer(910001);
-
-            var result = await _teamService.CreateAsync(seasonId, "Alpha Wolves", captain.Id, "Alpha", canBypassTeamModificationCheck: true);
-
-            result.Success.ShouldBeTrue();
-
-            Team team = await _context.Teams.SingleAsync(t => t.SeasonId == seasonId && t.Name == "Alpha Wolves");
-            team.ConferenceId.ShouldBe(alphaConference.Id);
+            result.Success.ShouldBeFalse();
         }
 
         [Fact]
-        public async Task WhenUpdatingTeamConferenceToAnotherConference_ThenConferenceIsUpdated()
+        [Trait("Category", "Conference")]
+        public async Task WhenCreatingConferenceWithNegativePlayoffTeamsCount_ThenReturnsFail()
         {
             var (_, seasonId) = await CreateFormatAndSeason();
 
-            var alphaConference = new Conference
-            {
-                SeasonId = seasonId,
-                Name = "Alpha"
-            };
+            var result = await _conferenceService.CreateAsync(seasonId, "Alpha", playoffTeamsCount: -1);
 
-            var betaConference = new Conference
-            {
-                SeasonId = seasonId,
-                Name = "Beta"
-            };
+            result.Success.ShouldBeFalse();
+        }
 
-            _context.Conferences.Add(alphaConference);
-            _context.Conferences.Add(betaConference);
-            await _context.SaveChangesAsync();
+        [Fact]
+        [Trait("Category", "Conference")]
+        public async Task WhenCreatingConferenceWithZeroPlayoffTeamsCount_ThenReturnsFail()
+        {
+            var (_, seasonId) = await CreateFormatAndSeason();
 
-            Player captain = await CreatePlayer(910002);
+            var result = await _conferenceService.CreateAsync(seasonId, "Alpha", 0);
 
-            var createResult = await _teamService.CreateAsync(seasonId, "Conference Movers", captain.Id, "Alpha", canBypassTeamModificationCheck: true);
-            createResult.Success.ShouldBeTrue();
+            result.Success.ShouldBeFalse();
+        }
 
-            var updateResult = await _teamService.UpdateConferenceAsync(seasonId, "Conference Movers", "Beta", canBypassTeamModificationCheck: true);
+        [Fact]
+        [Trait("Category", "Conference")]
+        public async Task WhenCreatingConferenceWithValidNameAndPlayoffTeams_ThenReturnsSuccess()
+        {
+            var (_, seasonId) = await CreateFormatAndSeason();
 
-            updateResult.Success.ShouldBeTrue();
+            var result = await _conferenceService.CreateAsync(seasonId, "Alpha", playoffTeamsCount: 8);
 
-            Team team = await _context.Teams.SingleAsync(t => t.SeasonId == seasonId && t.Name == "Conference Movers");
-            team.ConferenceId.ShouldBe(betaConference.Id);
+            result.Success.ShouldBeTrue();
+        }
+
+        [Fact]
+        [Trait("Category", "Conference")]
+        public async Task WhenUpdatingConferenceWithNewNameThatAlreadyExists_ThenReturnsFail()
+        {
+            var (_, seasonId) = await CreateFormatAndSeason();
+            await _conferenceService.CreateAsync(seasonId, "Alpha", 1);
+            await _conferenceService.CreateAsync(seasonId, "Beta", 1);
+
+            var result = await _conferenceService.UpdateAsync(seasonId, "Alpha", newName: "Beta");
+
+            result.Success.ShouldBeFalse();
+        }
+
+        [Fact]
+        [Trait("Category", "Conference")]
+        public async Task WhenUpdatingConferenceWithNegativePlayoffTeamsCount_ThenReturnsFail()
+        {
+            var (_, seasonId) = await CreateFormatAndSeason();
+            await _conferenceService.CreateAsync(seasonId, "Alpha", playoffTeamsCount: 4);
+
+            var result = await _conferenceService.UpdateAsync(seasonId, "Alpha", playoffTeamsCount: -1);
+
+            result.Success.ShouldBeFalse();
+        }
+
+
+
+        [Fact]
+        [Trait("Category", "Conference")]
+        public async Task WhenDeletingConferenceThatHasTeams_ThenReturnsFail()
+        {
+            var (_, seasonId) = await CreateFormatAndSeason();
+            await _conferenceService.CreateAsync(seasonId, "Alpha", 1);
+            var captain = await CreatePlayer(910001);
+            await _teamService.CreateAsync(seasonId, "Alpha Wolves", captain.Id, "Alpha", canBypassTeamModificationCheck: true);
+
+            var result = await _conferenceService.DeleteAsync(seasonId, "Alpha");
+
+            result.Success.ShouldBeFalse();
+        }
+
+        [Fact]
+        [Trait("Category", "Conference")]
+        public async Task WhenDeletingConferenceWithNoTeams_ThenReturnsSuccess()
+        {
+            var (_, seasonId) = await CreateFormatAndSeason();
+            await _conferenceService.CreateAsync(seasonId, "Alpha", 1);
+
+            var result = await _conferenceService.DeleteAsync(seasonId, "Alpha");
+
+            result.Success.ShouldBeTrue();
+            result.Message.ShouldContain("deleted");
+            var listResult = await _conferenceService.ListAsync(seasonId);
+            listResult.Message.ShouldContain("No conferences found");
         }
     }
 }

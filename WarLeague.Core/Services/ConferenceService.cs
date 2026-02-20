@@ -15,7 +15,7 @@ public class ConferenceService
         _seasonRepository = seasonRepository;
     }
 
-    public async Task<BaseResult> CreateAsync(int seasonId, string name, int playoffTeamsCount = 0)
+    public async Task<BaseResult> CreateAsync(int seasonId, string name, int playoffTeamsCount)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -31,14 +31,9 @@ public class ConferenceService
         }
 
         // Validate playoff team count
-        const int maxPlayoffTeams = 32;
-        if (playoffTeamsCount < 0)
+        if (playoffTeamsCount <= 0)
         {
             return new BaseResult(false, "Playoff team count cannot be negative.");
-        }
-        if (playoffTeamsCount > maxPlayoffTeams)
-        {
-            return new BaseResult(false, $"Playoff team count cannot exceed {maxPlayoffTeams}.");
         }
 
         Conference conference = new Conference
