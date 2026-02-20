@@ -96,17 +96,21 @@ namespace WarLeague.Test
         [Trait("Category", "MatchGeneration")]
         public async Task WhenGeneratingTeamVsTeamPairings_ThenCreatesCorrectNumberOfMatches()
         {
-            // Arrange: 4 teams → 2 team-vs-team pairings (round-robin via IMatchupService), each with 2 player matches
-            var (seasonId, week, teams) = await GetSeasonWeekAndTeamsForPairingsAsync(teamCount: 4, playersPerTeam: 2);
+            // Arrange: week has no team matchups yet (week not opened)
+            var (seasonId, week, teams) = await GetSeasonWeekAndTeamsNoTeamMatchupsForPairingsAsync(teamCount: 4, playersPerTeam: 2);
 
-            // Act
-            var result = await _matchService.GeneratePairingsAsync(seasonId, week, teams);
+            // Act: ensure team-vs-team pairings for the week, then generate player matches
+            var ensureResult = await _matchService.EnsureTeamMatchupsForWeekAsync(seasonId, week, teams);
+            var pairingsResult = await _matchService.GeneratePairingsAsync(seasonId, week, teams);
 
             // Assert
-            result.Success.ShouldBeTrue();
-            result.WeeklyMatchups.ShouldNotBeNull();
-            result.WeeklyMatchups!.Count.ShouldBe(2); // 2 team pairings
-            result.CreatedMatches!.Count.ShouldBe(4); // 2 matches per pairing
+            ensureResult.Success.ShouldBeTrue();
+            pairingsResult.Success.ShouldBeTrue();
+            pairingsResult.CreatedMatches.ShouldNotBeNull();
+            // 4 teams → 2 team matchups → 4 player matches (2 players per team)
+            pairingsResult.CreatedMatches!.Count.ShouldBe(4);
+            pairingsResult.WeeklyMatchups.ShouldNotBeNull();
+            pairingsResult.WeeklyMatchups!.Count.ShouldBe(2);
         }
 
         [Fact]
