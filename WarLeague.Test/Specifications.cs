@@ -162,6 +162,71 @@ namespace WarLeague.Test
             return (seasonId, week.Id);
         }
 
+        /// <summary>
+        /// Creates a season with 4 teams in two conferences (Alpha, Beta), with conferences assigned before the week is opened
+        /// so that round-robin team matchups are generated per conference. Returns (seasonId, weekId).
+        /// </summary>
+        private async Task<(int seasonId, int weekId)> CreateSeasonWithTwoConferencesAndSubmissions(int teamsPerConference = 2, int playersPerTeam = 2)
+        {
+            var (_, seasonId) = await CreateFormatAndSeason();
+            var alphaConference = new Conference { SeasonId = seasonId, Name = "Alpha" };
+            var betaConference = new Conference { SeasonId = seasonId, Name = "Beta" };
+            _context.Conferences.Add(alphaConference);
+            _context.Conferences.Add(betaConference);
+            await _context.SaveChangesAsync();
+
+            for (int i = 0; i < teamsPerConference * 2; i++)
+            {
+                var captain = await CreatePlayer((ulong)(2000 + i * 100));
+                var teamId = await CreateTeam(seasonId, $"Team{i + 1}", captain.Id);
+                var team = await _context.Teams.FindAsync(teamId);
+                team!.ConferenceId = i < teamsPerConference ? alphaConference.Id : betaConference.Id;
+                for (int j = 1; j <= playersPerTeam; j++)
+                {
+                    var player = await CreatePlayer((ulong)(2000 + i * 100 + j));
+                    await AddPlayerToTeam(player.Id, seasonId, teamId);
+                }
+                await _context.SaveChangesAsync();
+            }
+
+            await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, playersPerTeam);
+            await _weekService.TransitionToOpenWeekAsync(seasonId, 1);
+
+            var teams = await _context.Teams.Where(t => t.SeasonId == seasonId).ToListAsync();
+            var week = await _context.Weeks.FirstAsync(w => w.SeasonId == seasonId && w.WeekNumber == 1);
+            foreach (var team in teams)
+            {
+                var teamPlayerIds = await GetTeamPlayerIds(seasonId, team.Id);
+                for (int seat = 1; seat <= playersPerTeam; seat++)
+                {
+                    await CreateDeckSubmission(seasonId, week.WeekNumber, teamPlayerIds[seat - 1], seat);
+                }
+            }
+            return (seasonId, week.Id);
+        }
+
+        /// <summary>
+        /// Creates a season with exactly one team and a week in SubmissionsClosed (via context, since services require 2+ teams).
+        /// Used to test that generating pairings with one team returns failure.
+        /// </summary>
+        private async Task<int> CreateSeasonWithOneTeamAndSubmissionsClosedWeek(int playersPerTeam = 2)
+        {
+            var (_, seasonId) = await CreateFormatAndSeason();
+            var captain = await CreatePlayer((ulong)9001);
+            var teamId = await CreateTeam(seasonId, "SoloTeam", captain.Id);
+            await AddPlayerToTeam(captain.Id, seasonId, teamId);
+            for (int j = 1; j < playersPerTeam; j++)
+            {
+                var player = await CreatePlayer((ulong)(9001 + j));
+                await AddPlayerToTeam(player.Id, seasonId, teamId);
+            }
+            await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, playersPerTeam);
+            var week = await _context.Weeks.FirstAsync(w => w.SeasonId == seasonId && w.WeekNumber == 1);
+            week.Status = WeekStatus.SubmissionsClosed;
+            await _context.SaveChangesAsync();
+            return seasonId;
+        }
+
         private async Task<(int playerId, int captainId)> CreateTeamWithPlayer(int seasonId, string teamName)
         {
             var captain = await CreatePlayer(playerid++);
