@@ -5,6 +5,7 @@ using Shouldly;
 using WarLeague.Data;
 using WarLeague.Data.Enums;
 using WarLeague.Core.Services;
+using WarLeague.Core.Repositories;
 using WarLeague.Data.Entities;
 using WarLeague.Core.Model;
 
@@ -12,7 +13,8 @@ namespace WarLeague.Test
 {
     /// <summary>
     /// Domain behavior specifications using Arrange-Act-Assert pattern.
-    /// Tests ONLY use services - NO direct database context access.
+    /// Tests use services and repositories; DbContext is used only for DB lifecycle (recreate/dispose).
+    /// Helpers are incremental so scenarios can be built from ground up.
     /// All tests follow "WhenXThenY" naming to make behavior explicit.
     /// </summary>
     public partial class Specifications : IDisposable
@@ -26,6 +28,13 @@ namespace WarLeague.Test
         private readonly DeckSubmissionService _deckSubmissionService;
         private readonly SubstitutionService _substitutionService;
         private readonly ConferenceService _conferenceService;
+        private readonly WeekRepository _weekRepository;
+        private readonly TeamRepository _teamRepository;
+        private readonly ConferenceRepository _conferenceRepository;
+        private readonly PlayerRepository _playerRepository;
+        private readonly MatchRepository _matchRepository;
+        private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
+        private readonly DeckSubmissionRepository _deckSubmissionRepository;
         private readonly WarLeagueDbContext _context;
 
         public Specifications()
@@ -52,6 +61,13 @@ namespace WarLeague.Test
             _deckSubmissionService = _serviceProvider.GetRequiredService<DeckSubmissionService>();
             _substitutionService = _serviceProvider.GetRequiredService<SubstitutionService>();
             _conferenceService = _serviceProvider.GetRequiredService<ConferenceService>();
+            _weekRepository = _serviceProvider.GetRequiredService<WeekRepository>();
+            _teamRepository = _serviceProvider.GetRequiredService<TeamRepository>();
+            _conferenceRepository = _serviceProvider.GetRequiredService<ConferenceRepository>();
+            _playerRepository = _serviceProvider.GetRequiredService<PlayerRepository>();
+            _matchRepository = _serviceProvider.GetRequiredService<MatchRepository>();
+            _playerSeasonTeamRepository = _serviceProvider.GetRequiredService<PlayerSeasonTeamRepository>();
+            _deckSubmissionRepository = _serviceProvider.GetRequiredService<DeckSubmissionRepository>();
 
             RecreateDatabase();
         }
@@ -67,7 +83,7 @@ namespace WarLeague.Test
             _context?.Dispose();
         }
 
-        #region Helper Methods - Setup Scenarios
+        #region Incremental building blocks (use these to build scenarios)
 
         private async Task<(int formatId, int seasonId)> CreateFormatAndSeason()
         {
@@ -79,11 +95,145 @@ namespace WarLeague.Test
             return (format.Id, season.Id);
         }
 
+        private async Task EnsureConferenceAsync(int seasonId, string name)
+        {
+            if (await _conferenceRepository.GetByNameAndSeasonAsync(name, seasonId) != null) return;
+            (await _conferenceService.CreateAsync(seasonId, name, 1)).Success.ShouldBeTrue();
+        }
+
+        private async Task<Player> CreatePlayer(ulong discordUserId)
+        {
+            var player = new Player { DiscordUserId = discordUserId, UserName = $"Player{discordUserId}" };
+            await _playerRepository.AddAsync(player);
+            return player;
+        }
+
+        private async Task<int> CreateTeam(int seasonId, string teamName, int captainId, string conferenceName = "Default")
+        {
+            await EnsureConferenceAsync(seasonId, conferenceName);
+            var result = await _teamService.CreateAsync(seasonId, teamName, captainId, conferenceName, canBypassTeamModificationCheck: true);
+            result.Success.ShouldBeTrue(result.Message);
+            var team = await _teamRepository.GetByNameAndSeasonAsync(teamName, seasonId);
+            return team!.Id;
+        }
+
+        private async Task AddPlayerToTeam(int playerId, int seasonId, int teamId)
+        {
+            (await _teamService.AddMemberAsync(seasonId, playerId, teamId, canBypassTeamModificationCheck: true)).Success.ShouldBeTrue();
+        }
+
+        private async Task CreateWeekAsync(int seasonId, int weekNumber, int submissionsRequired)
+        {
+            (await _weekService.CreateAsync(seasonId, weekNumber, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, submissionsRequired)).Success.ShouldBeTrue();
+        }
+
+        private async Task OpenWeekAsync(int seasonId, int weekNumber)
+        {
+            (await _weekService.TransitionToOpenWeekAsync(seasonId, weekNumber)).Success.ShouldBeTrue();
+        }
+
+        private async Task CloseSubmissionsAsync(int seasonId)
+        {
+            (await _weekService.TransitionToCloseSubmissionsAsync(seasonId)).Success.ShouldBeTrue();
+        }
+
+        private async Task SetWeekStatusAsync(int seasonId, int weekNumber, WeekStatus status)
+        {
+            (await _weekService.UpdateAsync(seasonId, weekNumber, null, null, null, status, null)).Success.ShouldBeTrue();
+        }
+
+        private async Task SubmitDeckAsync(int seasonId, int playerId, int seatNumber, string content = "deck content")
+        {
+            (await _deckSubmissionService.SubmitAsync(seasonId, playerId, content, seatNumber)).Success.ShouldBeTrue();
+        }
+
+        private async Task CreateMatchAsync(int seasonId, int weekNumber, int player1Id, int player2Id, int teamId, int opponentTeamId)
+        {
+            var week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, seasonId);
+            if (week == null) return;
+            var p1 = Math.Min(player1Id, player2Id);
+            var p2 = Math.Max(player1Id, player2Id);
+            await _matchRepository.AddRangeAsync(new[]
+            {
+                new Match
+                {
+                    WeekId = week.Id,
+                    Player1Id = p1,
+                    Player2Id = p2,
+                    Status = MatchStatus.Scheduled,
+                    Team1Id = teamId,
+                    Team2Id = opponentTeamId
+                }
+            });
+        }
+
+        /// <summary>Adds a deck submission via repository (use when week is not Open, e.g. SubmissionsClosed or InProgress).</summary>
+        private async Task AddDeckSubmissionForWeekAsync(int seasonId, int weekNumber, int playerId, int seatNumber)
+        {
+            var week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, seasonId);
+            if (week == null) return;
+            await _deckSubmissionRepository.AddAsync(new DeckSubmission
+            {
+                WeekId = week.Id,
+                PlayerId = playerId,
+                DeckFile = $"deck{playerId}",
+                SeatNumber = seatNumber,
+                SubmittedDate = DateTime.UtcNow
+            });
+        }
+
+        private async Task<Week?> GetWeekWithSubmissionsAsync(int seasonId, int weekNumber)
+        {
+            return await _weekRepository.GetByWeekNumberAndSeasonWithSubmissionsAsync(weekNumber, seasonId);
+        }
+
+        private async Task<List<Team>> GetTeamsAsync(int seasonId)
+        {
+            return await _teamRepository.GetBySeasonAsync(seasonId);
+        }
+
+        private async Task<List<int>> GetTeamPlayerIds(int seasonId, int teamId)
+        {
+            return await _playerSeasonTeamRepository.GetPlayerIdsByTeamAndSeasonAsync(teamId, seasonId);
+        }
+
+        #endregion
+
+        #region Composite helpers (built from building blocks)
+
+        private async Task<(int playerId, int captainId)> CreateTeamWithPlayer(int seasonId, string teamName, string conferenceName = "Default")
+        {
+            var captain = await CreatePlayer(_nextPlayerId++);
+            var teamId = await CreateTeam(seasonId, teamName, captain.Id, conferenceName);
+            var player = await CreatePlayer(_nextPlayerId++);
+            await AddPlayerToTeam(player.Id, seasonId, teamId);
+            return (player.Id, captain.Id);
+        }
+
+        private static ulong _nextPlayerId = 1;
+
+        private async Task<(Player player1, Player player2, int teamId)> CreateTwoPlayersOnSameTeam(int seasonId, string teamName, string conferenceName = "Default")
+        {
+            var captain = await CreatePlayer(_nextPlayerId++);
+            var teamId = await CreateTeam(seasonId, teamName, captain.Id, conferenceName);
+            var player1 = await CreatePlayer(_nextPlayerId++);
+            var player2 = await CreatePlayer(_nextPlayerId++);
+            await AddPlayerToTeam(player1.Id, seasonId, teamId);
+            await AddPlayerToTeam(player2.Id, seasonId, teamId);
+            return (player1, player2, teamId);
+        }
+
+        private async Task CreateOpenWeek(int seasonId, int submissionsRequired = 3)
+        {
+            await CreateWeekAsync(seasonId, 1, submissionsRequired);
+            await OpenWeekAsync(seasonId, 1);
+        }
+
         private async Task<(int seasonId, int playerId1, int playerId2, int cptId1)> CreateSeasonWithTeamAndOpenWeek(int submissionsRequired = 3)
         {
             var (_, seasonId) = await CreateFormatAndSeason();
             var (playerId1, cptId1) = await CreateTeamWithPlayer(seasonId, "Team1");
-            var (playerId2, cptId2) = await CreateTeamWithPlayer(seasonId, "Team2");
+            var (playerId2, _) = await CreateTeamWithPlayer(seasonId, "Team2");
             await CreateOpenWeek(seasonId, submissionsRequired);
             return (seasonId, playerId1, playerId2, cptId1);
         }
@@ -93,16 +243,12 @@ namespace WarLeague.Test
             var (_, seasonId) = await CreateFormatAndSeason();
             var teamName = "Team1";
             var (player1, player2, teamId) = await CreateTwoPlayersOnSameTeam(seasonId, teamName);
-            
-            await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 2);
-            await _weekService.UpdateAsync(seasonId, 1, null, null, null, WeekStatus.InProgress, 2);
-            
+            await CreateWeekAsync(seasonId, 1, 2);
+            await SetWeekStatusAsync(seasonId, 1, WeekStatus.InProgress);
             var opponent = await CreatePlayer(777777);
             var opponentTeamId = await CreateTeam(seasonId, "OpponentTeam", opponent.Id);
-            
-            await CreateMatch(seasonId, 1, player1.Id, opponent.Id, teamId, opponentTeamId);
-            await CreateDeckSubmission(seasonId, 1, player1.Id, 1);
-            
+            await CreateMatchAsync(seasonId, 1, player1.Id, opponent.Id, teamId, opponentTeamId);
+            await AddDeckSubmissionForWeekAsync(seasonId, 1, player1.Id, 1);
             return (seasonId, teamName, player2.Id, player1.Id);
         }
 
@@ -111,275 +257,182 @@ namespace WarLeague.Test
             var (_, seasonId) = await CreateFormatAndSeason();
             var teamName = "Team1";
             var (player1, player2, teamId) = await CreateTwoPlayersOnSameTeam(seasonId, teamName);
-            
-            await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 2);
-            await _weekService.UpdateAsync(seasonId, 1, null, null, null, WeekStatus.InProgress, 2);
-            
-            var week = await _context.Weeks.FirstAsync(w => w.SeasonId == seasonId && w.WeekNumber == 1);
-            
+            await CreateWeekAsync(seasonId, 1, 2);
+            await SetWeekStatusAsync(seasonId, 1, WeekStatus.InProgress);
+            var week = await _weekRepository.GetByWeekNumberAndSeasonAsync(1, seasonId);
             var opponent1 = await CreatePlayer(888881);
             var opponent2 = await CreatePlayer(888882);
             var opponentTeamId = await CreateTeam(seasonId, "OpponentTeam", opponent1.Id);
             await AddPlayerToTeam(opponent2.Id, seasonId, opponentTeamId);
-
-            await CreateMatch(seasonId, 1, player1.Id, opponent1.Id, teamId, opponentTeamId);
-            await CreateMatch(seasonId, 1, player2.Id, opponent2.Id, teamId, opponentTeamId);
-
-            return (seasonId, teamName, player1.Id, player2.Id, week.Id);
+            await CreateMatchAsync(seasonId, 1, player1.Id, opponent1.Id, teamId, opponentTeamId);
+            await CreateMatchAsync(seasonId, 1, player2.Id, opponent2.Id, teamId, opponentTeamId);
+            return (seasonId, teamName, player1.Id, player2.Id, week!.Id);
         }
 
         private async Task<(int seasonId, int weekId)> CreateSeasonWithTeamsAndSubmissions(int teamCount, int playersPerTeam)
         {
             var (_, seasonId) = await CreateFormatAndSeason();
-            
             for (int i = 0; i < teamCount; i++)
             {
                 var captain = await CreatePlayer((ulong)(1000 + i * 100));
                 var teamId = await CreateTeam(seasonId, $"Team{i + 1}", captain.Id);
-                
                 for (int j = 1; j <= playersPerTeam; j++)
                 {
                     var player = await CreatePlayer((ulong)(1000 + i * 100 + j));
                     await AddPlayerToTeam(player.Id, seasonId, teamId);
                 }
             }
-            
-            await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, playersPerTeam);
-            await _weekService.TransitionToOpenWeekAsync(seasonId, 1);
-            
-            var teams = await _context.Teams.Where(t => t.SeasonId == seasonId).ToListAsync();
-            var week = await _context.Weeks.FirstAsync(w => w.SeasonId == seasonId && w.WeekNumber == 1);
-            
+            await CreateWeekAsync(seasonId, 1, playersPerTeam);
+            await OpenWeekAsync(seasonId, 1);
+            var teams = await GetTeamsAsync(seasonId);
+            var week = await _weekRepository.GetByWeekNumberAndSeasonAsync(1, seasonId);
             foreach (var team in teams)
             {
                 var teamPlayerIds = await GetTeamPlayerIds(seasonId, team.Id);
                 for (int seat = 1; seat <= playersPerTeam; seat++)
-                {
-                    await CreateDeckSubmission(seasonId, week.WeekNumber, teamPlayerIds[seat - 1], seat);
-                }
+                    await SubmitDeckAsync(seasonId, teamPlayerIds[seat - 1], seat);
             }
-            
-            return (seasonId, week.Id);
+            return (seasonId, week!.Id);
         }
 
-        /// <summary>
-        /// Creates a season with 4 teams in two conferences (Alpha, Beta), with conferences assigned before the week is opened
-        /// so that round-robin team matchups are generated per conference. Returns (seasonId, weekId).
-        /// </summary>
         private async Task<(int seasonId, int weekId)> CreateSeasonWithTwoConferencesAndSubmissions(int teamsPerConference = 2, int playersPerTeam = 2)
         {
             var (_, seasonId) = await CreateFormatAndSeason();
-            var alphaConference = new Conference { SeasonId = seasonId, Name = "Alpha" };
-            var betaConference = new Conference { SeasonId = seasonId, Name = "Beta" };
-            _context.Conferences.Add(alphaConference);
-            _context.Conferences.Add(betaConference);
-            await _context.SaveChangesAsync();
-
+            await EnsureConferenceAsync(seasonId, "Alpha");
+            await EnsureConferenceAsync(seasonId, "Beta");
             for (int i = 0; i < teamsPerConference * 2; i++)
             {
+                var conferenceName = i < teamsPerConference ? "Alpha" : "Beta";
                 var captain = await CreatePlayer((ulong)(2000 + i * 100));
-                var teamId = await CreateTeam(seasonId, $"Team{i + 1}", captain.Id);
-                var team = await _context.Teams.FindAsync(teamId);
-                team!.ConferenceId = i < teamsPerConference ? alphaConference.Id : betaConference.Id;
+                var teamId = await CreateTeam(seasonId, $"Team{i + 1}", captain.Id, conferenceName);
                 for (int j = 1; j <= playersPerTeam; j++)
                 {
                     var player = await CreatePlayer((ulong)(2000 + i * 100 + j));
                     await AddPlayerToTeam(player.Id, seasonId, teamId);
                 }
-                await _context.SaveChangesAsync();
             }
-
-            await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, playersPerTeam);
-            await _weekService.TransitionToOpenWeekAsync(seasonId, 1);
-
-            var teams = await _context.Teams.Where(t => t.SeasonId == seasonId).ToListAsync();
-            var week = await _context.Weeks.FirstAsync(w => w.SeasonId == seasonId && w.WeekNumber == 1);
+            await CreateWeekAsync(seasonId, 1, playersPerTeam);
+            await OpenWeekAsync(seasonId, 1);
+            var teams = await GetTeamsAsync(seasonId);
+            var week = await _weekRepository.GetByWeekNumberAndSeasonAsync(1, seasonId);
             foreach (var team in teams)
             {
                 var teamPlayerIds = await GetTeamPlayerIds(seasonId, team.Id);
                 for (int seat = 1; seat <= playersPerTeam; seat++)
-                {
-                    await CreateDeckSubmission(seasonId, week.WeekNumber, teamPlayerIds[seat - 1], seat);
-                }
+                    await SubmitDeckAsync(seasonId, teamPlayerIds[seat - 1], seat);
             }
-            return (seasonId, week.Id);
+            return (seasonId, week!.Id);
         }
 
-        /// <summary>
-        /// Creates a season with exactly one team and a week in SubmissionsClosed (via context, since services require 2+ teams).
-        /// Used to test that generating pairings with one team returns failure.
-        /// </summary>
         private async Task<int> CreateSeasonWithOneTeamAndSubmissionsClosedWeek(int playersPerTeam = 2)
         {
             var (_, seasonId) = await CreateFormatAndSeason();
             var captain = await CreatePlayer((ulong)9001);
-            var teamId = await CreateTeam(seasonId, "SoloTeam", captain.Id);
-            await AddPlayerToTeam(captain.Id, seasonId, teamId);
+            var teamId = await CreateTeam(seasonId, "SoloTeam", captain.Id); // captain is already added by CreateTeam
             for (int j = 1; j < playersPerTeam; j++)
             {
                 var player = await CreatePlayer((ulong)(9001 + j));
                 await AddPlayerToTeam(player.Id, seasonId, teamId);
             }
-            await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, playersPerTeam);
-            var week = await _context.Weeks.FirstAsync(w => w.SeasonId == seasonId && w.WeekNumber == 1);
-            week.Status = WeekStatus.SubmissionsClosed;
-            await _context.SaveChangesAsync();
+            await CreateWeekAsync(seasonId, 1, playersPerTeam);
+            await SetWeekStatusAsync(seasonId, 1, WeekStatus.SubmissionsClosed);
             return seasonId;
         }
 
-        private async Task<(int playerId, int captainId)> CreateTeamWithPlayer(int seasonId, string teamName)
+        private async Task<int> PrepareWeek_ReadyForClosingSubmissions()
         {
-            var captain = await CreatePlayer(playerid++);
-            var teamId = await CreateTeam(seasonId, teamName, captain.Id);
-            var player = await CreatePlayer(playerid++);
-            await AddPlayerToTeam(player.Id, seasonId, teamId);
-            return (player.Id, captain.Id);
-        }
-        static ulong playerid = 1;
-        private async Task<(Player player1, Player player2, int teamId)> CreateTwoPlayersOnSameTeam(int seasonId, string teamName)
-        {
-            var captain = await CreatePlayer(playerid++);
-            var teamId = await CreateTeam(seasonId, teamName, captain.Id);
-            var player1 = await CreatePlayer(playerid++);
-            var player2 = await CreatePlayer(playerid++);
-            await AddPlayerToTeam(player1.Id, seasonId, teamId);
-            await AddPlayerToTeam(player2.Id, seasonId, teamId);
-            return (player1, player2, teamId);
+            var (_, seasonId) = await CreateFormatAndSeason();
+            await CreateWeekAsync(seasonId, 1, 1);
+            var (playerId1, _) = await CreateTeamWithPlayer(seasonId, "Team1");
+            var (playerId2, _) = await CreateTeamWithPlayer(seasonId, "Team2");
+            await OpenWeekAsync(seasonId, 1);
+            await SubmitDeckAsync(seasonId, (int)playerId1, 1);
+            await SubmitDeckAsync(seasonId, (int)playerId2, 1);
+            return seasonId;
         }
 
-        private async Task CreateOpenWeek(int seasonId, int submissionsRequired = 3)
+        private async Task<int> PrepareReadyToCloseWeek()
         {
-            await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, submissionsRequired);
-            await _weekService.TransitionToOpenWeekAsync(seasonId, 1);
+            int seasonId = await PrepareWeek_ReadyForClosingSubmissions();
+            await CloseSubmissionsAsync(seasonId);
+            (await _weekService.TransitionToInProgressAsync(seasonId)).Success.ShouldBeTrue();
+            var week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
+            var matches = await _matchRepository.GetByWeekIdAsync(week!.Id);
+            await _matchService.ReportLossAsync(seasonId, matches.First().Player1Id, "http://www.example.com");
+            return seasonId;
+        }
+
+        #endregion
+
+        #region Pairing scenario helpers (for MatchGenerationSpecifications)
+
+        private async Task<(int seasonId, Week week, List<Team> teams)> GetSeasonWeekAndTeamsForPairingsAsync(int teamCount, int playersPerTeam)
+        {
+            var (seasonId, _) = await CreateSeasonWithTeamsAndSubmissions(teamCount, playersPerTeam);
+            await CloseSubmissionsAsync(seasonId);
+            var week = await GetWeekWithSubmissionsAsync(seasonId, 1);
+            var teams = await GetTeamsAsync(seasonId);
+            return (seasonId, week!, teams);
+        }
+
+        private async Task<(int seasonId, Week week, List<Team> teams)> GetSeasonWeekAndTeamsTwoConferencesForPairingsAsync(int teamsPerConference = 2, int playersPerTeam = 2)
+        {
+            var (seasonId, _) = await CreateSeasonWithTwoConferencesAndSubmissions(teamsPerConference, playersPerTeam);
+            await CloseSubmissionsAsync(seasonId);
+            var week = await GetWeekWithSubmissionsAsync(seasonId, 1);
+            var teams = (await GetTeamsAsync(seasonId)).OrderBy(t => t.Id).ToList();
+            return (seasonId, week!, teams);
+        }
+
+        private async Task<(int seasonId, Week week, List<Team> teams)> GetSeasonWeekAndTeamsOneTeamForPairingsAsync()
+        {
+            var seasonId = await CreateSeasonWithOneTeamAndSubmissionsClosedWeek();
+            var week = await GetWeekWithSubmissionsAsync(seasonId, 1);
+            var teams = await GetTeamsAsync(seasonId);
+            return (seasonId, week!, teams);
+        }
+
+        private async Task<(int seasonId, Week week, List<Team> teams)> GetSeasonWeekAndTeamsNoTeamMatchupsForPairingsAsync(int teamCount = 2, int playersPerTeam = 2)
+        {
+            var (_, seasonId) = await CreateFormatAndSeason();
+            for (int i = 0; i < teamCount; i++)
+            {
+                var captain = await CreatePlayer((ulong)(3000 + i * 100));
+                var teamId = await CreateTeam(seasonId, $"Team{i + 1}", captain.Id);
+                for (int j = 1; j <= playersPerTeam; j++)
+                {
+                    var player = await CreatePlayer((ulong)(3000 + i * 100 + j));
+                    await AddPlayerToTeam(player.Id, seasonId, teamId);
+                }
+            }
+            await CreateWeekAsync(seasonId, 1, playersPerTeam);
+            await SetWeekStatusAsync(seasonId, 1, WeekStatus.SubmissionsClosed);
+            var teams = await GetTeamsAsync(seasonId);
+            foreach (var team in teams)
+            {
+                var teamPlayerIds = await GetTeamPlayerIds(seasonId, team.Id);
+                for (int seat = 1; seat <= playersPerTeam; seat++)
+                    await AddDeckSubmissionForWeekAsync(seasonId, 1, teamPlayerIds[seat - 1], seat);
+            }
+            var week = await GetWeekWithSubmissionsAsync(seasonId, 1);
+            return (seasonId, week!, teams);
+        }
+
+        private async Task SetWeekStatusInProgress(int seasonId, int weekNumber)
+        {
+            await SetWeekStatusAsync(seasonId, weekNumber, WeekStatus.InProgress);
+        }
+
+        private async Task SetWeekStatusCompleted(int seasonId, int weekNumber)
+        {
+            await SetWeekStatusAsync(seasonId, weekNumber, WeekStatus.Completed);
         }
 
         private async Task CloseSubmissions(int seasonId)
         {
-            await _weekService.TransitionToCloseSubmissionsAsync(seasonId);
+            await CloseSubmissionsAsync(seasonId);
         }
 
-        private async Task<Player> CreatePlayer(ulong discordUserId)
-        {
-            var player = new Player { DiscordUserId = discordUserId, UserName = $"Player{discordUserId}" };
-            _context.Players.Add(player);
-            await _context.SaveChangesAsync();
-            return player;
-        }
-
-        private async Task<int> CreateTeam(int seasonId, string teamName, int captainId)
-        {
-            int conferenceId = await GetOrCreateDefaultConferenceId(seasonId);
-
-            var team = new Team
-            {
-                Name = teamName,
-                CaptainId = captainId,
-                SeasonId = seasonId,
-                ConferenceId = conferenceId,
-                DiscordRoleId = (ulong)(new Random().Next(100000, 999999))
-            };
-            _context.Teams.Add(team);
-            await _context.SaveChangesAsync();
-            return team.Id;
-        }
-
-        private async Task<int> GetOrCreateDefaultConferenceId(int seasonId)
-        {
-            var existingConference = await _context.Conferences
-                .SingleOrDefaultAsync(c => c.SeasonId == seasonId && c.Name == "Default");
-
-            if (existingConference is not null)
-            {
-                return existingConference.Id;
-            }
-
-            var conference = new Conference
-            {
-                SeasonId = seasonId,
-                Name = "Default"
-            };
-
-            _context.Conferences.Add(conference);
-            await _context.SaveChangesAsync();
-
-            return conference.Id;
-        }
-
-        private async Task AddPlayerToTeam(int playerId, int seasonId, int teamId)
-        {
-            _context.PlayerSeasonTeams.Add(new PlayerSeasonTeam
-            {
-                PlayerId = playerId,
-                SeasonId = seasonId,
-                TeamId = teamId
-            });
-            await _context.SaveChangesAsync();
-        }
-
-        private async Task CreateMatch(int seasonId, int weekNumber, int player1Id, int player2Id, int teamId, int opponentTeamId)
-        {
-            var week = await _context.Weeks.FirstOrDefaultAsync(w => w.SeasonId == seasonId && w.WeekNumber == weekNumber);
-            if (week == null) return;
-            
-            // Canonical order (Player1Id < Player2Id) for DB unique constraint
-            var p1 = Math.Min(player1Id, player2Id);
-            var p2 = Math.Max(player1Id, player2Id);
-            _context.Matches.Add(new Match
-            {
-                WeekId = week.Id,
-                Player1Id = p1,
-                Player2Id = p2,
-                Status = MatchStatus.Scheduled,
-                Team1Id = teamId,
-                Team2Id = opponentTeamId
-            });
-            await _context.SaveChangesAsync();
-        }
-
-        private async Task CreateDeckSubmission(int seasonId, int weekNumber, int playerId, int seatNumber)
-        {
-            var week = await _context.Weeks.FirstOrDefaultAsync(w => w.SeasonId == seasonId && w.WeekNumber == weekNumber);
-            if (week == null) return;
-            
-            _context.DeckSubmissions.Add(new DeckSubmission
-            {
-                WeekId = week.Id,
-                PlayerId = playerId,
-                DeckFile = $"deck{playerId}",
-                SeatNumber = seatNumber,
-                SubmittedDate = DateTime.UtcNow
-            });
-            await _context.SaveChangesAsync();
-        }
-        private async Task<int> PrepareReadyToCloseWeek()
-        {
-            int seasonId = await PrepareWeek_ReadyForClosingSubmissions();
-            await _weekService.TransitionToCloseSubmissionsAsync(seasonId);
-            await _weekService.TransitionToInProgressAsync(seasonId);
-            int playerUd = _context.Matches.First().Player1Id;
-            await _matchService.ReportLossAsync(seasonId, playerUd, "http://www.example.com");
-            return seasonId;
-        }
-        private async Task<List<int>> GetTeamPlayerIds(int seasonId, int teamId)
-        {
-            return await _context.PlayerSeasonTeams
-                .Where(pst => pst.SeasonId == seasonId && pst.TeamId == teamId)
-                .Select(pst => pst.PlayerId)
-                .ToListAsync();
-        }
-        private async Task<int> PrepareWeek_ReadyForClosingSubmissions()
-        {
-            int weekNumber = 1;
-            int submissionRequired = 1;
-            var (_, seasonId) = await CreateFormatAndSeason();
-            await _weekService.CreateAsync(seasonId, weekNumber, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, submissionRequired);
-            var (playerId1, _) = await CreateTeamWithPlayer(seasonId, "Team1");
-            var (playerId2, _) = await CreateTeamWithPlayer(seasonId, "Team2");
-            await _weekService.TransitionToOpenWeekAsync(seasonId, weekNumber);
-            await _deckSubmissionService.SubmitAsync(seasonId, (int)playerId1, "deck content", 1);
-            await _deckSubmissionService.SubmitAsync(seasonId, (int)playerId2, "deck content", 1);
-            return seasonId;
-        }
         #endregion
     }
 }
