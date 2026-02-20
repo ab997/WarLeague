@@ -28,6 +28,7 @@ namespace WarLeague.Test
         private readonly DeckSubmissionService _deckSubmissionService;
         private readonly SubstitutionService _substitutionService;
         private readonly ConferenceService _conferenceService;
+        private readonly SeasonRepository _seasonRepository;
         private readonly WeekRepository _weekRepository;
         private readonly TeamRepository _teamRepository;
         private readonly ConferenceRepository _conferenceRepository;
@@ -61,6 +62,7 @@ namespace WarLeague.Test
             _deckSubmissionService = _serviceProvider.GetRequiredService<DeckSubmissionService>();
             _substitutionService = _serviceProvider.GetRequiredService<SubstitutionService>();
             _conferenceService = _serviceProvider.GetRequiredService<ConferenceService>();
+            _seasonRepository = _serviceProvider.GetRequiredService<SeasonRepository>();
             _weekRepository = _serviceProvider.GetRequiredService<WeekRepository>();
             _teamRepository = _serviceProvider.GetRequiredService<TeamRepository>();
             _conferenceRepository = _serviceProvider.GetRequiredService<ConferenceRepository>();
@@ -431,6 +433,38 @@ namespace WarLeague.Test
         private async Task CloseSubmissions(int seasonId)
         {
             await CloseSubmissionsAsync(seasonId);
+        }
+
+        /// <summary>
+        /// Prepares a season in Playoffs phase with week 1 completed (round-robin with winners),
+        /// week 2 created as the first playoff week. Use for testing EnsureTeamMatchupsForWeekAsync
+        /// and GeneratePairingsAsync with PlayoffService (MatchupServiceFactory resolves to PlayoffService).
+        /// </summary>
+        private async Task<(int seasonId, Week week2, List<Team> teams)> GetSeasonWeekAndTeamsForPlayoffsFirstWeekAsync(int teamsPerConference = 2, int playersPerTeam = 2)
+        {
+            var (seasonId, _) = await CreateSeasonWithTwoConferencesAndSubmissions(teamsPerConference, playersPerTeam);
+            await CloseSubmissionsAsync(seasonId);
+            (await _weekService.TransitionToInProgressAsync(seasonId)).Success.ShouldBeTrue();
+            var week1 = await _weekRepository.GetByWeekNumberAndSeasonAsync(1, seasonId);
+            var teams = (await GetTeamsAsync(seasonId)).OrderBy(t => t.Id).ToList();
+            var matches = await _matchRepository.GetByWeekIdAsync(week1!.Id);
+            // Report results so each round-robin team matchup has a clear winner (one team loses per matchup)
+            var byTeamMatchup = matches.GroupBy(m => new { m.Team1Id, m.Team2Id }).ToList();
+            foreach (var group in byTeamMatchup)
+            {
+                var loserTeamId = group.Key.Team2Id;
+                var loserPlayerIds = await GetTeamPlayerIds(seasonId, loserTeamId);
+                foreach (var match in group)
+                {
+                    var loserId = loserPlayerIds.Contains(match.Player1Id) ? match.Player1Id : match.Player2Id;
+                    (await _matchService.ReportLossAsync(seasonId, loserId, "https://example.com/playoffs-seed")).Success.ShouldBeTrue();
+                }
+            }
+            (await _weekService.TransitionToCompletedAsync(seasonId)).Success.ShouldBeTrue();
+            (await _seasonService.SetPhaseToPlayoffsAsync(seasonId)).Success.ShouldBeTrue();
+            await CreateWeekAsync(seasonId, 2, playersPerTeam);
+            var week2 = await _weekRepository.GetByWeekNumberAndSeasonAsync(2, seasonId);
+            return (seasonId, week2!, teams);
         }
 
         #endregion

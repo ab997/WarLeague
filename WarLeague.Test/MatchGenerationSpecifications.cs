@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 using System.Linq;
+using WarLeague.Data.Data.Entities;
+using WarLeague.Data.Data.Enums;
 using WarLeague.Data.Entities;
 using WarLeague.Data.Enums;
 
@@ -111,6 +113,166 @@ namespace WarLeague.Test
             pairingsResult.CreatedMatches!.Count.ShouldBe(4);
             pairingsResult.WeeklyMatchups.ShouldNotBeNull();
             pairingsResult.WeeklyMatchups!.Count.ShouldBe(2);
+        }
+
+        [Fact]
+        [Trait("Category", "MatchGeneration")]
+        public async Task WhenEnsureTeamMatchupsForWeek_AndNoExistingMatchups_ThenSavesRoundRobinMatchups()
+        {
+            // Arrange: week has no team matchups (round-robin phase)
+            var (seasonId, week, teams) = await GetSeasonWeekAndTeamsNoTeamMatchupsForPairingsAsync(teamCount: 4, playersPerTeam: 2);
+
+            // Act
+            var result = await _matchService.EnsureTeamMatchupsForWeekAsync(seasonId, week, teams);
+
+            // Assert
+            result.Success.ShouldBeTrue();
+            var roundRobinMatchups = _context.RoundRobinMatchups.Where(rm => rm.WeekId == week.Id).ToList();
+            roundRobinMatchups.Count.ShouldBe(2); // 4 teams → 2 matchups
+        }
+
+        [Fact]
+        [Trait("Category", "MatchGeneration")]
+        public async Task WhenEnsureTeamMatchupsForWeek_AndMatchupsAlreadyExist_ThenReturnsSuccessWithoutDuplicateSaves()
+        {
+            // Arrange: ensure once to create round-robin matchups
+            var (seasonId, week, teams) = await GetSeasonWeekAndTeamsNoTeamMatchupsForPairingsAsync(teamCount: 4, playersPerTeam: 2);
+            var firstResult = await _matchService.EnsureTeamMatchupsForWeekAsync(seasonId, week, teams);
+            firstResult.Success.ShouldBeTrue();
+
+            // Act: ensure again (e.g. idempotent call)
+            var secondResult = await _matchService.EnsureTeamMatchupsForWeekAsync(seasonId, week, teams);
+
+            // Assert
+            secondResult.Success.ShouldBeTrue();
+            secondResult.Message.ShouldContain("already exist", Case.Insensitive);
+            var roundRobinMatchups = _context.RoundRobinMatchups.Where(rm => rm.WeekId == week.Id).ToList();
+            roundRobinMatchups.Count.ShouldBe(2); // still only 2, no duplicates
+        }
+
+        [Fact]
+        [Trait("Category", "MatchGeneration")]
+        public async Task WhenEnsureTeamMatchupsForWeek_AndRoundRobinWithSixTeams_ThenSavesThreeMatchups()
+        {
+            // Arrange: 6 teams in one conference, week not opened
+            var (seasonId, week, teams) = await GetSeasonWeekAndTeamsNoTeamMatchupsForPairingsAsync(teamCount: 6, playersPerTeam: 2);
+            teams.Count.ShouldBe(6);
+
+            // Act
+            var result = await _matchService.EnsureTeamMatchupsForWeekAsync(seasonId, week, teams);
+
+            // Assert
+            result.Success.ShouldBeTrue();
+            var roundRobinMatchups = _context.RoundRobinMatchups.Where(rm => rm.WeekId == week.Id).ToList();
+            roundRobinMatchups.Count.ShouldBe(3); // 6 teams → 3 matchups
+        }
+
+        [Fact]
+        [Trait("Category", "MatchGeneration")]
+        public async Task WhenEnsureTeamMatchupsForWeek_AndPlayoffsPhase_ThenUsesPlayoffServiceAndSavesBracketMatchups()
+        {
+            // Arrange: season in Playoffs phase, week 1 completed with round-robin winners, week 2 is first playoff week
+            var (seasonId, week2, teams) = await GetSeasonWeekAndTeamsForPlayoffsFirstWeekAsync(teamsPerConference: 2, playersPerTeam: 2);
+            var season = await _seasonRepository.GetById(seasonId);
+            season.Phase.ShouldBe(SeasonPhase.Playoffs);
+            teams.Count.ShouldBe(4);
+
+            // Act: EnsureTeamMatchupsForWeekAsync resolves to PlayoffService via MatchupServiceFactory
+            var result = await _matchService.EnsureTeamMatchupsForWeekAsync(seasonId, week2, teams);
+
+            // Assert
+            result.Success.ShouldBeTrue();
+            var playoffMatchups = _context.PlayoffMatchups.Where(pm => pm.WeekId == week2.Id).ToList();
+            playoffMatchups.Count.ShouldBe(1); // 2 conferences × 1 playoff team each → 1 bracket matchup
+            _context.RoundRobinMatchups.Count(rm => rm.WeekId == week2.Id).ShouldBe(0); // PlayoffService, not RoundRobin
+        }
+
+        [Fact]
+        [Trait("Category", "MatchGeneration")]
+        public async Task WhenEnsureTeamMatchupsForWeek_AndPlayoffsPhaseWithFourPlayoffTeams_ThenSavesTwoSemifinalMatchups()
+        {
+            // Arrange: 4 teams in one conference, week 1 completed with standings, then switch to playoffs with 4 playoff teams
+            var (_, seasonId) = await CreateFormatAndSeason();
+            (await _conferenceService.CreateAsync(seasonId, "Default", 4)).Success.ShouldBeTrue();
+            for (int i = 0; i < 4; i++)
+            {
+                var captain = await CreatePlayer((ulong)(5000 + i * 100));
+                var teamId = await CreateTeam(seasonId, $"Team{i + 1}", captain.Id);
+                for (int j = 1; j <= 2; j++)
+                {
+                    var player = await CreatePlayer((ulong)(5000 + i * 100 + j));
+                    await AddPlayerToTeam(player.Id, seasonId, teamId);
+                }
+            }
+            await CreateWeekAsync(seasonId, 1, 2);
+            await OpenWeekAsync(seasonId, 1);
+            var teams = await GetTeamsAsync(seasonId);
+            foreach (var team in teams)
+            {
+                var teamPlayerIds = await GetTeamPlayerIds(seasonId, team.Id);
+                for (int seat = 1; seat <= 2; seat++)
+                    await SubmitDeckAsync(seasonId, teamPlayerIds[seat - 1], seat);
+            }
+            await CloseSubmissionsAsync(seasonId);
+            (await _weekService.TransitionToInProgressAsync(seasonId)).Success.ShouldBeTrue();
+            var week1 = await _weekRepository.GetByWeekNumberAndSeasonAsync(1, seasonId);
+            var matches = await _matchRepository.GetByWeekIdAsync(week1!.Id);
+            foreach (var group in matches.GroupBy(m => new { m.Team1Id, m.Team2Id }))
+            {
+                var loserTeamId = group.Key.Team2Id;
+                var loserPlayerIds = await GetTeamPlayerIds(seasonId, loserTeamId);
+                foreach (var match in group)
+                {
+                    var loserId = loserPlayerIds.Contains(match.Player1Id) ? match.Player1Id : match.Player2Id;
+                    (await _matchService.ReportLossAsync(seasonId, loserId, "https://example.com/seed")).Success.ShouldBeTrue();
+                }
+            }
+            (await _weekService.TransitionToCompletedAsync(seasonId)).Success.ShouldBeTrue();
+            (await _seasonService.SetPhaseToPlayoffsAsync(seasonId)).Success.ShouldBeTrue();
+            await CreateWeekAsync(seasonId, 2, 2);
+            var week2 = await _weekRepository.GetByWeekNumberAndSeasonAsync(2, seasonId);
+            teams = await GetTeamsAsync(seasonId);
+
+            // Act
+            var result = await _matchService.EnsureTeamMatchupsForWeekAsync(seasonId, week2!, teams);
+
+            // Assert: 4 teams in single-elimination = 2 semifinal matchups, no BYEs
+            result.Success.ShouldBeTrue();
+            var playoffMatchups = _context.PlayoffMatchups.Where(pm => pm.WeekId == week2!.Id).ToList();
+            playoffMatchups.Count.ShouldBe(2);
+            var normalMatchups = playoffMatchups.Where(pm => pm.MatchupType == MatchupType.Normal).ToList();
+            normalMatchups.Count.ShouldBe(2);
+            playoffMatchups.Count(pm => pm.MatchupType == MatchupType.Bye).ShouldBe(0);
+        }
+
+        [Fact]
+        [Trait("Category", "MatchGeneration")]
+        public async Task WhenGeneratingPairings_AndPlayoffsPhase_ThenCreatesMatchesFromPlayoffMatchups()
+        {
+            // Arrange: playoffs first week, ensure team matchups then add deck submissions for playoff teams and generate pairings
+            var (seasonId, week2, teams) = await GetSeasonWeekAndTeamsForPlayoffsFirstWeekAsync(teamsPerConference: 2, playersPerTeam: 2);
+            var ensureResult = await _matchService.EnsureTeamMatchupsForWeekAsync(seasonId, week2, teams);
+            ensureResult.Success.ShouldBeTrue();
+            var playoffMatchups = _context.PlayoffMatchups.Where(pm => pm.WeekId == week2.Id).ToList();
+            var playingTeamIds = playoffMatchups.Where(pm => pm.MatchupType == MatchupType.Normal).SelectMany(pm => new[] { pm.Team1Id, pm.Team2Id }).Distinct().ToList();
+            foreach (var teamId in playingTeamIds)
+            {
+                var playerIds = await GetTeamPlayerIds(seasonId, teamId);
+                for (int seat = 1; seat <= playerIds.Count; seat++)
+                    await AddDeckSubmissionForWeekAsync(seasonId, 2, playerIds[seat - 1], seat);
+            }
+            var week2WithSubmissions = await GetWeekWithSubmissionsAsync(seasonId, 2);
+
+            // Act: GeneratePairingsAsync uses PlayoffService when season.Phase is Playoffs
+            var pairingsResult = await _matchService.GeneratePairingsAsync(seasonId, week2WithSubmissions!, teams);
+
+            // Assert
+            pairingsResult.Success.ShouldBeTrue();
+            pairingsResult.CreatedMatches.ShouldNotBeNull();
+            // 1 team matchup; each team has captain + playersPerTeam members = 3, so 3 player pairs
+            pairingsResult.CreatedMatches!.Count.ShouldBe(3);
+            pairingsResult.WeeklyMatchups.ShouldNotBeNull();
+            pairingsResult.WeeklyMatchups!.Count.ShouldBe(1);
         }
 
         [Fact]
