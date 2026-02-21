@@ -27,18 +27,15 @@ namespace WarLeague.Discord.Commands
     {
         private readonly WeekService _weekService;
         private readonly DiscordApiHelperService _helperService;
-        private readonly MatchService _matchService;
         private readonly MatchupServiceFactory _matchupServiceFactory;
 
         public WeekCommands(
             DiscordApiHelperService helperService,
             WeekService weekService,
-            MatchService matchService,
             MatchupServiceFactory matchupServiceFactory)
         {
             _helperService = helperService;
             _weekService = weekService;
-            _matchService = matchService;
             _matchupServiceFactory = matchupServiceFactory;
         }
         [SlashCommand("create", "1 -> Creates a week (Status: null -> NotOpenYet)")]

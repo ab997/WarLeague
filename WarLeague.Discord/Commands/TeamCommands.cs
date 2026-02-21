@@ -27,19 +27,17 @@ namespace WarLeague.Discord.Commands;
 public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly TeamService _teamService;
-    private readonly WarLeagueDbContext _context;
     private readonly DiscordPlayerService _playerService;
     private readonly DiscordApiHelperService _helperService;
     private readonly TeamRepository _teamRepository;
     private readonly DiscordRoleService _roleService;
     private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
     private readonly PermissionRepository _permissionRepository;
-    public TeamCommands(DiscordPlayerService playerService, DiscordApiHelperService helperService, TeamRepository teamRepository, WarLeagueDbContext dbContext, TeamService teamService, DiscordRoleService roleService, PlayerSeasonTeamRepository playerSeasonTeamRepository, PermissionRepository permissionRepository)
+    public TeamCommands(DiscordPlayerService playerService, DiscordApiHelperService helperService, TeamRepository teamRepository, TeamService teamService, DiscordRoleService roleService, PlayerSeasonTeamRepository playerSeasonTeamRepository, PermissionRepository permissionRepository)
     {
         _playerService = playerService;
         _helperService = helperService;
         _teamRepository = teamRepository;
-        _context = dbContext;
         _teamService = teamService;
         _roleService = roleService;
         _playerSeasonTeamRepository = playerSeasonTeamRepository;
