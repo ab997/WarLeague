@@ -1,4 +1,4 @@
-﻿
+
 
 using Discord;
 using Discord.Interactions;
@@ -7,6 +7,7 @@ using System.Text.Json;
 using WarLeague.Core.Model;
 using WarLeague.Core.Services;
 using WarLeague.Data.Data.Enums;
+using WarLeague.Discord.Autocomplete;
 using WarLeague.Discord.Helpers;
 using WarLeague.Discord.Preconditions;
 using Format = WarLeague.Data.Entities.Format;
@@ -26,7 +27,7 @@ namespace WarLeague.Discord.Commands
             _httpClient = httpClient;
         }
         [SlashCommand("create", "Creates a new format")]
-        public async Task CreateAsync(string formatName)
+        public async Task CreateAsync( string formatName)
         {
             await DeferAsync(ephemeral: false);
 
@@ -43,7 +44,7 @@ namespace WarLeague.Discord.Commands
         }
 
         [SlashCommand("single-format-mode", "Enable single format mode for entire server.")]
-        public async Task SingleFormatModeAsync(string formatName)
+        public async Task SingleFormatModeAsync([Autocomplete(typeof(FormatNameAutocompleteHandler))] string formatName)
         {
             await DeferAsync(ephemeral: false);
 
@@ -63,7 +64,7 @@ namespace WarLeague.Discord.Commands
 
 
         [SlashCommand("delete", "Deletes format")]
-        public async Task DeleteAsync(string formatName)
+        public async Task DeleteAsync([Autocomplete(typeof(FormatNameAutocompleteHandler))] string formatName)
         {
             await DeferAsync(ephemeral: false);
 
@@ -74,7 +75,7 @@ namespace WarLeague.Discord.Commands
 
         [SlashCommand("update-rules", "Update format rules from a .json file")]
         public async Task UpdateRulesAsync(
-           [Summary("format", "Format name")] string formatName,
+           [Summary("format", "Format name")][Autocomplete(typeof(FormatNameAutocompleteHandler))] string formatName,
            [Summary("rules-file", "JSON file containing rules")] IAttachment rulesFile)
         {
             await DeferAsync(ephemeral: false);

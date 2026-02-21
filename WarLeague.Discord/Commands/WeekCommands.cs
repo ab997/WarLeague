@@ -10,6 +10,7 @@ using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
 
+using WarLeague.Discord.Autocomplete;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 using static WarLeague.Discord.Helpers.ResultHelper;
@@ -41,7 +42,7 @@ namespace WarLeague.Discord.Commands
             _matchupServiceFactory = matchupServiceFactory;
         }
         [SlashCommand("create", "1 -> Creates a week (Status: null -> NotOpenYet)")]
-        public async Task Create(int weekNumber,
+        public async Task Create( int weekNumber,
             [Summary("submissions-required", "Number of submissions (players per team) required for the week")] int submissionsRequired,
             [Summary("start-date", "Start date (YYYY-MM-DD)")] string? startDateStr = null,
             [Summary("end-date", "End date (YYYY-MM-DD)")] string? endDateStr = null,
@@ -78,7 +79,7 @@ namespace WarLeague.Discord.Commands
         }
 
         [SlashCommand("delete", "Deletes a week")]
-        public async Task DeleteAsync(int weekNumber)
+        public async Task DeleteAsync([Autocomplete(typeof(WeekNumberAutocompleteHandler))] int weekNumber)
         {
             await DeferAsync(ephemeral: false);
 
@@ -92,7 +93,7 @@ namespace WarLeague.Discord.Commands
 
 
         [SlashCommand("open", "2 -> Opens the current week by allowing deck submissions (Status: NotOpenYet -> Open)")]
-        public async Task OpenAsync(int weekNumber)
+        public async Task OpenAsync([Autocomplete(typeof(WeekNumberAutocompleteHandler))] int weekNumber)
         {
             await DeferAsync(ephemeral: false);
 
@@ -212,7 +213,7 @@ namespace WarLeague.Discord.Commands
         }
 
         [SlashCommand("update", "Updates a week")]
-        public async Task Update(int weekNumber,
+        public async Task Update([Autocomplete(typeof(WeekNumberAutocompleteHandler))] int weekNumber,
            [Summary("submissions-required", "Number of submissions (players per team) required for the week")] int? submissionsRequired = null,
            [Summary("start-date", "Start date (YYYY-MM-DD)")] string? startDateStr = null,
            [Summary("end-date", "End date (YYYY-MM-DD)")] string? endDateStr = null,

@@ -7,6 +7,7 @@ using WarLeague.Data.Entities;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Model;
 using WarLeague.Core.Services;
+using WarLeague.Discord.Autocomplete;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 using WarLeague.Discord.Helpers;
@@ -392,7 +393,7 @@ namespace WarLeague.Discord.Commands
         [EnsureChannelIsInFormatCategory]
         [EnsureSingleActiveSeason]
         public async Task WeekAsync(
-            [Summary("week-number", "Week number")] int weekNumber)
+            [Summary("week-number", "Week number")][Autocomplete(typeof(WeekNumberAutocompleteHandler))] int weekNumber)
         {
             await DeferAsync(ephemeral: false);
 
@@ -446,7 +447,7 @@ namespace WarLeague.Discord.Commands
         [EnsureChannelIsInFormatCategory]
         [EnsureSingleActiveSeason]
         public async Task TeamAsync(
-            [Summary("team-name", "Name of the team")] string teamName)
+            [Summary("team-name", "Name of the team")][Autocomplete(typeof(TeamAutocompleteHandler))] string teamName)
         {
             await DeferAsync(ephemeral: false);
 

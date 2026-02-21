@@ -27,6 +27,17 @@ public class ConferenceRepository
             .ToListAsync();
     }
 
+    /// <summary>
+    /// Conferences for a season, optionally filtered by name prefix (case-insensitive), for autocomplete.
+    /// </summary>
+    public async Task<List<Conference>> GetBySeasonAndNamePrefixAsync(int seasonId, string? prefix, int limit)
+    {
+        var query = _context.Conferences.Where(c => c.SeasonId == seasonId);
+        if (!string.IsNullOrWhiteSpace(prefix))
+            query = query.Where(c => c.Name.StartsWith(prefix));
+        return await query.OrderBy(c => c.Name).Take(limit).ToListAsync();
+    }
+
     public async Task AddAsync(Conference conference)
     {
         _context.Conferences.Add(conference);

@@ -5,6 +5,7 @@ using WarLeague.Data.Entities;
 using WarLeague.Core.Model;
 using WarLeague.Core.Services;
 using WarLeague.Discord.Helpers;
+using WarLeague.Discord.Autocomplete;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 using WarLeague.Data.Data.Enums;
@@ -25,7 +26,7 @@ namespace WarLeague.Discord.Commands
             _helperService = helperService;
         }
         [SlashCommand("create", "Creates a new season")]
-        public async Task CreateAsync(int seasonNumber, int minimumTeamMembers)
+        public async Task CreateAsync( int seasonNumber, int minimumTeamMembers)
         {
             await DeferAsync(ephemeral: false);
 
@@ -37,7 +38,7 @@ namespace WarLeague.Discord.Commands
         }
 
         [SlashCommand("delete", "Deletes a season")]
-        public async Task DeleteAsync(int seasonNumber)
+        public async Task DeleteAsync([Autocomplete(typeof(SeasonNumberAutocompleteHandler))] int seasonNumber)
         {
             await DeferAsync(ephemeral: false);
 
@@ -49,7 +50,7 @@ namespace WarLeague.Discord.Commands
         }
 
         [SlashCommand("set-active", "Sets a season to active (all other to inactive)")]
-        public async Task SetActive(int seasonNumber)
+        public async Task SetActive([Autocomplete(typeof(SeasonNumberAutocompleteHandler))] int seasonNumber)
         {
             await DeferAsync(ephemeral: false);
 
