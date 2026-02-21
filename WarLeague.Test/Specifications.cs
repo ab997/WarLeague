@@ -96,6 +96,7 @@ namespace WarLeague.Test
             await _formatService.CreateFormatAsync(formatName);
             var format = await _formatService.GetFormatAsync(formatName);
             await _seasonService.CreateAsync(format!.Id, 1, 4);
+            await _seasonService.SetActiveAsync(format!.Id, 1);
             var season = format.Seasons.First();
             return (format.Id, season.Id);
         }

@@ -63,13 +63,10 @@ namespace WarLeague.Test
         public async Task WhenDisablingTeamModifications_ThenReturnsSuccess()
         {
             // Arrange
-            await _formatService.CreateFormatAsync("HAT");
-            var format = await _formatService.GetFormatAsync("HAT");
-            await _seasonService.CreateAsync(format!.Id, 1, 4);
-            var season = format.Seasons.First();
+            var (formatId, seasonId) = await CreateFormatAndSeason();
 
             // Act
-            SeasonResult result = await _seasonService.SetTeamModificationsAsync(season.Id, enabled: false);
+            SeasonResult result = await _seasonService.SetTeamModificationsAsync(seasonId, enabled: false);
 
             // Assert
             result.Success.ShouldBeTrue();
@@ -81,13 +78,10 @@ namespace WarLeague.Test
         public async Task WhenEnablingTeamModifications_ThenReturnsSuccess()
         {
             // Arrange
-            await _formatService.CreateFormatAsync("HAT");
-            var format = await _formatService.GetFormatAsync("HAT");
-            await _seasonService.CreateAsync(format!.Id, 1, 4);
-            var season = format.Seasons.First();
+            var (formatId, seasonId) = await CreateFormatAndSeason();
 
             // Act
-            var result = await _seasonService.SetTeamModificationsAsync(season.Id, enabled: true);
+            var result = await _seasonService.SetTeamModificationsAsync(seasonId, enabled: true);
 
             // Assert
             result.Success.ShouldBeTrue();
