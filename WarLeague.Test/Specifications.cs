@@ -522,6 +522,60 @@ namespace WarLeague.Test
         }
 
         /// <summary>
+        /// Prepares a season in Playoffs phase with two conferences, each with a configurable playoff team count,
+        /// one week of round-robin completed, week 2 created as the first playoff week.
+        /// Use for testing that PlayoffTeamsCount per conference determines how many teams qualify (e.g. 3 per conference = 6 total).
+        /// </summary>
+        private async Task<(int seasonId, Week week2, List<Team> teams)> GetSeasonWeekAndTeamsForPlayoffsFirstWeekWithConferencePlayoffCountAsync(
+            int teamsPerConference = 4, int playoffTeamsPerConference = 3, int playersPerTeam = 2)
+        {
+            var (_, seasonId) = await CreateFormatAndSeason();
+            (await _conferenceService.CreateAsync(seasonId, "Alpha", playoffTeamsPerConference)).Success.ShouldBeTrue();
+            (await _conferenceService.CreateAsync(seasonId, "Beta", playoffTeamsPerConference)).Success.ShouldBeTrue();
+            var playerIdBase = 6000u;
+            for (int i = 0; i < teamsPerConference * 2; i++)
+            {
+                var conferenceName = i < teamsPerConference ? "Alpha" : "Beta";
+                var captain = await CreatePlayer(playerIdBase + (ulong)(i * 100));
+                var teamId = await CreateTeam(seasonId, $"Team{i + 1}", captain.Id, conferenceName);
+                for (int j = 1; j <= playersPerTeam; j++)
+                {
+                    var player = await CreatePlayer(playerIdBase + (ulong)(i * 100 + j));
+                    await AddPlayerToTeam(player.Id, seasonId, teamId);
+                }
+            }
+            await CreateWeekAsync(seasonId, 1, playersPerTeam);
+            await OpenWeekAsync(seasonId, 1);
+            var teams = (await GetTeamsAsync(seasonId)).OrderBy(t => t.Id).ToList();
+            foreach (var team in teams)
+            {
+                var teamPlayerIds = await GetTeamPlayerIds(seasonId, team.Id);
+                for (int seat = 1; seat <= playersPerTeam; seat++)
+                    await SubmitDeckAsync(seasonId, teamPlayerIds[seat - 1], seat);
+            }
+            await CloseSubmissionsAsync(seasonId);
+            (await _weekService.TransitionToInProgressAsync(seasonId)).Success.ShouldBeTrue();
+            var week1 = await _weekRepository.GetByWeekNumberAndSeasonAsync(1, seasonId);
+            var matches = await _matchRepository.GetByWeekIdAsync(week1!.Id);
+            var byTeamMatchup = matches.GroupBy(m => new { m.Team1Id, m.Team2Id }).ToList();
+            foreach (var group in byTeamMatchup)
+            {
+                var loserTeamId = group.Key.Team2Id;
+                var loserPlayerIds = await GetTeamPlayerIds(seasonId, loserTeamId);
+                foreach (var match in group)
+                {
+                    var loserId = loserPlayerIds.Contains(match.Player1Id) ? match.Player1Id : match.Player2Id;
+                    (await _matchService.ReportLossAsync(seasonId, loserId, "https://example.com/playoffs-seed")).Success.ShouldBeTrue();
+                }
+            }
+            (await _weekService.TransitionToCompletedAsync(seasonId)).Success.ShouldBeTrue();
+            (await _seasonService.SetPhaseToPlayoffsAsync(seasonId)).Success.ShouldBeTrue();
+            await CreateWeekAsync(seasonId, 2, playersPerTeam);
+            var week2 = await _weekRepository.GetByWeekNumberAndSeasonAsync(2, seasonId);
+            return (seasonId, week2!, teams);
+        }
+
+        /// <summary>
         /// Completes a playoff week: open week, add submissions for teams in matchups, close submissions,
         /// transition to InProgress (generates pairings), report losers for each normal matchup (in bracket order), then complete.
         /// </summary>

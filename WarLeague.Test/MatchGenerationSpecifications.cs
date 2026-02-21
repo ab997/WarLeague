@@ -229,6 +229,26 @@ namespace WarLeague.Test
 
         [Fact]
         [Trait("Category", "MatchGeneration")]
+        public async Task WhenPlayoffsWithTwoConferencesAndThreePlayoffTeamsPerConference_AfterOneRoundRobinWeek_ThenSixTeamsInPlayoffBrackets()
+        {
+            // Arrange: 8 teams, 2 conferences (4 per conference), PlayoffTeamsCount = 3 each, 1 week round robin, phase switched to Playoffs
+            var (seasonId, week2, teams) = await GetSeasonWeekAndTeamsForPlayoffsFirstWeekWithConferencePlayoffCountAsync(teamsPerConference: 4, playoffTeamsPerConference: 3, playersPerTeam: 2);
+            var season = await _seasonRepository.GetById(seasonId);
+            season.Phase.ShouldBe(SeasonPhase.Playoffs);
+            teams.Count.ShouldBe(8);
+
+            // Act: create playoff brackets for first playoff week
+            var result = await _matchService.EnsureTeamMatchupsForWeekAsync(seasonId, week2, teams);
+
+            // Assert: 6 teams in playoffs (3 per conference)
+            result.Success.ShouldBeTrue();
+            var teamIdPairs = await _context.PlayoffMatchups.Where(pm => pm.WeekId == week2.Id).Select(pm => new { pm.Team1Id, pm.Team2Id }).ToListAsync();
+            var playoffTeamCount = teamIdPairs.SelectMany(p => new[] { p.Team1Id, p.Team2Id }).Distinct().Count();
+            playoffTeamCount.ShouldBe(6);
+        }
+
+        [Fact]
+        [Trait("Category", "MatchGeneration")]
         public async Task WhenPlayoffsWithFiveTeams_SimulateSingleEliminationToFinals_ThenEveryStageHasCorrectBracket()
         {
             // Arrange: same as five-team playoffs (round 1 = top-8 bracket: 3 byes + 1 matchup)
