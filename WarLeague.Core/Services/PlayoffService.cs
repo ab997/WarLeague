@@ -94,7 +94,7 @@ namespace WarLeague.Core.Services
 
             // Get the season from first team's SeasonId
             var firstTeam = teams.First();
-            var season = await _seasonRepository.GetById(firstTeam.SeasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(firstTeam.SeasonId);
 
             // Check if this is the first playoff week by looking for existing playoff matchups
             var allWeeks = await _weekRepository.GetBySeasonAsync(season.Id);
@@ -200,7 +200,7 @@ namespace WarLeague.Core.Services
         /// </summary>
         public async Task<(List<(Team a, Team b)> matchups, List<Team> playoffTeams, List<Team> nonPlayoffTeams)> GetFirstPlayoffWeekMatchupsAndQualifiersAsync(int seasonId)
         {
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             var teams = await _teamRepository.GetBySeasonAsync(seasonId);
             var (matchups, playoffTeams) = await GetFirstPlayoffWeekMatchupsAndPlayoffTeamsAsync(season, teams);

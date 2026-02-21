@@ -87,7 +87,7 @@ namespace WarLeague.Core.Services
 
         public async Task<SeasonResult> SetTeamModificationsAsync(int seasonId, bool enabled) 
         {
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
             season.DisableTeamModification = !enabled;
 
             await _seasonRepository.UpdateAsync(season);
@@ -98,7 +98,7 @@ namespace WarLeague.Core.Services
         {
             //TODO: transaction
             using var transaction = await _context.Database.BeginTransactionAsync();
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             if (season.Phase == SeasonPhase.Playoffs)
             {

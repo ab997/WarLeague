@@ -173,7 +173,7 @@ namespace WarLeague.Test
         {
             // Arrange: season in Playoffs phase, week 1 completed with round-robin winners, week 2 is first playoff week
             var (seasonId, week2, teams) = await GetSeasonWeekAndTeamsForPlayoffsFirstWeekAsync(teamsPerConference: 2, playersPerTeam: 2);
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
             season.Phase.ShouldBe(SeasonPhase.Playoffs);
             teams.Count.ShouldBe(4);
 
@@ -233,7 +233,7 @@ namespace WarLeague.Test
         {
             // Arrange: 8 teams, 2 conferences (4 per conference), PlayoffTeamsCount = 3 each, 1 week round robin, phase switched to Playoffs
             var (seasonId, week2, teams) = await GetSeasonWeekAndTeamsForPlayoffsFirstWeekWithConferencePlayoffCountAsync(teamsPerConference: 4, playoffTeamsPerConference: 3, playersPerTeam: 2);
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
             season.Phase.ShouldBe(SeasonPhase.Playoffs);
             teams.Count.ShouldBe(8);
 
