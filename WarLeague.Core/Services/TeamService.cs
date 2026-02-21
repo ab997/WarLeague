@@ -18,7 +18,9 @@ namespace WarLeague.Core.Services
         private readonly SeasonRepository _seasonRepository;
         private readonly PlayerRepository _playerRepository;
         private readonly ConferenceRepository _conferenceRepository;
-        public TeamService(WarLeagueDbContext context, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, SeasonRepository seasonRepository, PlayerRepository playerRepository, ConferenceRepository conferenceRepository)
+        private readonly MatchRepository _matchRepository;
+
+        public TeamService(WarLeagueDbContext context, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, SeasonRepository seasonRepository, PlayerRepository playerRepository, ConferenceRepository conferenceRepository, MatchRepository matchRepository)
         {
             _context = context;
             _teamRepository = teamRepository;
@@ -26,6 +28,7 @@ namespace WarLeague.Core.Services
             _seasonRepository = seasonRepository;
             _playerRepository = playerRepository;
             _conferenceRepository = conferenceRepository;
+            _matchRepository = matchRepository;
         }
 
         public async Task<BaseResult> CreateAsync(int seasonId, string teamName, int captainId, string conferenceName, bool canBypassTeamModificationCheck, ulong? discordRoleId = null)
@@ -106,6 +109,12 @@ namespace WarLeague.Core.Services
             if (season.DisableTeamModification)
             {
                 return new BaseResult { Success = false, Message = "Team modifications are currently disabled for this season." };
+            }
+
+            bool hasMatches = await _matchRepository.AnyMatchReferencesTeamAsync(team.Id);
+            if (hasMatches)
+            {
+                return new BaseResult { Success = false, Message = "Team cannot be deleted because it has matches or matchups. Remove or reassign those first." };
             }
 
             await _teamRepository.DeleteAsync(team);

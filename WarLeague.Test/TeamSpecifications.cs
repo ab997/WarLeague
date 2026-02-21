@@ -258,6 +258,22 @@ namespace WarLeague.Test
             result.Message.ShouldContain("not found");
         }
 
+        [Fact]
+        [Trait("Category", "Team")]
+        public async Task WhenDeletingTeamWithExistingMatchups_ThenReturnsFail()
+        {
+            // Arrange: season with teams and matches (Team1 has matchups vs OpponentTeam)
+            var (seasonId, teamName, _, _, _) = await CreateTwoPlayersWithMatchesScenario();
+
+            // Act
+            var result = await _teamService.DeleteAsync(seasonId, teamName);
+
+            // Assert
+            result.Success.ShouldBeFalse();
+            result.Message.ShouldContain("cannot be deleted");
+            result.Message.ShouldContain("matches");
+        }
+
         #endregion
 
         #region Add member
