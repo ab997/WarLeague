@@ -39,6 +39,7 @@ namespace WarLeague.Test
         private readonly MatchRepository _matchRepository;
         private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
         private readonly DeckSubmissionRepository _deckSubmissionRepository;
+        private readonly TeamStandingsService _teamStandingsService;
         private readonly WarLeagueDbContext _context;
 
         public Specifications()
@@ -73,6 +74,7 @@ namespace WarLeague.Test
             _matchRepository = _serviceProvider.GetRequiredService<MatchRepository>();
             _playerSeasonTeamRepository = _serviceProvider.GetRequiredService<PlayerSeasonTeamRepository>();
             _deckSubmissionRepository = _serviceProvider.GetRequiredService<DeckSubmissionRepository>();
+            _teamStandingsService = _serviceProvider.GetRequiredService<TeamStandingsService>();
 
             RecreateDatabase();
         }

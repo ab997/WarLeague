@@ -29,6 +29,7 @@ public static class TestServiceProvider
         services.AddScoped<MatchRepository>();
         services.AddScoped<RoundRobinMatchupRepository>();
         services.AddScoped<PlayoffMatchupRepository>();
+        services.AddScoped<TeamStandingsRepository>();
         services.AddScoped<PlayerRepository>();
         services.AddScoped<DeckSubmissionRepository>();
 
@@ -45,6 +46,8 @@ public static class TestServiceProvider
         services.AddScoped<DeckSubmissionService>();
         services.AddScoped<SubstitutionService>();
         services.AddScoped<ConferenceService>();
+        services.AddScoped<StandingsService>();
+        services.AddScoped<TeamStandingsService>();
 
         services.AddScoped<GuildContextService>();
 

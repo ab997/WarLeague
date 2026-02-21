@@ -44,6 +44,7 @@ builder.Services.AddScoped<PlayerRepository>();
 builder.Services.AddScoped<MatchRepository>();
 builder.Services.AddScoped<RoundRobinMatchupRepository>();
 builder.Services.AddScoped<PlayoffMatchupRepository>();
+builder.Services.AddScoped<TeamStandingsRepository>();
 builder.Services.AddScoped<WeekRepository>();
 builder.Services.AddScoped<DeckSubmissionRepository>();
 builder.Services.AddScoped<FormatRepository>();
@@ -71,6 +72,7 @@ builder.Services.AddScoped<RoundRobinService>();
 builder.Services.AddScoped<PlayoffService>();
 builder.Services.AddScoped<MatchupServiceFactory>();
 builder.Services.AddScoped<StandingsService>();
+builder.Services.AddScoped<TeamStandingsService>();
 builder.Services.AddScoped<PlayoffBracketService>();
 
 

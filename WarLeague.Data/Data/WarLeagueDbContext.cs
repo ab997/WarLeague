@@ -23,6 +23,7 @@ public class WarLeagueDbContext : DbContext
     public DbSet<RolePermissionMapping> RolePermissionMappings { get; set; }
     public DbSet<RoundRobinMatchup> RoundRobinMatchups { get; set; }
     public DbSet<PlayoffMatchup> PlayoffMatchups { get; set; }
+    public DbSet<TeamStandings> TeamStandings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -100,6 +101,16 @@ public class WarLeagueDbContext : DbContext
           .HasOne(m => m.TeamWinner)
           .WithMany()
           .HasForeignKey(m => m.TeamWinnerId);
+
+        modelBuilder.Entity<TeamStandings>()
+            .HasOne(ts => ts.Season)
+            .WithMany()
+            .HasForeignKey(ts => ts.SeasonId);
+
+        modelBuilder.Entity<TeamStandings>()
+            .HasOne(ts => ts.Team)
+            .WithMany()
+            .HasForeignKey(ts => ts.TeamId);
 
         //--------------------------------------
         // check constraints
@@ -228,6 +239,16 @@ public class WarLeagueDbContext : DbContext
         // We ensure Team1Id <= Team2Id in application code, so this index prevents duplicates
         modelBuilder.Entity<PlayoffMatchup>()
             .HasIndex(p => new { p.WeekId, p.Team1Id, p.Team2Id })
+            .IsUnique();
+
+        // TeamStandings: one row per team per season
+        modelBuilder.Entity<TeamStandings>()
+            .HasIndex(ts => new { ts.SeasonId, ts.TeamId })
+            .IsUnique();
+
+        // TeamStandings: one seed value per team per season
+        modelBuilder.Entity<TeamStandings>()
+            .HasIndex(ts => new { ts.SeasonId, ts.Seed })
             .IsUnique();
 
         //--------------------------------------
