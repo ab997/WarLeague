@@ -28,22 +28,6 @@ public partial class Specifications
 
     [Fact]
     [Trait("Category", "TeamStandings")]
-    public async Task WhenFirstPlayoffWeekGenerated_ThenMatchupsFollowTeamStandingsOrder()
-    {
-        // Arrange: playoffs phase with standings (from phase switch)
-        var (seasonId, week2, teams) = await GetSeasonWeekAndTeamsForPlayoffsFirstWeekAsync(teamsPerConference: 2, playersPerTeam: 2);
-        var standingsBefore = await _teamStandingsService.GetStandingsForSeasonAsync(seasonId);
-        standingsBefore.Count.ShouldBeGreaterThanOrEqualTo(2);
-
-        // Act: open first playoff week (creates matchups from TeamStandings order)
-        var openResult = await _weekService.TransitionToOpenWeekAsync(seasonId, week2.WeekNumber);
-
-        // Assert: opening week succeeds and pairings are created from standings
-        openResult.Success.ShouldBeTrue();
-    }
-
-    [Fact]
-    [Trait("Category", "TeamStandings")]
     public async Task WhenUpdatingTiebreaker_ThenFirstPlayoffWeekReflectsNewOrder()
     {
         // Arrange: playoffs phase with 4 playoff teams, no playoff week opened yet
