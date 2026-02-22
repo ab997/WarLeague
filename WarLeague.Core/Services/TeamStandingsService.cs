@@ -46,46 +46,7 @@ public class TeamStandingsService
         return wins * 1_000_000 - teamId;
     }
 
-    /// <summary>
-    /// Single source for round-robin wins (and h2h) from completed weeks. Uses GetBySeasonIdForCompletedWeeksAsync once.
-    /// </summary>
-    public async Task<RoundRobinWinsAndH2H> GetRoundRobinWinsAndH2HAsync(int seasonId)
-    {
-        var matchups = await _roundRobinMatchupRepository.GetBySeasonIdForCompletedWeeksAsync(seasonId);
-        var teams = await _teamRepository.GetBySeasonAsync(seasonId);
-        var winsByTeamId = new Dictionary<int, int>();
-        foreach (var t in teams)
-            winsByTeamId[t.Id] = 0;
-
-        foreach (var m in matchups)
-        {
-            if (!m.TeamWinnerId.HasValue)
-                continue;
-            if (m.MatchupType == MatchupType.Bye)
-                winsByTeamId[m.TeamWinnerId.Value] = winsByTeamId.GetValueOrDefault(m.TeamWinnerId.Value, 0) + 1;
-            else
-            {
-                winsByTeamId[m.TeamWinnerId.Value] = winsByTeamId.GetValueOrDefault(m.TeamWinnerId.Value, 0) + 1;
-                var loserId = m.Team1Id == m.TeamWinnerId.Value ? m.Team2Id : m.Team1Id;
-                winsByTeamId[loserId] = winsByTeamId.GetValueOrDefault(loserId, 0); // ensure key exists (losses not stored here)
-            }
-        }
-
-        var h2hByTeamId = new Dictionary<int, int>();
-        foreach (var t in teams)
-            h2hByTeamId[t.Id] = 0;
-
-        var lossesByTeamId = new Dictionary<int, int>();
-        foreach (var t in teams)
-            lossesByTeamId[t.Id] = 0;
-        foreach (var m in matchups.Where(m => m.TeamWinnerId.HasValue && m.MatchupType != MatchupType.Bye))
-        {
-            var loserId = m.Team1Id == m.TeamWinnerId!.Value ? m.Team2Id : m.Team1Id;
-            lossesByTeamId[loserId] = lossesByTeamId.GetValueOrDefault(loserId, 0) + 1;
-        }
-
-        return new RoundRobinWinsAndH2H(winsByTeamId, lossesByTeamId, h2hByTeamId, matchups);
-    }
+    
 
     /// <summary>
     /// Gets round-robin standings (W-L per team) from completed weeks. Tiebreaker: wins desc, losses asc, then TeamId.
@@ -174,7 +135,46 @@ public class TeamStandingsService
 
         return new BaseResult(true, $"Generated standings for {standings.Count} playoff team(s).");
     }
+    /// <summary>
+    /// Single source for round-robin wins (and h2h) from completed weeks. Uses GetBySeasonIdForCompletedWeeksAsync once.
+    /// </summary>
+    private async Task<RoundRobinWinsAndH2H> GetRoundRobinWinsAndH2HAsync(int seasonId)
+    {
+        var matchups = await _roundRobinMatchupRepository.GetBySeasonIdForCompletedWeeksAsync(seasonId);
+        var teams = await _teamRepository.GetBySeasonAsync(seasonId);
+        var winsByTeamId = new Dictionary<int, int>();
+        foreach (var t in teams)
+            winsByTeamId[t.Id] = 0;
 
+        foreach (var m in matchups)
+        {
+            if (!m.TeamWinnerId.HasValue)
+                continue;
+            if (m.MatchupType == MatchupType.Bye)
+                winsByTeamId[m.TeamWinnerId.Value] = winsByTeamId.GetValueOrDefault(m.TeamWinnerId.Value, 0) + 1;
+            else
+            {
+                winsByTeamId[m.TeamWinnerId.Value] = winsByTeamId.GetValueOrDefault(m.TeamWinnerId.Value, 0) + 1;
+                var loserId = m.Team1Id == m.TeamWinnerId.Value ? m.Team2Id : m.Team1Id;
+                winsByTeamId[loserId] = winsByTeamId.GetValueOrDefault(loserId, 0); // ensure key exists (losses not stored here)
+            }
+        }
+
+        var h2hByTeamId = new Dictionary<int, int>();
+        foreach (var t in teams)
+            h2hByTeamId[t.Id] = 0;
+
+        var lossesByTeamId = new Dictionary<int, int>();
+        foreach (var t in teams)
+            lossesByTeamId[t.Id] = 0;
+        foreach (var m in matchups.Where(m => m.TeamWinnerId.HasValue && m.MatchupType != MatchupType.Bye))
+        {
+            var loserId = m.Team1Id == m.TeamWinnerId!.Value ? m.Team2Id : m.Team1Id;
+            lossesByTeamId[loserId] = lossesByTeamId.GetValueOrDefault(loserId, 0) + 1;
+        }
+
+        return new RoundRobinWinsAndH2H(winsByTeamId, lossesByTeamId, h2hByTeamId, matchups);
+    }
     /// <summary>
     /// Returns standings for the season (for display). Only valid when season is in Playoffs.
     /// </summary>
