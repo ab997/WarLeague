@@ -9,7 +9,6 @@ public class TeamStandings
     public Season Season { get; set; } = null!;
     public int TeamId { get; set; }
     public Team Team { get; set; } = null!;
-    public int Seed { get; set; }
     public int Tiebreaker { get; set; }
     public int? Wins { get; set; }
 }

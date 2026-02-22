@@ -236,11 +236,6 @@ public class WarLeagueDbContext : DbContext
             .HasIndex(ts => new { ts.SeasonId, ts.TeamId })
             .IsUnique();
 
-        // TeamStandings: one seed value per team per season
-        modelBuilder.Entity<TeamStandings>()
-            .HasIndex(ts => new { ts.SeasonId, ts.Seed })
-            .IsUnique();
-
         //--------------------------------------
         // disable cascade delete
         //--------------------------------------

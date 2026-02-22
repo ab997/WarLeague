@@ -4,7 +4,7 @@ namespace WarLeague.Test;
 
 /// <summary>
 /// Specifications for TeamStandings: phase switch populates standings,
-/// first playoff week uses standings order, seed/tiebreaker edits are reflected, guards reject when not allowed.
+/// first playoff week uses standings order, tiebreaker edits are reflected, guards reject when not allowed.
 /// </summary>
 public partial class Specifications
 {
@@ -23,7 +23,6 @@ public partial class Specifications
         var standings = await _teamStandingsService.GetStandingsForSeasonAsync(seasonId);
         standings.ShouldNotBeEmpty();
         standings.Count.ShouldBeGreaterThanOrEqualTo(2);
-        standings.Select(s => s.Seed).Distinct().Count().ShouldBe(standings.Count);
         standings.ShouldAllBe(s => s.Tiebreaker >= 0);
     }
 
@@ -45,41 +44,40 @@ public partial class Specifications
 
     [Fact]
     [Trait("Category", "TeamStandings")]
-    public async Task WhenUpdatingSeed_ThenFirstPlayoffWeekReflectsNewOrder()
+    public async Task WhenUpdatingTiebreaker_ThenFirstPlayoffWeekReflectsNewOrder()
     {
         // Arrange: playoffs phase with 4 playoff teams, no playoff week opened yet
         var (seasonId, week2, teams) = await GetSeasonWeekAndTeamsForPlayoffsFirstWeekWithConferencePlayoffCountAsync(
             teamsPerConference: 4, playoffTeamsPerConference: 2, playersPerTeam: 2);
         var standings = await _teamStandingsService.GetStandingsForSeasonAsync(seasonId);
         standings.Count.ShouldBe(4);
-        var seed1TeamId = standings.First(s => s.Seed == 1).TeamId;
-        var seed2TeamId = standings.First(s => s.Seed == 2).TeamId;
+        var firstTeamId = standings[0].TeamId;
+        var secondTeamId = standings[1].TeamId;
+        var team1 = teams.First(t => t.Id == firstTeamId);
+        var team2 = teams.First(t => t.Id == secondTeamId);
 
-        // Act: swap seed 1 and 2
-        var team1 = teams.First(t => t.Id == seed1TeamId);
-        var team2 = teams.First(t => t.Id == seed2TeamId);
-        (await _teamStandingsService.UpdateSeedAsync(seasonId, team1.Id, 2)).Success.ShouldBeTrue();
-        (await _teamStandingsService.UpdateSeedAsync(seasonId, team2.Id, 1)).Success.ShouldBeTrue();
+        // Act: set team2's tiebreaker higher than team1's so team2 becomes first in order
+        (await _teamStandingsService.UpdateTiebreakerAsync(seasonId, team2.Id, 999_999_999)).Success.ShouldBeTrue();
+        (await _teamStandingsService.UpdateTiebreakerAsync(seasonId, team1.Id, 0)).Success.ShouldBeTrue();
 
         // Open first playoff week so matchups are generated from new order
         (await _weekService.TransitionToOpenWeekAsync(seasonId, week2.WeekNumber)).Success.ShouldBeTrue();
 
-        // Assert: first bracket position should now have former seed-2 team as top seed (seed 1)
+        // Assert: first position in standings should now be the former second team
         var standingsAfter = await _teamStandingsService.GetStandingsForSeasonAsync(seasonId);
-        var newSeed1 = standingsAfter.First(s => s.Seed == 1);
-        newSeed1.TeamId.ShouldBe(seed2TeamId);
+        standingsAfter[0].TeamId.ShouldBe(secondTeamId);
     }
 
     [Fact]
     [Trait("Category", "TeamStandings")]
-    public async Task WhenUpdatingSeedBeforePhaseSwitch_ThenReturnsFail()
+    public async Task WhenUpdatingTiebreakerBeforePhaseSwitch_ThenReturnsFail()
     {
         // Arrange: season still in RoundRobin (one week completed, do not switch to playoffs)
         var (seasonId, teams) = await GetSeasonWithRoundRobinWeekCompleted_NotPlayoffsAsync(teamsPerConference: 2, playersPerTeam: 2);
 
-        // Act: try to update seed (no standings exist; guard says not Playoffs)
+        // Act: try to update tiebreaker (no standings exist; guard says not Playoffs)
         var team = teams.First();
-        var result = await _teamStandingsService.UpdateSeedAsync(seasonId, team.Id, 1);
+        var result = await _teamStandingsService.UpdateTiebreakerAsync(seasonId, team.Id, 1);
 
         // Assert: standings cannot be edited when not in Playoffs
         result.Success.ShouldBeFalse();
@@ -135,10 +133,10 @@ public partial class Specifications
         standings.Count.ShouldBe(3);
         var playoffTeamIds = standings.Select(s => s.TeamId).ToHashSet();
         var excludedTeamId = allTeamIds.Single(id => !playoffTeamIds.Contains(id));
-        var lastSeedTeamId = standings.First(s => s.Seed == 3).TeamId;
+        var lastPlayoffSpotTeamId = standings[2].TeamId;
         // Among the two tied (0-win) teams, the one with better tiebreaker (lower Id) must have made it
-        lastSeedTeamId.ShouldBeLessThan(excludedTeamId,
-            "The team that got the last playoff spot (seed 3) must have better tiebreaker (lower Team.Id) than the excluded tied team.");
+        lastPlayoffSpotTeamId.ShouldBeLessThan(excludedTeamId,
+            "The team that got the last playoff spot (position 3) must have better tiebreaker (lower Team.Id) than the excluded tied team.");
 
         // Act: proceed to playoffs (open first playoff week so bracket is built from standings)
         var openResult = await _weekService.TransitionToOpenWeekAsync(seasonId, week2.WeekNumber);
@@ -146,7 +144,7 @@ public partial class Specifications
         // Assert: opening week succeeds; the team that made it is still the one with better tiebreaker
         openResult.Success.ShouldBeTrue();
         var standingsAfter = await _teamStandingsService.GetStandingsForSeasonAsync(seasonId);
-        standingsAfter.First(s => s.Seed == 3).TeamId.ShouldBe(lastSeedTeamId,
+        standingsAfter[2].TeamId.ShouldBe(lastPlayoffSpotTeamId,
             "Among the two tied teams, the one with better tiebreakers must have made it to playoffs.");
     }
 

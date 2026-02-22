@@ -12,7 +12,7 @@ using WarLeague.Data;
 namespace WarLeague.Data.Migrations
 {
     [DbContext(typeof(WarLeagueDbContext))]
-    [Migration("20260218192540_Initial")]
+    [Migration("20260222113301_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -134,6 +134,36 @@ namespace WarLeague.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("RoundRobinMatchups");
+                });
+
+            modelBuilder.Entity("WarLeague.Data.Data.Entities.TeamStandings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("SeasonId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TeamId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Tiebreaker")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Wins")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeamId");
+
+                    b.HasIndex("SeasonId", "TeamId")
+                        .IsUnique();
+
+                    b.ToTable("TeamStandings");
                 });
 
             modelBuilder.Entity("WarLeague.Data.Entities.Conference", b =>
@@ -540,6 +570,25 @@ namespace WarLeague.Data.Migrations
                     b.Navigation("TeamWinner");
 
                     b.Navigation("Week");
+                });
+
+            modelBuilder.Entity("WarLeague.Data.Data.Entities.TeamStandings", b =>
+                {
+                    b.HasOne("WarLeague.Data.Entities.Season", "Season")
+                        .WithMany()
+                        .HasForeignKey("SeasonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarLeague.Data.Entities.Team", "Team")
+                        .WithMany()
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Season");
+
+                    b.Navigation("Team");
                 });
 
             modelBuilder.Entity("WarLeague.Data.Entities.Conference", b =>

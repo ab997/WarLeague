@@ -11,7 +11,7 @@ using WarLeague.Data.Data.Enums;
 
 namespace WarLeague.Discord.Commands;
 
-[Group("standings", "Playoff standings (seed and tiebreaker) - only when season is in Playoffs and no playoff matchups yet")]
+[Group("standings", "Playoff standings (tiebreaker ordering) - only when season is in Playoffs and no playoff matchups yet")]
 [RequireAppPermission(PermissionType.Admin)]
 [EnsureChannelIsInFormatCategory]
 [EnsureSingleActiveSeason]
@@ -32,7 +32,7 @@ public class StandingsCommands : InteractionModuleBase<SocketInteractionContext>
         _teamRepository = teamRepository;
     }
 
-    [SlashCommand("list", "List playoff standings (seed, team, tiebreaker, wins) for the active season")]
+    [SlashCommand("list", "List playoff standings (position, team, tiebreaker, wins) for the active season")]
     public async Task ListAsync()
     {
         await DeferAsync(ephemeral: false);
@@ -47,33 +47,14 @@ public class StandingsCommands : InteractionModuleBase<SocketInteractionContext>
         }
 
         var lines = standings
-            .Select(s => $"**{s.Seed}.** {s.Team.Name} — Tiebreaker: {s.Tiebreaker}" + (s.Wins.HasValue ? $", Wins: {s.Wins}" : ""));
+            .Select((s, i) => $"**{i + 1}.** {s.Team.Name} — Tiebreaker: {s.Tiebreaker}" + (s.Wins.HasValue ? $", Wins: {s.Wins}" : ""));
         var message = "**Playoff standings**\n" + string.Join("\n", lines);
         if (message.Length > 1900)
             message = message[..1900] + "...";
         await FollowupAsync(message);
     }
 
-    [SlashCommand("set-seed", "Set a team's playoff seed (1-based). Uniqueness is preserved by swapping with the team that had that seed.")]
-    public async Task SetSeedAsync(
-        [Summary("team", "Team to assign the seed to")] [Autocomplete(typeof(TeamAutocompleteHandler))] string teamName,
-        [Summary("seed", "New seed (1-based)")] int seed)
-    {
-        await DeferAsync(ephemeral: false);
-
-        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-        var team = await _teamRepository.GetByNameAndSeasonAsync(teamName, season.Id);
-        if (team == null)
-        {
-            await FollowupAsync($"Team '{teamName}' not found in this season.");
-            return;
-        }
-
-        BaseResult result = await _teamStandingsService.UpdateSeedAsync(season.Id, team.Id, seed);
-        await FollowupAsync(ResultHelper.Stringify(result));
-    }
-
-    [SlashCommand("set-tiebreaker", "Set a team's tiebreaker value (used when ordering by seed).")]
+    [SlashCommand("set-tiebreaker", "Set a team's tiebreaker value (used for ordering).")]
     public async Task SetTiebreakerAsync(
         [Summary("team", "Team to update")] [Autocomplete(typeof(TeamAutocompleteHandler))] string teamName,
         [Summary("tiebreaker", "Tiebreaker value (e.g. round-robin wins)")] int tiebreaker)
@@ -92,7 +73,7 @@ public class StandingsCommands : InteractionModuleBase<SocketInteractionContext>
         await FollowupAsync(ResultHelper.Stringify(result));
     }
 
-    [SlashCommand("generate", "Regenerate playoff standings from round-robin results (overwrites current seeds/tiebreakers). Only when no playoff matchups exist yet.")]
+    [SlashCommand("generate", "Regenerate playoff standings from round-robin results (overwrites current tiebreakers). Only when no playoff matchups exist yet.")]
     public async Task GenerateAsync()
     {
         await DeferAsync(ephemeral: false);

@@ -144,9 +144,6 @@ namespace WarLeague.Data.Migrations
                     b.Property<int>("SeasonId")
                         .HasColumnType("int");
 
-                    b.Property<int>("Seed")
-                        .HasColumnType("int");
-
                     b.Property<int>("TeamId")
                         .HasColumnType("int");
 
@@ -159,9 +156,6 @@ namespace WarLeague.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("TeamId");
-
-                    b.HasIndex("SeasonId", "Seed")
-                        .IsUnique();
 
                     b.HasIndex("SeasonId", "TeamId")
                         .IsUnique();

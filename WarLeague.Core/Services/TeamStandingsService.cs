@@ -114,7 +114,7 @@ public class TeamStandingsService
 
     /// <summary>
     /// Generates TeamStandings from round-robin results: computes wins per team,
-    /// takes top N per conference by PlayoffTeamsCount, then assigns Seed 1..N and Tiebreaker.
+    /// takes top N per conference by PlayoffTeamsCount, then assigns Tiebreaker per team.
     /// Overwrites any existing standings for the season.
     /// </summary>
     public async Task<BaseResult> GenerateStandingsFromRoundRobinAsync(int seasonId)
@@ -164,7 +164,6 @@ public class TeamStandingsService
             {
                 SeasonId = seasonId,
                 TeamId = team.Id,
-                Seed = i + 1,
                 Tiebreaker = GetTiebreakerValue(wins, team.Id),
                 Wins = wins
             });
@@ -194,46 +193,6 @@ public class TeamStandingsService
             return false;
         var playoffMatchups = await _playoffMatchupRepository.GetBySeasonIdAsync(seasonId);
         return playoffMatchups.Count == 0;
-    }
-
-    public async Task<BaseResult> UpdateSeedAsync(int seasonId, int teamId, int newSeed)
-    {
-        var canEdit = await CanEditStandingsAsync(seasonId);
-        if (!canEdit)
-            return new BaseResult(false, "Standings cannot be edited: season must be in Playoffs phase and no playoff matchups may exist yet.");
-
-        var standings = await _teamStandingsRepository.GetBySeasonIdWithoutTeamAsync(seasonId);
-        var count = standings.Count;
-        if (count == 0)
-            return new BaseResult(false, "No standings exist for this season.");
-        if (newSeed < 1 || newSeed > count)
-            return new BaseResult(false, $"Seed must be between 1 and {count}.");
-
-        var entry = standings.FirstOrDefault(s => s.TeamId == teamId);
-        if (entry == null)
-            return new BaseResult(false, "Team is not in playoff standings.");
-
-        var oldSeed = entry.Seed;
-        if (oldSeed == newSeed)
-            return new BaseResult(true, "Seed unchanged.");
-
-        var other = standings.FirstOrDefault(s => s.Seed == newSeed);
-        if (other != null)
-        {
-            // Use a temporary unique seed to avoid violating (SeasonId, Seed) unique index during swap
-            var tempSeed = -entry.TeamId;
-            entry.Seed = tempSeed;
-            await _teamStandingsRepository.UpdateAsync(entry);
-            other.Seed = oldSeed;
-            entry.Seed = newSeed;
-            await _teamStandingsRepository.UpdateRangeAsync(new[] { other, entry });
-        }
-        else
-        {
-            entry.Seed = newSeed;
-            await _teamStandingsRepository.UpdateAsync(entry);
-        }
-        return new BaseResult(true, $"Seed updated to {newSeed}.");
     }
 
     public async Task<BaseResult> UpdateTiebreakerAsync(int seasonId, int teamId, int tiebreaker)

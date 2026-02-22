@@ -14,8 +14,8 @@ public class TeamStandingsRepository
     }
 
     /// <summary>
-    /// Gets team standings for the season in bracket order: best first by Tiebreaker (wins + tiebreaker rules),
-    /// then Seed for consistency. Single-elimination is built from this order (1st = index 0, etc.).
+    /// Gets team standings for the season in bracket order: by Tiebreaker (desc), then TeamId for stability.
+    /// Single-elimination is built from this order (1st = index 0, etc.).
     /// </summary>
     public async Task<List<TeamStandings>> GetBySeasonIdAsync(int seasonId)
     {
@@ -23,19 +23,20 @@ public class TeamStandingsRepository
             .Include(ts => ts.Team)
             .Where(ts => ts.SeasonId == seasonId)
             .OrderByDescending(ts => ts.Tiebreaker)
-            .ThenBy(ts => ts.Seed)
+            .ThenBy(ts => ts.TeamId)
             .ToListAsync();
     }
 
     /// <summary>
     /// Same as GetBySeasonIdAsync but without Team include (used when building bracket from standings).
+    /// Order: Tiebreaker (desc), then TeamId.
     /// </summary>
     public async Task<List<TeamStandings>> GetBySeasonIdWithoutTeamAsync(int seasonId)
     {
         return await _context.TeamStandings
             .Where(ts => ts.SeasonId == seasonId)
             .OrderByDescending(ts => ts.Tiebreaker)
-            .ThenBy(ts => ts.Seed)
+            .ThenBy(ts => ts.TeamId)
             .ToListAsync();
     }
 
