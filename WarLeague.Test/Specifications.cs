@@ -368,7 +368,8 @@ namespace WarLeague.Test
             (await _weekService.TransitionToInProgressAsync(seasonId)).Success.ShouldBeTrue();
             var week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
             var matches = await _matchRepository.GetByWeekIdAsync(week!.Id);
-            await _matchService.ReportLossAsync(seasonId, matches.First().Player1Id, "http://www.example.com");
+            var firstMatch = matches.First();
+            await _matchService.ReportWinAsync(seasonId, firstMatch.Player2Id, "http://www.example.com");
             return seasonId;
         }
 
@@ -483,7 +484,8 @@ namespace WarLeague.Test
                 foreach (var match in group)
                 {
                     var loserId = loserPlayerIds.Contains(match.Player1Id) ? match.Player1Id : match.Player2Id;
-                    (await _matchService.ReportLossAsync(seasonId, loserId, "https://example.com/seed")).Success.ShouldBeTrue();
+                    var winnerId = match.Player1Id == loserId ? match.Player2Id : match.Player1Id;
+                    (await _matchService.ReportWinAsync(seasonId, winnerId, "https://example.com/seed")).Success.ShouldBeTrue();
                 }
             }
             (await _weekService.TransitionToCompletedAsync(seasonId)).Success.ShouldBeTrue();
@@ -536,7 +538,8 @@ namespace WarLeague.Test
                 foreach (var match in group)
                 {
                     var loserId = loserPlayerIds.Contains(match.Player1Id) ? match.Player1Id : match.Player2Id;
-                    (await _matchService.ReportLossAsync(seasonId, loserId, "https://example.com/tiebreaker")).Success.ShouldBeTrue();
+                    var winnerId = match.Player1Id == loserId ? match.Player2Id : match.Player1Id;
+                    (await _matchService.ReportWinAsync(seasonId, winnerId, "https://example.com/tiebreaker")).Success.ShouldBeTrue();
                 }
             }
             (await _weekService.TransitionToCompletedAsync(seasonId)).Success.ShouldBeTrue();
@@ -567,7 +570,8 @@ namespace WarLeague.Test
                 foreach (var match in group)
                 {
                     var loserId = loserPlayerIds.Contains(match.Player1Id) ? match.Player1Id : match.Player2Id;
-                    (await _matchService.ReportLossAsync(seasonId, loserId, "https://example.com/rr")).Success.ShouldBeTrue();
+                    var winnerId = match.Player1Id == loserId ? match.Player2Id : match.Player1Id;
+                    (await _matchService.ReportWinAsync(seasonId, winnerId, "https://example.com/rr")).Success.ShouldBeTrue();
                 }
             }
             (await _weekService.TransitionToCompletedAsync(seasonId)).Success.ShouldBeTrue();
@@ -596,7 +600,8 @@ namespace WarLeague.Test
                 foreach (var match in group)
                 {
                     var loserId = loserPlayerIds.Contains(match.Player1Id) ? match.Player1Id : match.Player2Id;
-                    (await _matchService.ReportLossAsync(seasonId, loserId, "https://example.com/playoffs-seed")).Success.ShouldBeTrue();
+                    var winnerId = match.Player1Id == loserId ? match.Player2Id : match.Player1Id;
+                    (await _matchService.ReportWinAsync(seasonId, winnerId, "https://example.com/playoffs-seed")).Success.ShouldBeTrue();
                 }
             }
             (await _weekService.TransitionToCompletedAsync(seasonId)).Success.ShouldBeTrue();
@@ -650,7 +655,8 @@ namespace WarLeague.Test
                 foreach (var match in group)
                 {
                     var loserId = loserPlayerIds.Contains(match.Player1Id) ? match.Player1Id : match.Player2Id;
-                    (await _matchService.ReportLossAsync(seasonId, loserId, "https://example.com/playoffs-seed")).Success.ShouldBeTrue();
+                    var winnerId = match.Player1Id == loserId ? match.Player2Id : match.Player1Id;
+                    (await _matchService.ReportWinAsync(seasonId, winnerId, "https://example.com/playoffs-seed")).Success.ShouldBeTrue();
                 }
             }
             (await _weekService.TransitionToCompletedAsync(seasonId)).Success.ShouldBeTrue();
@@ -690,7 +696,8 @@ namespace WarLeague.Test
                 foreach (var match in teamMatchupMatches)
                 {
                     var loserId = loserPlayerIds.Contains(match.Player1Id) ? match.Player1Id : match.Player2Id;
-                    (await _matchService.ReportLossAsync(seasonId, loserId, "https://example.com/playoff")).Success.ShouldBeTrue();
+                    var winnerId = match.Player1Id == loserId ? match.Player2Id : match.Player1Id;
+                    (await _matchService.ReportWinAsync(seasonId, winnerId, "https://example.com/playoff")).Success.ShouldBeTrue();
                 }
             }
             (await _weekService.TransitionToCompletedAsync(seasonId)).Success.ShouldBeTrue();

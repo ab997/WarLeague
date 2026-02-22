@@ -31,16 +31,18 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
         _helperService = helperService;
     }
 
-    [SlashCommand("loss", "Report a loss and attach a replay URL")]
-    public async Task ReportLossAsync(
-        [Summary("replay-url", "Replay URL for this match")] string replayUrl)
+    [SlashCommand("win", "Report a win and attach a replay URL")]
+    public async Task ReportWinAsync(
+        [Summary("replay-url", "Replay URL for this match")] string replayUrl,
+        [Summary("your-wins", "Your number of game wins (optional)")] int yourWins,
+        [Summary("opponent-wins", "Opponent's number of game wins (optional)")] int opponentWins)
     {
         await DeferAsync(ephemeral: false);
 
         Player callerPlayer = await _playerService.EnsurePlayerExistsAsync(Context.User);
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-        BaseResult result = await _matchService.ReportLossAsync(season.Id, callerPlayer.Id, replayUrl);
+        BaseResult result = await _matchService.ReportWinAsync(season.Id, callerPlayer.Id, replayUrl, yourWins, opponentWins);
 
         await FollowupAsync(ResultHelper.Stringify(result));
     }

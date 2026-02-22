@@ -29,7 +29,7 @@ namespace WarLeague.Core.Services
 
 
 
-        public async Task<BaseResult> ReportLossAsync(int seasonId, int loserId, string replayUrl)
+        public async Task<BaseResult> ReportWinAsync(int seasonId, int winnerId, string replayUrl, int? winnerWins = null, int? loserWins = null)
         {
             if (!IsValidReplayUrl(replayUrl))
             {
@@ -43,8 +43,7 @@ namespace WarLeague.Core.Services
                 return new BaseResult { Success = false, Message = $"There is no week with status '{WeekStatus.InProgress}' for the active season." };
             }
 
-            // Only allow reporting for matches where the caller actually has a scheduled match.
-            var callerMatches = await _matchRepository.GetByPlayerAndWeekAsync(loserId, week.Id);
+            var callerMatches = await _matchRepository.GetByPlayerAndWeekAsync(winnerId, week.Id);
 
             var scheduledMatches = callerMatches
                 .Where(m => m.Status == MatchStatus.Scheduled)
@@ -52,41 +51,50 @@ namespace WarLeague.Core.Services
 
             if (scheduledMatches.Count == 0)
             {
-                return new BaseResult { Success = false, Message = "You do not have any scheduled matches that can be reported as a loss." };
+                return new BaseResult { Success = false, Message = "You do not have any scheduled matches that can be reported as a win." };
             }
 
             if (scheduledMatches.Count > 1)
             {
-                // Ambiguous which opponent this loss is against; require admins to resolve.
                 var opponents = scheduledMatches
-                    .Select(m => m.Player1Id == loserId ? m.Player2 : m.Player1)
+                    .Select(m => m.Player1Id == winnerId ? m.Player2 : m.Player1)
                     .DistinctBy(p => p.Id)
                     .Select(p => $"<@{p.DiscordUserId}>")
                     .ToList();
 
-                return new BaseResult { Success = false, Message = "You have multiple scheduled matches pending; I can't determine which one you are reporting a loss for.\n" +
+                return new BaseResult { Success = false, Message = "You have multiple scheduled matches pending; I can't determine which one you are reporting a win for.\n" +
                     "Pending opponents: " + string.Join(", ", opponents) };
             }
 
             var match = scheduledMatches.Single();
-            Player opponentPlayer = match.Player1Id == loserId ? match.Player2 : match.Player1;
+            Player opponentPlayer = match.Player1Id == winnerId ? match.Player2 : match.Player1;
 
-            Team team = (await _teamRepository.GetByPlayerAndSeasonAsync(opponentPlayer.Id, seasonId))!;
+            Team team = (await _teamRepository.GetByPlayerAndSeasonAsync(winnerId, seasonId))!;
 
-            // Loser is the caller, so winner is the opponent.
-            match.WinnerId = opponentPlayer.Id;
+            match.WinnerId = winnerId;
             match.Status = MatchStatus.Reported;
             match.MatchResultType = MatchResultType.Normal;
             match.ReportedDate = DateTime.UtcNow;
             match.ReplayUrl = replayUrl;
             match.WinnerTeamId = team.Id;
 
+            if (match.Player1Id == winnerId)
+            {
+                match.Player1Wins = winnerWins;
+                match.Player2Wins = loserWins;
+            }
+            else
+            {
+                match.Player1Wins = loserWins;
+                match.Player2Wins = winnerWins;
+            }
+
             await _matchRepository.UpdateAsync(match);
 
-            return new BaseResult { Success = true, Message = "Match loss reported successfully." };
+            return new BaseResult { Success = true, Message = "Match win reported successfully." };
         }
 
-      
+
 
         /// <summary>
         /// Undoes a previously reported match result between two specified players for the current in-progress week.
@@ -127,10 +135,13 @@ namespace WarLeague.Core.Services
 
             // Reset match back to scheduled state.
             match.WinnerId = null;
+            match.WinnerTeamId = null;
             match.Status = MatchStatus.Scheduled;
             match.ReportedDate = null;
             match.ReplayUrl = null;
-            match.WinnerId = null;
+            match.MatchResultType = null;
+            match.Player1Wins = null;
+            match.Player2Wins = null;
 
             await _matchRepository.UpdateAsync(match);
 
@@ -144,8 +155,10 @@ namespace WarLeague.Core.Services
         /// <param name="winnerId">Winner player's id.</param>
         /// <param name="loserId">Loser player's id.</param>
         /// <param name="replayUrl">Replay URL to attach.</param>
+        /// <param name="player1Wins">Optional wins for Player1.</param>
+        /// <param name="player2Wins">Optional wins for Player2.</param>
         /// <returns>Result indicating success or error message.</returns>
-        public async Task<BaseResult> ReportResultAsync(int seasonId, int winnerId, int loserId, string replayUrl)
+        public async Task<BaseResult> ReportResultAsync(int seasonId, int winnerId, int loserId, string replayUrl, int? player1Wins = null, int? player2Wins = null)
         {
             if (winnerId == loserId)
             {
@@ -164,7 +177,6 @@ namespace WarLeague.Core.Services
                 return new BaseResult { Success = false, Message = $"There is no week with status '{WeekStatus.InProgress}' for the active season." };
             }
 
-            // Find the scheduled match between the specified winner and loser for this week.
             List<Match> candidateMatches = await _matchRepository.GetScheduledMatchesAsync(winnerId, loserId, week);
 
             if (candidateMatches.Count == 0)
@@ -186,6 +198,8 @@ namespace WarLeague.Core.Services
             match.ReportedDate = DateTime.UtcNow;
             match.ReplayUrl = replayUrl;
             match.WinnerTeamId = team.Id;
+            match.Player1Wins = player1Wins;
+            match.Player2Wins = player2Wins;
 
             await _matchRepository.UpdateAsync(match);
 

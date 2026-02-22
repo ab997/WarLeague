@@ -23,4 +23,6 @@ public class Match
     public DateTime? ReportedDate { get; set; }
     public string? ReplayUrl { get; set; }
     public MatchResultType? MatchResultType { get; set; }
+    public int? Player1Wins { get; set; }
+    public int? Player2Wins { get; set; }
 }
