@@ -1,7 +1,6 @@
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Data.Data.Entities;
-using WarLeague.Data.Data.Enums;
 using WarLeague.Data.Entities;
 using WarLeague.Data.Enums;
 
@@ -12,6 +11,7 @@ public class TeamStandingsService
     private readonly TiebreakerService _tiebreakerService;
     private readonly TeamStandingsRepository _teamStandingsRepository;
     private readonly RoundRobinMatchupRepository _roundRobinMatchupRepository;
+    private readonly MatchRepository _matchRepository;
     private readonly WeekRepository _weekRepository;
     private readonly ConferenceRepository _conferenceRepository;
     private readonly TeamRepository _teamRepository;
@@ -23,6 +23,7 @@ public class TeamStandingsService
         TiebreakerService tiebreakerService,
         TeamStandingsRepository teamStandingsRepository,
         RoundRobinMatchupRepository roundRobinMatchupRepository,
+        MatchRepository matchRepository,
         WeekRepository weekRepository,
         ConferenceRepository conferenceRepository,
         TeamRepository teamRepository,
@@ -33,6 +34,7 @@ public class TeamStandingsService
         _tiebreakerService = tiebreakerService;
         _teamStandingsRepository = teamStandingsRepository;
         _roundRobinMatchupRepository = roundRobinMatchupRepository;
+        _matchRepository = matchRepository;
         _weekRepository = weekRepository;
         _conferenceRepository = conferenceRepository;
         _teamRepository = teamRepository;
@@ -42,29 +44,38 @@ public class TeamStandingsService
     }
 
     /// <summary>
-    /// Gets round-robin standings (W-L per team) from completed weeks ordered by centralized tiebreaker ranking.
+    /// Gets round-robin standings from completed weeks, ordered by tiebreaker ranking.
     /// </summary>
     public async Task<List<RoundRobinStandingsEntry>> GetRoundRobinStandingsForDisplayAsync(int seasonId)
     {
-        var data = await GetRoundRobinWinsAndH2HAsync(seasonId);
         var teams = await _teamRepository.GetBySeasonAsync(seasonId);
+        var matchups = await _roundRobinMatchupRepository.GetBySeasonIdForCompletedWeeksAsync(seasonId);
+        var matches = await _matchRepository.GetBySeasonIdForCompletedWeeksAsync(seasonId);
         var conferences = await _conferenceRepository.GetBySeasonAsync(seasonId);
         var conferenceById = conferences.ToDictionary(c => c.Id);
-        var ranking = _tiebreakerService.RankTeams(teams, data);
 
-        var entriesByTeamId = teams
-            .Select(t => new RoundRobinStandingsEntry
+        var result = _tiebreakerService.RankTeams(teams, matchups, matches);
+
+        var entriesByTeamId = teams.ToDictionary(t => t.Id, t =>
+        {
+            var stats = result.StatsByTeamId.GetValueOrDefault(t.Id);
+            return new RoundRobinStandingsEntry
             {
                 TeamId = t.Id,
                 TeamName = t.Name,
                 ConferenceName = conferenceById.TryGetValue(t.ConferenceId, out var conf) ? conf.Name : "",
-                Tiebreaker = ranking.TiebreakerByTeamId.GetValueOrDefault(t.Id, 0),
-                Wins = data.WinsByTeamId.GetValueOrDefault(t.Id, 0),
-                Losses = data.LossesByTeamId.GetValueOrDefault(t.Id, 0)
-            })
-            .ToDictionary(entry => entry.TeamId);
+                Tiebreaker = result.TiebreakerByTeamId.GetValueOrDefault(t.Id, 0),
+                Wins = stats?.Wins ?? 0,
+                Losses = stats?.Losses ?? 0,
+                SeriesDiff = stats?.SeriesDiff ?? 0,
+                GameDiff = stats?.GameDiff ?? 0,
+                SeriesPct = stats?.SeriesPct ?? 0,
+                GamePct = stats?.GamePct ?? 0,
+                SOS = stats?.SOS
+            };
+        });
 
-        return ranking.OrderedTeams
+        return result.OrderedTeams
             .Where(team => entriesByTeamId.ContainsKey(team.Id))
             .Select(team => entriesByTeamId[team.Id])
             .ToList();
@@ -88,14 +99,13 @@ public class TeamStandingsService
             return new BaseResult(false, "Cannot generate or regenerate standings: playoff matchups already exist for this season.");
         }
 
-        var data = await GetRoundRobinWinsAndH2HAsync(seasonId);
-        var winsByTeamId = data.WinsByTeamId;
         var teams = await _teamRepository.GetBySeasonAsync(seasonId);
-        var ranking = _tiebreakerService.RankTeams(teams, data);
-        var allTiebreakers = ranking.TiebreakerByTeamId;
+        var matchups = await _roundRobinMatchupRepository.GetBySeasonIdForCompletedWeeksAsync(seasonId);
+        var matches = await _matchRepository.GetBySeasonIdForCompletedWeeksAsync(seasonId);
 
-        // Global order already from RankTeams (tiebreaker desc, then TeamId); assign Seed 1..N for every team.
-        var orderedTeams = ranking.OrderedTeams;
+        var result = _tiebreakerService.RankTeams(teams, matchups, matches);
+        var orderedTeams = result.OrderedTeams;
+        var allTiebreakers = result.TiebreakerByTeamId;
 
         await _teamStandingsRepository.DeleteBySeasonIdAsync(seasonId);
 
@@ -103,7 +113,7 @@ public class TeamStandingsService
         for (var i = 0; i < orderedTeams.Count; i++)
         {
             var team = orderedTeams[i];
-            var wins = winsByTeamId.GetValueOrDefault(team.Id, 0);
+            var wins = result.StatsByTeamId.GetValueOrDefault(team.Id)?.Wins ?? 0;
             standings.Add(new TeamStandings
             {
                 SeasonId = seasonId,
@@ -119,46 +129,7 @@ public class TeamStandingsService
 
         return new BaseResult(true, $"Generated standings for {standings.Count} team(s).");
     }
-    /// <summary>
-    /// Single source for round-robin wins (and h2h) from completed weeks. Uses GetBySeasonIdForCompletedWeeksAsync once.
-    /// </summary>
-    private async Task<RoundRobinWinsAndH2H> GetRoundRobinWinsAndH2HAsync(int seasonId)
-    {
-        var matchups = await _roundRobinMatchupRepository.GetBySeasonIdForCompletedWeeksAsync(seasonId);
-        var teams = await _teamRepository.GetBySeasonAsync(seasonId);
-        var winsByTeamId = new Dictionary<int, int>();
-        foreach (var t in teams)
-            winsByTeamId[t.Id] = 0;
 
-        foreach (var m in matchups)
-        {
-            if (!m.TeamWinnerId.HasValue)
-                continue;
-            if (m.MatchupType == MatchupType.Bye)
-                winsByTeamId[m.TeamWinnerId.Value] = winsByTeamId.GetValueOrDefault(m.TeamWinnerId.Value, 0) + 1;
-            else
-            {
-                winsByTeamId[m.TeamWinnerId.Value] = winsByTeamId.GetValueOrDefault(m.TeamWinnerId.Value, 0) + 1;
-                var loserId = m.Team1Id == m.TeamWinnerId.Value ? m.Team2Id : m.Team1Id;
-                winsByTeamId[loserId] = winsByTeamId.GetValueOrDefault(loserId, 0); // ensure key exists (losses not stored here)
-            }
-        }
-
-        var h2hByTeamId = new Dictionary<int, int>();
-        foreach (var t in teams)
-            h2hByTeamId[t.Id] = 0;
-
-        var lossesByTeamId = new Dictionary<int, int>();
-        foreach (var t in teams)
-            lossesByTeamId[t.Id] = 0;
-        foreach (var m in matchups.Where(m => m.TeamWinnerId.HasValue && m.MatchupType != MatchupType.Bye))
-        {
-            var loserId = m.Team1Id == m.TeamWinnerId!.Value ? m.Team2Id : m.Team1Id;
-            lossesByTeamId[loserId] = lossesByTeamId.GetValueOrDefault(loserId, 0) + 1;
-        }
-
-        return new RoundRobinWinsAndH2H(winsByTeamId, lossesByTeamId, h2hByTeamId, matchups);
-    }
     /// <summary>
     /// Returns standings for the season (for display). Only valid when season is in Playoffs.
     /// </summary>

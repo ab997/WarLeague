@@ -14,6 +14,17 @@ public class MatchRepository
         _context = context;
     }
 
+    /// <summary>
+    /// Gets all matches for completed weeks in the given season (for tiebreaker series/game aggregates).
+    /// </summary>
+    public async Task<List<Match>> GetBySeasonIdForCompletedWeeksAsync(int seasonId)
+    {
+        return await _context.Matches
+            .Include(m => m.Week)
+            .Where(m => m.Week.SeasonId == seasonId && m.Week.Status == WeekStatus.Completed)
+            .OrderBy(m => m.Week.WeekNumber)
+            .ToListAsync();
+    }
 
     public async Task<List<Match>> GetByWeekIdAsync(int weekId)
     {
