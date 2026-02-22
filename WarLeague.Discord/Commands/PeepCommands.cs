@@ -7,6 +7,7 @@ using WarLeague.Data.Entities;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Model;
 using WarLeague.Core.Services;
+using WarLeague.Discord.Autocomplete;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 using WarLeague.Discord.Helpers;
@@ -28,10 +29,8 @@ namespace WarLeague.Discord.Commands
         private readonly MatchRepository _matchRepository;
         private readonly DiscordPlayerService _playerService;
         private readonly DiscordApiHelperService _helperService;
-        private readonly StandingsService _standingsService;
+        private readonly TeamStandingsService _teamStandingsService;
         private readonly PlayoffBracketService _bracketService;
-        private readonly ConferenceService _conferenceService;
-        private readonly WeekService _weekService;
 
         public PeepCommands(
             SeasonRepository seasonRepository,
@@ -42,10 +41,8 @@ namespace WarLeague.Discord.Commands
             DiscordPlayerService playerService,
             DiscordApiHelperService helperService,
             FormatRepository formatRepository,
-            StandingsService standingsService,
-            PlayoffBracketService bracketService,
-            ConferenceService conferenceService,
-            WeekService weekService)
+            TeamStandingsService teamStandingsService,
+            PlayoffBracketService bracketService)
         {
             _seasonRepository = seasonRepository;
             _weekRepository = weekRepository;
@@ -55,10 +52,8 @@ namespace WarLeague.Discord.Commands
             _playerService = playerService;
             _helperService = helperService;
             _formatRepository = formatRepository;
-            _standingsService = standingsService;
+            _teamStandingsService = teamStandingsService;
             _bracketService = bracketService;
-            _conferenceService = conferenceService;
-            _weekService = weekService;
         }
 
         [SlashCommand("format-info", "Shows information about the current format and its seasons")]
@@ -186,7 +181,7 @@ namespace WarLeague.Discord.Commands
             await DeferAsync(ephemeral: false);
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-            var entries = await _standingsService.GetRoundRobinStandingsAsync(season.Id);
+            var entries = await _teamStandingsService.GetRoundRobinStandingsForDisplayAsync(season.Id);
 
             if (entries.Count == 0)
             {
@@ -222,7 +217,7 @@ namespace WarLeague.Discord.Commands
                 {
                     foreach (var group in byConference)
                     {
-                        var list = group.OrderByDescending(e => e.Wins).ThenBy(e => e.Losses).ThenBy(e => e.TeamId).ToList();
+                        var list = group.ToList();
                         var body = FormatStandingsTable(list);
                         var eb = new EmbedBuilder()
                             .WithTitle($"Standings — {group.Key}")
@@ -297,47 +292,6 @@ namespace WarLeague.Discord.Commands
             await _helperService.SendEmbedsInBatchesAsync(Context, embeds);
         }
 
-        [SlashCommand("conference-list", "Lists conferences in the active season")]
-        [RequireAppPermission(PermissionType.Admin)]
-        [EnsureChannelIsInFormatCategory]
-        [EnsureSingleActiveSeason]
-        public async Task ConferenceListAsync()
-        {
-            await DeferAsync(ephemeral: false);
-
-            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-            BaseResult result = await _conferenceService.ListAsync(season.Id);
-            await FollowupAsync(ResultHelper.Stringify(result));
-        }
-
-        [SlashCommand("week-list", "Lists all weeks of the active season with status and dates")]
-        [RequireAppPermission(PermissionType.Admin)]
-        [EnsureChannelIsInFormatCategory]
-        [EnsureSingleActiveSeason]
-        public async Task WeekListAsync()
-        {
-            await DeferAsync(ephemeral: false);
-
-            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-            var weeks = await _weekService.GetWeeksBySeasonAsync(season.Id);
-            var phaseText = season.Phase == SeasonPhase.Playoffs ? "Playoffs" : "Round Robin";
-
-            if (weeks.Count == 0)
-            {
-                await FollowupAsync($"Season {season.SeasonNumber} ({phaseText}): no weeks yet.");
-                return;
-            }
-
-            static string Fmt(DateTime? d) => d.HasValue ? d.Value.ToString("MM-dd") : "—";
-            var lines = weeks
-                .OrderBy(w => w.WeekNumber)
-                .Select(w => $"W{w.WeekNumber}: {w.Status} ({Fmt(w.StartDate)}→{Fmt(w.EndDate)})")
-                .ToList();
-
-            var message = $"Season {season.SeasonNumber} • {phaseText}\n**Weeks:**\n" + string.Join("\n", lines);
-            await FollowupAsync(message);
-        }
-
         [SlashCommand("week-results", "Shows played and pending matches for the current week")]
         [EnsureChannelIsInFormatCategory]
         [EnsureSingleActiveSeason]
@@ -392,7 +346,7 @@ namespace WarLeague.Discord.Commands
         [EnsureChannelIsInFormatCategory]
         [EnsureSingleActiveSeason]
         public async Task WeekAsync(
-            [Summary("week-number", "Week number")] int weekNumber)
+            [Summary("week-number", "Week number")][Autocomplete(typeof(WeekNumberAutocompleteHandler))] int weekNumber)
         {
             await DeferAsync(ephemeral: false);
 
@@ -446,7 +400,7 @@ namespace WarLeague.Discord.Commands
         [EnsureChannelIsInFormatCategory]
         [EnsureSingleActiveSeason]
         public async Task TeamAsync(
-            [Summary("team-name", "Name of the team")] string teamName)
+            [Summary("team-name", "Name of the team")][Autocomplete(typeof(TeamAutocompleteHandler))] string teamName)
         {
             await DeferAsync(ephemeral: false);
 
@@ -763,7 +717,7 @@ namespace WarLeague.Discord.Commands
             var lines = entries.Select((e, i) =>
             {
                 var rank = (i + 1).ToString();
-                return $"{rank}. **{e.TeamName}** — {e.Wins}–{e.Losses}";
+                return $"{rank}. **{e.TeamName}** — {e.Wins}–{e.Losses} (TB: {e.Tiebreaker})";
             });
             return string.Join("\n", lines);
         }

@@ -10,6 +10,7 @@ using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
 
+using WarLeague.Discord.Autocomplete;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 using static WarLeague.Discord.Helpers.ResultHelper;
@@ -26,22 +27,19 @@ namespace WarLeague.Discord.Commands
     {
         private readonly WeekService _weekService;
         private readonly DiscordApiHelperService _helperService;
-        private readonly MatchService _matchService;
         private readonly MatchupServiceFactory _matchupServiceFactory;
 
         public WeekCommands(
             DiscordApiHelperService helperService,
             WeekService weekService,
-            MatchService matchService,
             MatchupServiceFactory matchupServiceFactory)
         {
             _helperService = helperService;
             _weekService = weekService;
-            _matchService = matchService;
             _matchupServiceFactory = matchupServiceFactory;
         }
         [SlashCommand("create", "1 -> Creates a week (Status: null -> NotOpenYet)")]
-        public async Task Create(int weekNumber,
+        public async Task Create( int weekNumber,
             [Summary("submissions-required", "Number of submissions (players per team) required for the week")] int submissionsRequired,
             [Summary("start-date", "Start date (YYYY-MM-DD)")] string? startDateStr = null,
             [Summary("end-date", "End date (YYYY-MM-DD)")] string? endDateStr = null,
@@ -78,7 +76,7 @@ namespace WarLeague.Discord.Commands
         }
 
         [SlashCommand("delete", "Deletes a week")]
-        public async Task DeleteAsync(int weekNumber)
+        public async Task DeleteAsync([Autocomplete(typeof(WeekNumberAutocompleteHandler))] int weekNumber)
         {
             await DeferAsync(ephemeral: false);
 
@@ -92,7 +90,7 @@ namespace WarLeague.Discord.Commands
 
 
         [SlashCommand("open", "2 -> Opens the current week by allowing deck submissions (Status: NotOpenYet -> Open)")]
-        public async Task OpenAsync(int weekNumber)
+        public async Task OpenAsync([Autocomplete(typeof(WeekNumberAutocompleteHandler))] int weekNumber)
         {
             await DeferAsync(ephemeral: false);
 
@@ -212,7 +210,7 @@ namespace WarLeague.Discord.Commands
         }
 
         [SlashCommand("update", "Updates a week")]
-        public async Task Update(int weekNumber,
+        public async Task Update([Autocomplete(typeof(WeekNumberAutocompleteHandler))] int weekNumber,
            [Summary("submissions-required", "Number of submissions (players per team) required for the week")] int? submissionsRequired = null,
            [Summary("start-date", "Start date (YYYY-MM-DD)")] string? startDateStr = null,
            [Summary("end-date", "End date (YYYY-MM-DD)")] string? endDateStr = null,
@@ -271,8 +269,30 @@ namespace WarLeague.Discord.Commands
             }
         }
 
+        [SlashCommand("list", "Lists all weeks of the active season with status and dates")]
+        public async Task ListAsync()
+        {
+            await DeferAsync(ephemeral: false);
 
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+            var weeks = await _weekService.GetWeeksBySeasonAsync(season.Id);
+            var phaseText = season.Phase == SeasonPhase.Playoffs ? "Playoffs" : "Round Robin";
 
+            if (weeks.Count == 0)
+            {
+                await FollowupAsync($"Season {season.SeasonNumber} ({phaseText}): no weeks yet.");
+                return;
+            }
+
+            static string Fmt(DateTime? d) => d.HasValue ? d.Value.ToString("MM-dd") : "—";
+            var lines = weeks
+                .OrderBy(w => w.WeekNumber)
+                .Select(w => $"W{w.WeekNumber}: {w.Status} ({Fmt(w.StartDate)}→{Fmt(w.EndDate)})")
+                .ToList();
+
+            var message = $"Season {season.SeasonNumber} • {phaseText}\n**Weeks:**\n" + string.Join("\n", lines);
+            await FollowupAsync(message);
+        }
 
         private static List<Embed> BuildPairingsEmbeds(
             Season season,

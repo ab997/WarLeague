@@ -33,6 +33,17 @@ public class FormatRepository
             .ToListAsync();
     }
 
+    /// <summary>
+    /// Format names for the guild, optionally filtered by name prefix (case-insensitive), for autocomplete.
+    /// </summary>
+    public async Task<List<Format>> GetByNamePrefixAsync(string? prefix, int limit)
+    {
+        var query = _context.Formats.Where(f => f.GuildId == _guildContextService.GuildId);
+        if (!string.IsNullOrWhiteSpace(prefix))
+            query = query.Where(f => f.Name.StartsWith(prefix));
+        return await query.OrderBy(f => f.Name).Take(limit).ToListAsync();
+    }
+
     public async Task<Format> AddAsync(Format format)
     {
         format.GuildId = _guildContextService.GuildId;

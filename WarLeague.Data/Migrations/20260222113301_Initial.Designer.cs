@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WarLeague.Data;
 
@@ -11,9 +12,11 @@ using WarLeague.Data;
 namespace WarLeague.Data.Migrations
 {
     [DbContext(typeof(WarLeagueDbContext))]
-    partial class WarLeagueDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260222113301_Initial")]
+    partial class Initial
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -142,9 +145,6 @@ namespace WarLeague.Data.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("SeasonId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Seed")
                         .HasColumnType("int");
 
                     b.Property<int>("TeamId")
@@ -605,7 +605,7 @@ namespace WarLeague.Data.Migrations
             modelBuilder.Entity("WarLeague.Data.Entities.DeckSubmission", b =>
                 {
                     b.HasOne("WarLeague.Data.Entities.Player", "Player")
-                        .WithMany("DeckSubmissions")
+                        .WithMany()
                         .HasForeignKey("PlayerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -725,7 +725,7 @@ namespace WarLeague.Data.Migrations
                         .IsRequired();
 
                     b.HasOne("WarLeague.Data.Entities.Conference", "Conference")
-                        .WithMany("Teams")
+                        .WithMany()
                         .HasForeignKey("ConferenceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -754,11 +754,6 @@ namespace WarLeague.Data.Migrations
                     b.Navigation("Season");
                 });
 
-            modelBuilder.Entity("WarLeague.Data.Entities.Conference", b =>
-                {
-                    b.Navigation("Teams");
-                });
-
             modelBuilder.Entity("WarLeague.Data.Entities.Format", b =>
                 {
                     b.Navigation("Seasons");
@@ -766,8 +761,6 @@ namespace WarLeague.Data.Migrations
 
             modelBuilder.Entity("WarLeague.Data.Entities.Player", b =>
                 {
-                    b.Navigation("DeckSubmissions");
-
                     b.Navigation("PlayerSeasonTeams");
                 });
 
