@@ -269,8 +269,30 @@ namespace WarLeague.Discord.Commands
             }
         }
 
+        [SlashCommand("list", "Lists all weeks of the active season with status and dates")]
+        public async Task ListAsync()
+        {
+            await DeferAsync(ephemeral: false);
 
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+            var weeks = await _weekService.GetWeeksBySeasonAsync(season.Id);
+            var phaseText = season.Phase == SeasonPhase.Playoffs ? "Playoffs" : "Round Robin";
 
+            if (weeks.Count == 0)
+            {
+                await FollowupAsync($"Season {season.SeasonNumber} ({phaseText}): no weeks yet.");
+                return;
+            }
+
+            static string Fmt(DateTime? d) => d.HasValue ? d.Value.ToString("MM-dd") : "—";
+            var lines = weeks
+                .OrderBy(w => w.WeekNumber)
+                .Select(w => $"W{w.WeekNumber}: {w.Status} ({Fmt(w.StartDate)}→{Fmt(w.EndDate)})")
+                .ToList();
+
+            var message = $"Season {season.SeasonNumber} • {phaseText}\n**Weeks:**\n" + string.Join("\n", lines);
+            await FollowupAsync(message);
+        }
 
         private static List<Embed> BuildPairingsEmbeds(
             Season season,

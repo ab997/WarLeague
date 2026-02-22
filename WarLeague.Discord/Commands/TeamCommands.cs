@@ -550,6 +550,26 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         await FollowupAsync($"Team color updated to {hexCode}.");
     }
 
+    [SlashCommand("list", "Lists teams in the active season")]
+    public async Task ListAsync()
+    {
+        await DeferAsync(ephemeral: false);
+
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+        var teams = await _teamRepository.GetBySeasonAsync(season.Id);
+
+        if (teams.Count == 0)
+        {
+            await FollowupAsync("No teams in the active season.");
+            return;
+        }
+
+        var lines = teams
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(t => $"• **{t.Name}**" + (string.IsNullOrEmpty(t.Conference?.Name) ? "" : $" — {t.Conference.Name}"));
+        await FollowupAsync($"**Season {season.SeasonNumber} — Teams:**\n" + string.Join("\n", lines));
+    }
+
     private static Color? TryParseHexColor(string hexCode)
     {
         string hexInput = hexCode.StartsWith('#') ? hexCode[1..] : hexCode;
