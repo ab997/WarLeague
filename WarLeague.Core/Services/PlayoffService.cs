@@ -137,36 +137,58 @@ namespace WarLeague.Core.Services
 
         /// <summary>
         /// Returns first-round playoff matchups and the list of teams that qualified for playoffs.
-        /// Reads from TeamStandings (populated at phase switch / by standings generate).
+        /// Derives playoff qualifiers from global standings + conferences (top N per conference by Seed).
+        /// First-round seeding order is by global Seed (asc).
         /// </summary>
         private async Task<(List<(Team a, Team b)> matchups, List<Team> playoffTeams)> GetFirstPlayoffWeekMatchupsAndPlayoffTeamsAsync(Season season, IReadOnlyList<Team> teams)
         {
             var standings = await _teamStandingsRepository.GetBySeasonIdWithoutTeamAsync(season.Id);
-            if (standings.Count < 2)
-            {
-                var playoffTeams = new List<Team>();
-                if (standings.Count == 1)
-                {
-                    var team = teams.FirstOrDefault(t => t.Id == standings[0].TeamId);
-                    if (team != null)
-                        playoffTeams.Add(team);
-                }
-                return (new List<(Team, Team)>(), playoffTeams);
-            }
-
-            var teamById = teams.ToDictionary(t => t.Id);
-            var seededTeams = new List<Team>();
-            foreach (var s in standings)
-            {
-                if (teamById.TryGetValue(s.TeamId, out var team))
-                    seededTeams.Add(team);
-            }
+            var conferences = await _conferenceRepository.GetBySeasonAsync(season.Id);
+            var seededTeams = GetPlayoffQualifiersFromStandings(standings, teams, conferences);
 
             if (seededTeams.Count < 2)
                 return (new List<(Team, Team)>(), seededTeams);
 
             var matchups = GenerateBracketMatchups(seededTeams, round: 1);
             return (matchups, seededTeams);
+        }
+
+        /// <summary>
+        /// Derives playoff qualifiers from global standings: for each conference with PlayoffTeamsCount > 0,
+        /// takes top N teams by Seed (asc); returns combined list ordered by global Seed (asc) for bracket seeding.
+        /// </summary>
+        private static List<Team> GetPlayoffQualifiersFromStandings(
+            IReadOnlyList<TeamStandings> standings,
+            IReadOnlyList<Team> teams,
+            IReadOnlyList<Conference> conferences)
+        {
+            var standingByTeamId = standings.ToDictionary(s => s.TeamId);
+            var playoffTeams = new List<Team>();
+
+            foreach (var conference in conferences.Where(c => c.PlayoffTeamsCount > 0))
+            {
+                var conferenceQualifiers = teams
+                    .Where(t => t.ConferenceId == conference.Id && standingByTeamId.ContainsKey(t.Id))
+                    .OrderBy(t => standingByTeamId[t.Id].Seed)
+                    .Take(conference.PlayoffTeamsCount)
+                    .ToList();
+                playoffTeams.AddRange(conferenceQualifiers);
+            }
+
+            return playoffTeams.OrderBy(t => standingByTeamId[t.Id].Seed).ToList();
+        }
+
+        /// <summary>
+        /// Returns the set of team IDs that qualify for playoffs (top N per conference by Seed from global standings).
+        /// Used by TeamStandingsService to allow tiebreaker edits only for playoff qualifiers.
+        /// </summary>
+        public async Task<IReadOnlySet<int>> GetPlayoffQualifierTeamIdsAsync(int seasonId)
+        {
+            var standings = await _teamStandingsRepository.GetBySeasonIdWithoutTeamAsync(seasonId);
+            var teams = await _teamRepository.GetBySeasonAsync(seasonId);
+            var conferences = await _conferenceRepository.GetBySeasonAsync(seasonId);
+            var qualifiers = GetPlayoffQualifiersFromStandings(standings, teams, conferences);
+            return qualifiers.Select(t => t.Id).ToHashSet();
         }
 
         /// <summary>

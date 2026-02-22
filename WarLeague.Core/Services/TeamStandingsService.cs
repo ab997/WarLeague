@@ -17,6 +17,7 @@ public class TeamStandingsService
     private readonly TeamRepository _teamRepository;
     private readonly PlayoffMatchupRepository _playoffMatchupRepository;
     private readonly SeasonRepository _seasonRepository;
+    private readonly PlayoffService _playoffService;
 
     public TeamStandingsService(
         TiebreakerService tiebreakerService,
@@ -26,7 +27,8 @@ public class TeamStandingsService
         ConferenceRepository conferenceRepository,
         TeamRepository teamRepository,
         PlayoffMatchupRepository playoffMatchupRepository,
-        SeasonRepository seasonRepository)
+        SeasonRepository seasonRepository,
+        PlayoffService playoffService)
     {
         _tiebreakerService = tiebreakerService;
         _teamStandingsRepository = teamStandingsRepository;
@@ -36,6 +38,7 @@ public class TeamStandingsService
         _teamRepository = teamRepository;
         _playoffMatchupRepository = playoffMatchupRepository;
         _seasonRepository = seasonRepository;
+        _playoffService = playoffService;
     }
 
     /// <summary>
@@ -69,8 +72,7 @@ public class TeamStandingsService
 
     /// <summary>
     /// Generates TeamStandings from round-robin results: computes wins per team,
-    /// ranks each conference by centralized tiebreaker, takes top N by PlayoffTeamsCount,
-    /// then stores those tiebreaker values in TeamStandings.
+    /// ranks all teams globally by centralized tiebreaker, and stores one row per team (Seed = global rank 1..N).
     /// Overwrites any existing standings for the season.
     /// </summary>
     public async Task<BaseResult> GenerateStandingsFromRoundRobinAsync(int seasonId)
@@ -89,38 +91,25 @@ public class TeamStandingsService
         var data = await GetRoundRobinWinsAndH2HAsync(seasonId);
         var winsByTeamId = data.WinsByTeamId;
         var teams = await _teamRepository.GetBySeasonAsync(seasonId);
-        var conferences = await _conferenceRepository.GetBySeasonAsync(seasonId);
-        var allTiebreakers = _tiebreakerService.RankTeams(teams, data).TiebreakerByTeamId;
-        var playoffTeams = new List<Team>();
+        var ranking = _tiebreakerService.RankTeams(teams, data);
+        var allTiebreakers = ranking.TiebreakerByTeamId;
 
-        foreach (var conference in conferences.Where(c => c.PlayoffTeamsCount > 0))
-        {
-            var conferenceTeams = teams.Where(t => t.ConferenceId == conference.Id).ToList();
-            var conferenceRanking = _tiebreakerService.RankTeams(conferenceTeams, data);
-            var seeded = conferenceRanking.OrderedTeams
-                .Take(conference.PlayoffTeamsCount)
-                .ToList();
-            playoffTeams.AddRange(seeded);
-        }
-
-        // Global seed order uses centralized tiebreaker values.
-        var seededOrder = playoffTeams
-            .OrderByDescending(t => allTiebreakers.GetValueOrDefault(t.Id, 0))
-            .ThenBy(t => t.Id)
-            .ToList();
+        // Global order already from RankTeams (tiebreaker desc, then TeamId); assign Seed 1..N for every team.
+        var orderedTeams = ranking.OrderedTeams;
 
         await _teamStandingsRepository.DeleteBySeasonIdAsync(seasonId);
 
         var standings = new List<TeamStandings>();
-        for (var i = 0; i < seededOrder.Count; i++)
+        for (var i = 0; i < orderedTeams.Count; i++)
         {
-            var team = seededOrder[i];
+            var team = orderedTeams[i];
             var wins = winsByTeamId.GetValueOrDefault(team.Id, 0);
             standings.Add(new TeamStandings
             {
                 SeasonId = seasonId,
                 TeamId = team.Id,
                 Tiebreaker = allTiebreakers.GetValueOrDefault(team.Id, 0),
+                Seed = i + 1,
                 Wins = wins
             });
         }
@@ -128,7 +117,7 @@ public class TeamStandingsService
         if (standings.Count > 0)
             await _teamStandingsRepository.AddRangeAsync(standings);
 
-        return new BaseResult(true, $"Generated standings for {standings.Count} playoff team(s).");
+        return new BaseResult(true, $"Generated standings for {standings.Count} team(s).");
     }
     /// <summary>
     /// Single source for round-robin wins (and h2h) from completed weeks. Uses GetBySeasonIdForCompletedWeeksAsync once.
@@ -196,11 +185,22 @@ public class TeamStandingsService
         if (!canEdit)
             return new BaseResult(false, "Standings cannot be edited: season must be in Playoffs phase and no playoff matchups may exist yet.");
 
-        var entry = await _teamStandingsRepository.GetBySeasonIdAndTeamIdAsync(seasonId, teamId);
+        var standings = await _teamStandingsRepository.GetBySeasonIdWithoutTeamAsync(seasonId);
+        var entry = standings.FirstOrDefault(s => s.TeamId == teamId);
         if (entry == null)
-            return new BaseResult(false, "Team is not in playoff standings.");
+            return new BaseResult(false, "Team is not in standings.");
+
+        var playoffQualifierIds = await _playoffService.GetPlayoffQualifierTeamIdsAsync(seasonId);
+        if (!playoffQualifierIds.Contains(teamId))
+            return new BaseResult(false, "Team is not a playoff qualifier.");
+
         entry.Tiebreaker = tiebreaker;
-        await _teamStandingsRepository.UpdateAsync(entry);
+
+        // Re-sort all standings by tiebreaker order and reassign Seed 1..N so global order stays consistent.
+        var sorted = standings.OrderByDescending(s => s.Tiebreaker).ThenBy(s => s.TeamId).ToList();
+        for (var i = 0; i < sorted.Count; i++)
+            sorted[i].Seed = i + 1;
+        await _teamStandingsRepository.UpdateRangeAsync(sorted);
         return new BaseResult(true, "Tiebreaker updated.");
     }
 }

@@ -19,22 +19,23 @@ public partial class Specifications
 
         // Act: already done in helper (SetPhaseToPlayoffsAsync), which calls GenerateStandingsFromRoundRobinAsync
 
-        // Assert: standings exist and have one row per playoff team (4 teams, 2 per conference with PlayoffTeamsCount 1 each = 2 total, or default is 1 per conference in CreateSeasonWithTwoConferencesAndSubmissions)
+        // Assert: standings exist and have one row per team (4 teams total in CreateSeasonWithTwoConferencesAndSubmissions)
         var standings = await _teamStandingsService.GetStandingsForSeasonAsync(seasonId);
         standings.ShouldNotBeEmpty();
-        standings.Count.ShouldBeGreaterThanOrEqualTo(2);
-        standings.ShouldAllBe(s => s.Tiebreaker >= 0);
+        standings.Count.ShouldBe(4);
+        for (var i = 0; i < standings.Count; i++)
+            standings[i].Seed.ShouldBe(i + 1);
     }
 
     [Fact]
     [Trait("Category", "TeamStandings")]
     public async Task WhenUpdatingTiebreaker_ThenFirstPlayoffWeekReflectsNewOrder()
     {
-        // Arrange: playoffs phase with 4 playoff teams, no playoff week opened yet
+        // Arrange: playoffs phase with 8 teams (4 per conference), 2 playoff qualifiers per conference = 4 total, no playoff week opened yet
         var (seasonId, week2, teams) = await GetSeasonWeekAndTeamsForPlayoffsFirstWeekWithConferencePlayoffCountAsync(
             teamsPerConference: 4, playoffTeamsPerConference: 2, playersPerTeam: 2);
         var standings = await _teamStandingsService.GetStandingsForSeasonAsync(seasonId);
-        standings.Count.ShouldBe(4);
+        standings.Count.ShouldBe(8);
         var firstTeamId = standings[0].TeamId;
         var secondTeamId = standings[1].TeamId;
         var team1 = teams.First(t => t.Id == firstTeamId);
@@ -112,23 +113,25 @@ public partial class Specifications
         var (seasonId, week2, teams) = await GetSeasonFourTeamsThreePlayoffSlotsTiebreakerScenarioAsync(playersPerTeam: 2);
         var allTeamIds = teams.Select(t => t.Id).ToHashSet();
 
-        // Assert: standings (from phase switch) have exactly 3 teams
+        // Assert: standings are global (all 4 teams); playoff qualifiers = 3 (top N per conference)
         var standings = await _teamStandingsService.GetStandingsForSeasonAsync(seasonId);
-        standings.Count.ShouldBe(3);
-        var playoffTeamIds = standings.Select(s => s.TeamId).ToHashSet();
+        standings.Count.ShouldBe(4);
+        var (_, playoffTeams, _) = await _playoffService.GetFirstPlayoffWeekMatchupsAndQualifiersAsync(seasonId);
+        playoffTeams.Count.ShouldBe(3);
+        var playoffTeamIds = playoffTeams.Select(t => t.Id).ToHashSet();
         var excludedTeamId = allTeamIds.Single(id => !playoffTeamIds.Contains(id));
-        var lastPlayoffSpotTeamId = standings[2].TeamId;
+        var lastPlayoffSpotTeamId = playoffTeams[2].Id;
         // Among the two tied (0-win) teams, the one with better tiebreaker (lower Id) must have made it
         lastPlayoffSpotTeamId.ShouldBeLessThan(excludedTeamId,
             "The team that got the last playoff spot (position 3) must have better tiebreaker (lower Team.Id) than the excluded tied team.");
 
-        // Act: proceed to playoffs (open first playoff week so bracket is built from standings)
+        // Act: proceed to playoffs (open first playoff week so bracket is built from qualifiers)
         var openResult = await _weekService.TransitionToOpenWeekAsync(seasonId, week2.WeekNumber);
 
         // Assert: opening week succeeds; the team that made it is still the one with better tiebreaker
         openResult.Success.ShouldBeTrue();
-        var standingsAfter = await _teamStandingsService.GetStandingsForSeasonAsync(seasonId);
-        standingsAfter[2].TeamId.ShouldBe(lastPlayoffSpotTeamId,
+        var (_, playoffTeamsAfter, _) = await _playoffService.GetFirstPlayoffWeekMatchupsAndQualifiersAsync(seasonId);
+        playoffTeamsAfter[2].Id.ShouldBe(lastPlayoffSpotTeamId,
             "Among the two tied teams, the one with better tiebreakers must have made it to playoffs.");
     }
 
