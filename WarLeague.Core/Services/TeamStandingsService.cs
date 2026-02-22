@@ -1,6 +1,7 @@
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Data.Data.Entities;
+using WarLeague.Data.Data.Enums;
 using WarLeague.Data.Entities;
 using WarLeague.Data.Enums;
 
@@ -46,6 +47,72 @@ public class TeamStandingsService
     }
 
     /// <summary>
+    /// Single source for round-robin wins (and h2h) from completed weeks. Uses GetBySeasonIdForCompletedWeeksAsync once.
+    /// </summary>
+    public async Task<RoundRobinWinsAndH2H> GetRoundRobinWinsAndH2HAsync(int seasonId)
+    {
+        var matchups = await _roundRobinMatchupRepository.GetBySeasonIdForCompletedWeeksAsync(seasonId);
+        var teams = await _teamRepository.GetBySeasonAsync(seasonId);
+        var winsByTeamId = new Dictionary<int, int>();
+        foreach (var t in teams)
+            winsByTeamId[t.Id] = 0;
+
+        foreach (var m in matchups)
+        {
+            if (!m.TeamWinnerId.HasValue)
+                continue;
+            if (m.MatchupType == MatchupType.Bye)
+                winsByTeamId[m.TeamWinnerId.Value] = winsByTeamId.GetValueOrDefault(m.TeamWinnerId.Value, 0) + 1;
+            else
+            {
+                winsByTeamId[m.TeamWinnerId.Value] = winsByTeamId.GetValueOrDefault(m.TeamWinnerId.Value, 0) + 1;
+                var loserId = m.Team1Id == m.TeamWinnerId.Value ? m.Team2Id : m.Team1Id;
+                winsByTeamId[loserId] = winsByTeamId.GetValueOrDefault(loserId, 0); // ensure key exists (losses not stored here)
+            }
+        }
+
+        var h2hByTeamId = new Dictionary<int, int>();
+        foreach (var t in teams)
+            h2hByTeamId[t.Id] = 0;
+
+        return new RoundRobinWinsAndH2H(winsByTeamId, h2hByTeamId, matchups);
+    }
+
+    /// <summary>
+    /// Gets round-robin standings (W-L per team) from completed weeks. Tiebreaker: wins desc, losses asc, then TeamId.
+    /// </summary>
+    public async Task<List<RoundRobinStandingsEntry>> GetRoundRobinStandingsAsync(int seasonId)
+    {
+        var data = await GetRoundRobinWinsAndH2HAsync(seasonId);
+        var teams = await _teamRepository.GetBySeasonAsync(seasonId);
+        var conferences = await _conferenceRepository.GetBySeasonAsync(seasonId);
+        var conferenceById = conferences.ToDictionary(c => c.Id);
+
+        var losses = new Dictionary<int, int>();
+        foreach (var t in teams)
+            losses[t.Id] = 0;
+        foreach (var m in data.Matchups.Where(m => m.TeamWinnerId.HasValue && m.MatchupType != MatchupType.Bye))
+        {
+            var loserId = m.Team1Id == m.TeamWinnerId!.Value ? m.Team2Id : m.Team1Id;
+            losses[loserId] = losses.GetValueOrDefault(loserId, 0) + 1;
+        }
+
+        return teams
+            .Select(t => new RoundRobinStandingsEntry
+            {
+                TeamId = t.Id,
+                TeamName = t.Name,
+                ConferenceName = conferenceById.TryGetValue(t.ConferenceId, out var conf) ? conf.Name : "",
+                Wins = data.WinsByTeamId.GetValueOrDefault(t.Id, 0),
+                Losses = losses.GetValueOrDefault(t.Id, 0)
+            })
+            .OrderByDescending(e => e.Wins)
+            .ThenBy(e => e.Losses)
+            .ThenBy(e => e.TeamId)
+            .ToList();
+    }
+
+    /// <summary>
     /// Generates TeamStandings from round-robin results: computes wins per team,
     /// takes top N per conference by PlayoffTeamsCount, then assigns Seed 1..N and Tiebreaker.
     /// Overwrites any existing standings for the season.
@@ -63,25 +130,9 @@ public class TeamStandingsService
             return new BaseResult(false, "Cannot generate or regenerate standings: playoff matchups already exist for this season.");
         }
 
+        var data = await GetRoundRobinWinsAndH2HAsync(seasonId);
+        var winsByTeamId = data.WinsByTeamId;
         var teams = await _teamRepository.GetBySeasonAsync(seasonId);
-        var completedWeeks = (await _weekRepository.GetBySeasonAsync(seasonId))
-            .Where(w => w.Status == WeekStatus.Completed)
-            .OrderBy(w => w.WeekNumber)
-            .ToList();
-
-        var winsByTeamId = new Dictionary<int, int>();
-        foreach (var t in teams)
-            winsByTeamId[t.Id] = 0;
-
-        foreach (var week in completedWeeks)
-        {
-            var matchups = await _roundRobinMatchupRepository.GetByWeekIdAsync(week.Id);
-            foreach (var m in matchups.Where(m => m.TeamWinnerId.HasValue))
-            {
-                winsByTeamId[m.TeamWinnerId!.Value] = winsByTeamId.GetValueOrDefault(m.TeamWinnerId.Value, 0) + 1;
-            }
-        }
-
         var conferences = await _conferenceRepository.GetBySeasonAsync(seasonId);
         var playoffTeams = new List<Team>();
 

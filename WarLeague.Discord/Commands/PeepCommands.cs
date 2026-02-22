@@ -29,7 +29,7 @@ namespace WarLeague.Discord.Commands
         private readonly MatchRepository _matchRepository;
         private readonly DiscordPlayerService _playerService;
         private readonly DiscordApiHelperService _helperService;
-        private readonly StandingsService _standingsService;
+        private readonly TeamStandingsService _teamStandingsService;
         private readonly PlayoffBracketService _bracketService;
         private readonly ConferenceService _conferenceService;
         private readonly WeekService _weekService;
@@ -43,7 +43,7 @@ namespace WarLeague.Discord.Commands
             DiscordPlayerService playerService,
             DiscordApiHelperService helperService,
             FormatRepository formatRepository,
-            StandingsService standingsService,
+            TeamStandingsService teamStandingsService,
             PlayoffBracketService bracketService,
             ConferenceService conferenceService,
             WeekService weekService)
@@ -56,7 +56,7 @@ namespace WarLeague.Discord.Commands
             _playerService = playerService;
             _helperService = helperService;
             _formatRepository = formatRepository;
-            _standingsService = standingsService;
+            _teamStandingsService = teamStandingsService;
             _bracketService = bracketService;
             _conferenceService = conferenceService;
             _weekService = weekService;
@@ -187,7 +187,7 @@ namespace WarLeague.Discord.Commands
             await DeferAsync(ephemeral: false);
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-            var entries = await _standingsService.GetRoundRobinStandingsAsync(season.Id);
+            var entries = await _teamStandingsService.GetRoundRobinStandingsAsync(season.Id);
 
             if (entries.Count == 0)
             {

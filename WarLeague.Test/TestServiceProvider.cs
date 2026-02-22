@@ -46,7 +46,6 @@ public static class TestServiceProvider
         services.AddScoped<DeckSubmissionService>();
         services.AddScoped<SubstitutionService>();
         services.AddScoped<ConferenceService>();
-        services.AddScoped<StandingsService>();
         services.AddScoped<TeamStandingsService>();
 
         services.AddScoped<GuildContextService>();
