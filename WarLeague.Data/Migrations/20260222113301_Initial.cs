@@ -374,6 +374,34 @@ namespace WarLeague.Data.Migrations
                         onDelete: ReferentialAction.Restrict);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "TeamStandings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    SeasonId = table.Column<int>(type: "int", nullable: false),
+                    TeamId = table.Column<int>(type: "int", nullable: false),
+                    Tiebreaker = table.Column<int>(type: "int", nullable: false),
+                    Wins = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TeamStandings", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_TeamStandings_Seasons_SeasonId",
+                        column: x => x.SeasonId,
+                        principalTable: "Seasons",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_TeamStandings_Teams_TeamId",
+                        column: x => x.TeamId,
+                        principalTable: "Teams",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_Conferences_SeasonId_Name",
                 table: "Conferences",
@@ -559,6 +587,17 @@ namespace WarLeague.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_TeamStandings_SeasonId_TeamId",
+                table: "TeamStandings",
+                columns: new[] { "SeasonId", "TeamId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TeamStandings_TeamId",
+                table: "TeamStandings",
+                column: "TeamId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Weeks_SeasonId_Status",
                 table: "Weeks",
                 columns: new[] { "SeasonId", "Status" },
@@ -594,10 +633,13 @@ namespace WarLeague.Data.Migrations
                 name: "RoundRobinMatchups");
 
             migrationBuilder.DropTable(
-                name: "Teams");
+                name: "TeamStandings");
 
             migrationBuilder.DropTable(
                 name: "Weeks");
+
+            migrationBuilder.DropTable(
+                name: "Teams");
 
             migrationBuilder.DropTable(
                 name: "Conferences");

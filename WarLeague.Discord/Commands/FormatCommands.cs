@@ -5,6 +5,7 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using System.Text.Json;
 using WarLeague.Core.Model;
+using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
 using WarLeague.Data.Data.Enums;
 using WarLeague.Discord.Autocomplete;
@@ -20,10 +21,13 @@ namespace WarLeague.Discord.Commands
     public class FormatCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly FormatService _formatService;
+        private readonly FormatRepository _formatRepository;
         private readonly HttpClient _httpClient;
-        public FormatCommands(FormatService service, HttpClient httpClient)
+
+        public FormatCommands(FormatService service, FormatRepository formatRepository, HttpClient httpClient)
         {
             _formatService = service;
+            _formatRepository = formatRepository;
             _httpClient = httpClient;
         }
         [SlashCommand("create", "Creates a new format")]
@@ -119,6 +123,24 @@ namespace WarLeague.Discord.Commands
 
             BaseResult result = await _formatService.UpdateFormatRulesAsync(formatName, json);
             await FollowupAsync(ResultHelper.Stringify(result));
+        }
+
+        [SlashCommand("list", "Lists all formats")]
+        public async Task ListAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            var formats = await _formatRepository.GetAllAsync();
+            if (formats.Count == 0)
+            {
+                await FollowupAsync("No formats found.");
+                return;
+            }
+
+            var lines = formats
+                .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(f => $"• **{f.Name}**");
+            await FollowupAsync("**Formats:**\n" + string.Join("\n", lines));
         }
 
         private async Task<string> CreateFormatCategoryAndChannelAsync(string formatName, SocketGuild guild)

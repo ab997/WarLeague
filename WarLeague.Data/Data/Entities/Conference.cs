@@ -7,4 +7,5 @@ public class Conference
     public Season Season { get; set; } = null!;
     public string Name { get; set; } = string.Empty;
     public int PlayoffTeamsCount { get; set; } = 0;
+    public IEnumerable<Team> Teams { get; set; } = null!;
 }

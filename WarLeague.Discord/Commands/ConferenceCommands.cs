@@ -66,4 +66,14 @@ public class ConferenceCommands : InteractionModuleBase<SocketInteractionContext
 
         await FollowupAsync(ResultHelper.Stringify(result));
     }
+
+    [SlashCommand("list", "Lists conferences in the active season")]
+    public async Task ListAsync()
+    {
+        await DeferAsync(ephemeral: false);
+
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+        BaseResult result = await _conferenceService.ListAsync(season.Id);
+        await FollowupAsync(ResultHelper.Stringify(result));
+    }
 }

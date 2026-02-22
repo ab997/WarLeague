@@ -12,8 +12,8 @@ using WarLeague.Data;
 namespace WarLeague.Data.Migrations
 {
     [DbContext(typeof(WarLeagueDbContext))]
-    [Migration("20260218192540_Initial")]
-    partial class Initial
+    [Migration("20260222125140_AddTeamStandingsSeed")]
+    partial class AddTeamStandingsSeed
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -134,6 +134,39 @@ namespace WarLeague.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("RoundRobinMatchups");
+                });
+
+            modelBuilder.Entity("WarLeague.Data.Data.Entities.TeamStandings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("SeasonId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Seed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TeamId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Tiebreaker")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Wins")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeamId");
+
+                    b.HasIndex("SeasonId", "TeamId")
+                        .IsUnique();
+
+                    b.ToTable("TeamStandings");
                 });
 
             modelBuilder.Entity("WarLeague.Data.Entities.Conference", b =>
@@ -542,6 +575,25 @@ namespace WarLeague.Data.Migrations
                     b.Navigation("Week");
                 });
 
+            modelBuilder.Entity("WarLeague.Data.Data.Entities.TeamStandings", b =>
+                {
+                    b.HasOne("WarLeague.Data.Entities.Season", "Season")
+                        .WithMany()
+                        .HasForeignKey("SeasonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarLeague.Data.Entities.Team", "Team")
+                        .WithMany()
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Season");
+
+                    b.Navigation("Team");
+                });
+
             modelBuilder.Entity("WarLeague.Data.Entities.Conference", b =>
                 {
                     b.HasOne("WarLeague.Data.Entities.Season", "Season")
@@ -556,7 +608,7 @@ namespace WarLeague.Data.Migrations
             modelBuilder.Entity("WarLeague.Data.Entities.DeckSubmission", b =>
                 {
                     b.HasOne("WarLeague.Data.Entities.Player", "Player")
-                        .WithMany()
+                        .WithMany("DeckSubmissions")
                         .HasForeignKey("PlayerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -676,7 +728,7 @@ namespace WarLeague.Data.Migrations
                         .IsRequired();
 
                     b.HasOne("WarLeague.Data.Entities.Conference", "Conference")
-                        .WithMany()
+                        .WithMany("Teams")
                         .HasForeignKey("ConferenceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -705,6 +757,11 @@ namespace WarLeague.Data.Migrations
                     b.Navigation("Season");
                 });
 
+            modelBuilder.Entity("WarLeague.Data.Entities.Conference", b =>
+                {
+                    b.Navigation("Teams");
+                });
+
             modelBuilder.Entity("WarLeague.Data.Entities.Format", b =>
                 {
                     b.Navigation("Seasons");
@@ -712,6 +769,8 @@ namespace WarLeague.Data.Migrations
 
             modelBuilder.Entity("WarLeague.Data.Entities.Player", b =>
                 {
+                    b.Navigation("DeckSubmissions");
+
                     b.Navigation("PlayerSeasonTeams");
                 });
 
