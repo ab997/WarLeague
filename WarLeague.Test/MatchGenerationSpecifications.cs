@@ -427,17 +427,17 @@ namespace WarLeague.Test
 
         [Fact]
         [Trait("Category", "MatchGeneration")]
-        public async Task WhenReportingLoss_WithInvalidReplayUrl_ThenReturnsFail()
+        public async Task WhenReportingWin_WithInvalidReplayUrl_ThenReturnsFail()
         {
-            // Arrange: generate pairings via MatchService, set week InProgress so ReportLossAsync can find it
+            // Arrange: generate pairings via MatchService, set week InProgress so ReportWinAsync can find it
             var (seasonId, week, teams) = await GetSeasonWeekAndTeamsForPairingsAsync(teamCount: 2, playersPerTeam: 2);
             var pairResult = await _matchService.GeneratePairingsAsync(seasonId, week, teams);
             pairResult.Success.ShouldBeTrue();
             await SetWeekStatusInProgress(seasonId, 1);
-            var loserId = pairResult.CreatedMatches!.First().Player1Id;
+            var winnerId = pairResult.CreatedMatches!.First().Player2Id;
 
             // Act
-            var result = await _matchService.ReportLossAsync(seasonId, loserId, "not-a-valid-url");
+            var result = await _matchService.ReportWinAsync(seasonId, winnerId, "not-a-valid-url");
 
             // Assert
             result.Success.ShouldBeFalse();
@@ -487,7 +487,7 @@ namespace WarLeague.Test
 
         [Fact]
         [Trait("Category", "MatchGeneration")]
-        public async Task WhenReportingLoss_ThenMatchMovesToReportedAndWinnerSet()
+        public async Task WhenReportingWin_ThenMatchMovesToReportedAndWinnerSet()
         {
             // Arrange
             var (seasonId, week, teams) = await GetSeasonWeekAndTeamsForPairingsAsync(teamCount: 2, playersPerTeam: 2);
@@ -495,11 +495,10 @@ namespace WarLeague.Test
             pairResult.Success.ShouldBeTrue();
             await SetWeekStatusInProgress(seasonId, 1);
             var match = pairResult.CreatedMatches!.First();
-            var loserId = match.Player1Id;
             var winnerId = match.Player2Id;
 
             // Act
-            var result = await _matchService.ReportLossAsync(seasonId, loserId, "https://example.com/replay");
+            var result = await _matchService.ReportWinAsync(seasonId, winnerId, "https://example.com/replay");
 
             // Assert
             result.Success.ShouldBeTrue();

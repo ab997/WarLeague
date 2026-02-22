@@ -86,8 +86,9 @@ public class MatchCommands : InteractionModuleBase<SocketInteractionContext>
                 var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : $"<@{m.Player1.DiscordUserId}>";
                 var p2 = m.Player2 is null ? $"P#{m.Player2Id}" : $"<@{m.Player2.DiscordUserId}>";
                 var win = m.Winner is null ? "<unknown>" : $"<@{m.Winner.DiscordUserId}>";
+                var score = m.Player1Wins.HasValue && m.Player2Wins.HasValue ? $" {m.Player1Wins}-{m.Player2Wins} " : " ";
                 var replay = string.IsNullOrWhiteSpace(m.ReplayUrl) ? "" : $" | Replay: {m.ReplayUrl}";
-                sb.AppendLine($"- {p1} vs {p2} → Winner: {win}{replay}");
+                sb.AppendLine($"- {p1} vs {p2} →{score}Winner: {win}{replay}");
             }
         }
 
