@@ -138,6 +138,7 @@ namespace WarLeague.Core.Services
         /// <summary>
         /// Returns first-round playoff matchups and the list of teams that qualified for playoffs.
         /// Reads from TeamStandings (populated at phase switch / by standings generate).
+        /// First-round seeding is determined by TeamStandings.Seed (repository returns ordered by Seed).
         /// </summary>
         private async Task<(List<(Team a, Team b)> matchups, List<Team> playoffTeams)> GetFirstPlayoffWeekMatchupsAndPlayoffTeamsAsync(Season season, IReadOnlyList<Team> teams)
         {

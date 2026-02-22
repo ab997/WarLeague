@@ -24,6 +24,8 @@ public partial class Specifications
         standings.ShouldNotBeEmpty();
         standings.Count.ShouldBeGreaterThanOrEqualTo(2);
         standings.ShouldAllBe(s => s.Tiebreaker >= 0);
+        for (var i = 0; i < standings.Count; i++)
+            standings[i].Seed.ShouldBe(i + 1);
     }
 
     [Fact]

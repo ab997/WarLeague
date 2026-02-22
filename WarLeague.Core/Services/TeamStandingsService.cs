@@ -121,6 +121,7 @@ public class TeamStandingsService
                 SeasonId = seasonId,
                 TeamId = team.Id,
                 Tiebreaker = allTiebreakers.GetValueOrDefault(team.Id, 0),
+                Seed = i + 1,
                 Wins = wins
             });
         }
@@ -196,11 +197,17 @@ public class TeamStandingsService
         if (!canEdit)
             return new BaseResult(false, "Standings cannot be edited: season must be in Playoffs phase and no playoff matchups may exist yet.");
 
-        var entry = await _teamStandingsRepository.GetBySeasonIdAndTeamIdAsync(seasonId, teamId);
+        var standings = await _teamStandingsRepository.GetBySeasonIdWithoutTeamAsync(seasonId);
+        var entry = standings.FirstOrDefault(s => s.TeamId == teamId);
         if (entry == null)
             return new BaseResult(false, "Team is not in playoff standings.");
         entry.Tiebreaker = tiebreaker;
-        await _teamStandingsRepository.UpdateAsync(entry);
+
+        // Re-sort by tiebreaker order and reassign Seed so seed always equals tiebreaker-ordered standing.
+        var sorted = standings.OrderByDescending(s => s.Tiebreaker).ThenBy(s => s.TeamId).ToList();
+        for (var i = 0; i < sorted.Count; i++)
+            sorted[i].Seed = i + 1;
+        await _teamStandingsRepository.UpdateRangeAsync(sorted);
         return new BaseResult(true, "Tiebreaker updated.");
     }
 }
