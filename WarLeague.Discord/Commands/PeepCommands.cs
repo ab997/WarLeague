@@ -31,8 +31,6 @@ namespace WarLeague.Discord.Commands
         private readonly DiscordApiHelperService _helperService;
         private readonly TeamStandingsService _teamStandingsService;
         private readonly PlayoffBracketService _bracketService;
-        private readonly ConferenceService _conferenceService;
-        private readonly WeekService _weekService;
 
         public PeepCommands(
             SeasonRepository seasonRepository,
@@ -44,9 +42,7 @@ namespace WarLeague.Discord.Commands
             DiscordApiHelperService helperService,
             FormatRepository formatRepository,
             TeamStandingsService teamStandingsService,
-            PlayoffBracketService bracketService,
-            ConferenceService conferenceService,
-            WeekService weekService)
+            PlayoffBracketService bracketService)
         {
             _seasonRepository = seasonRepository;
             _weekRepository = weekRepository;
@@ -58,8 +54,6 @@ namespace WarLeague.Discord.Commands
             _formatRepository = formatRepository;
             _teamStandingsService = teamStandingsService;
             _bracketService = bracketService;
-            _conferenceService = conferenceService;
-            _weekService = weekService;
         }
 
         [SlashCommand("format-info", "Shows information about the current format and its seasons")]
@@ -296,47 +290,6 @@ namespace WarLeague.Discord.Commands
             }
 
             await _helperService.SendEmbedsInBatchesAsync(Context, embeds);
-        }
-
-        [SlashCommand("conference-list", "Lists conferences in the active season")]
-        [RequireAppPermission(PermissionType.Admin)]
-        [EnsureChannelIsInFormatCategory]
-        [EnsureSingleActiveSeason]
-        public async Task ConferenceListAsync()
-        {
-            await DeferAsync(ephemeral: false);
-
-            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-            BaseResult result = await _conferenceService.ListAsync(season.Id);
-            await FollowupAsync(ResultHelper.Stringify(result));
-        }
-
-        [SlashCommand("week-list", "Lists all weeks of the active season with status and dates")]
-        [RequireAppPermission(PermissionType.Admin)]
-        [EnsureChannelIsInFormatCategory]
-        [EnsureSingleActiveSeason]
-        public async Task WeekListAsync()
-        {
-            await DeferAsync(ephemeral: false);
-
-            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-            var weeks = await _weekService.GetWeeksBySeasonAsync(season.Id);
-            var phaseText = season.Phase == SeasonPhase.Playoffs ? "Playoffs" : "Round Robin";
-
-            if (weeks.Count == 0)
-            {
-                await FollowupAsync($"Season {season.SeasonNumber} ({phaseText}): no weeks yet.");
-                return;
-            }
-
-            static string Fmt(DateTime? d) => d.HasValue ? d.Value.ToString("MM-dd") : "—";
-            var lines = weeks
-                .OrderBy(w => w.WeekNumber)
-                .Select(w => $"W{w.WeekNumber}: {w.Status} ({Fmt(w.StartDate)}→{Fmt(w.EndDate)})")
-                .ToList();
-
-            var message = $"Season {season.SeasonNumber} • {phaseText}\n**Weeks:**\n" + string.Join("\n", lines);
-            await FollowupAsync(message);
         }
 
         [SlashCommand("week-results", "Shows played and pending matches for the current week")]

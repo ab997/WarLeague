@@ -2,7 +2,9 @@
 
 using Discord.Interactions;
 using WarLeague.Data.Entities;
+using WarLeague.Data.Enums;
 using WarLeague.Core.Model;
+using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
 using WarLeague.Discord.Helpers;
 using WarLeague.Discord.Autocomplete;
@@ -19,10 +21,13 @@ namespace WarLeague.Discord.Commands
     public class SeasonCommands : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly SeasonService _seasonService;
+        private readonly SeasonRepository _seasonRepository;
         private readonly DiscordApiHelperService _helperService;
-        public SeasonCommands(SeasonService seasonService, DiscordApiHelperService helperService)
+
+        public SeasonCommands(SeasonService seasonService, SeasonRepository seasonRepository, DiscordApiHelperService helperService)
         {
             _seasonService = seasonService;
+            _seasonRepository = seasonRepository;
             _helperService = helperService;
         }
         [SlashCommand("create", "Creates a new season")]
@@ -86,6 +91,31 @@ namespace WarLeague.Discord.Commands
             BaseResult result = await _seasonService.SetPhaseToPlayoffsAsync(season.Id);
 
             await FollowupAsync(ResultHelper.Stringify(result));
+        }
+
+        [SlashCommand("list", "Lists seasons in the current format")]
+        public async Task ListAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            Format format = await _helperService.GetFormatByCategoryNameAsync(Context);
+            var seasons = await _seasonRepository.GetAllByFormatAsync(format.Id);
+
+            if (seasons.Count == 0)
+            {
+                await FollowupAsync($"Format **{format.Name}**: no seasons yet.");
+                return;
+            }
+
+            var lines = seasons
+                .OrderBy(s => s.SeasonNumber)
+                .Select(s =>
+                {
+                    var phaseText = s.Phase == SeasonPhase.Playoffs ? "Playoffs" : "Round Robin";
+                    var activeText = s.Active ? " • Active" : "";
+                    return $"• Season **{s.SeasonNumber}**{activeText} — {phaseText}";
+                });
+            await FollowupAsync($"**Format: {format.Name}**\n**Seasons:**\n" + string.Join("\n", lines));
         }
     }
 }
