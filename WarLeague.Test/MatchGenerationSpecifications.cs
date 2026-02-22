@@ -173,7 +173,7 @@ namespace WarLeague.Test
         {
             // Arrange: season in Playoffs phase, week 1 completed with round-robin winners, week 2 is first playoff week
             var (seasonId, week2, teams) = await GetSeasonWeekAndTeamsForPlayoffsFirstWeekAsync(teamsPerConference: 2, playersPerTeam: 2);
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
             season.Phase.ShouldBe(SeasonPhase.Playoffs);
             teams.Count.ShouldBe(4);
 
@@ -225,6 +225,26 @@ namespace WarLeague.Test
             var normalMatchups = playoffMatchups.Where(pm => pm.MatchupType == MatchupType.Normal).ToList();
             normalMatchups.Count.ShouldBe(1);
             playoffMatchups.Count(pm => pm.MatchupType == MatchupType.Bye).ShouldBe(3);
+        }
+
+        [Fact]
+        [Trait("Category", "MatchGeneration")]
+        public async Task WhenPlayoffsWithTwoConferencesAndThreePlayoffTeamsPerConference_AfterOneRoundRobinWeek_ThenSixTeamsInPlayoffBrackets()
+        {
+            // Arrange: 8 teams, 2 conferences (4 per conference), PlayoffTeamsCount = 3 each, 1 week round robin, phase switched to Playoffs
+            var (seasonId, week2, teams) = await GetSeasonWeekAndTeamsForPlayoffsFirstWeekWithConferencePlayoffCountAsync(teamsPerConference: 4, playoffTeamsPerConference: 3, playersPerTeam: 2);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
+            season.Phase.ShouldBe(SeasonPhase.Playoffs);
+            teams.Count.ShouldBe(8);
+
+            // Act: create playoff brackets for first playoff week
+            var result = await _matchService.EnsureTeamMatchupsForWeekAsync(seasonId, week2, teams);
+
+            // Assert: 6 teams in playoffs (3 per conference)
+            result.Success.ShouldBeTrue();
+            var teamIdPairs = await _context.PlayoffMatchups.Where(pm => pm.WeekId == week2.Id).Select(pm => new { pm.Team1Id, pm.Team2Id }).ToListAsync();
+            var playoffTeamCount = teamIdPairs.SelectMany(p => new[] { p.Team1Id, p.Team2Id }).Distinct().Count();
+            playoffTeamCount.ShouldBe(6);
         }
 
         [Fact]

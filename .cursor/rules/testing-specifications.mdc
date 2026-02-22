@@ -1,0 +1,64 @@
+---
+description: Behavior testing and specification practices for WarLeague.Test
+globs: WarLeague.Test/**/*.cs
+alwaysApply: false
+---
+
+# Testing & Specification Practices
+
+When writing or editing tests in `WarLeague.Test`, follow these practices.
+
+## Behavior testing via services only
+
+- **Do not** use `_context` or repositories directly in test bodies (Arrange/Act/Assert).
+- **Do** call services (e.g. `_teamService`, `_seasonService`) and use helpers from `Specifications.cs` (e.g. `CreateFormatAndSeason()`, `CreatePlayer()`, `CreateTeam()`, `EnsureConferenceAsync()`, `AddPlayerToTeam()`, `CreateTeamWithPlayer()`, `CreateTwoPlayersOnSameTeam()`).
+- DbContext/repositories are only for DB lifecycle and for **private helpers** inside `Specifications.cs`; tests themselves stay at the service level.
+
+## AAA and naming
+
+- Use **Arrange–Act–Assert**: comment or structure as `// Arrange`, `// Act`, `// Assert`.
+- Name tests **WhenX_ThenY** (e.g. `WhenTeamModificationsDisabled_ThenCantCreateTeam`, `WhenDeletingTeamWithExistingMatchups_ThenReturnsFail`).
+- Use `[Fact]` and `[Trait("Category", "CategoryName")]` (e.g. `"Team"`, `"Season"`).
+
+## Assertions
+
+- Use **Shouldly**: `result.Success.ShouldBeTrue()`, `result.Success.ShouldBeFalse()`, `result.Message.ShouldContain("expected text")`.
+
+## Reuse scenario helpers; avoid long Arrange blocks
+
+- **Before** writing a long inline Arrange (many lines of CreateFormatAndSeason, CreateTeam, CreateWeek, etc.), **check** whether `Specifications.cs` already has a scenario helper that builds the same situation (e.g. `CreateTwoPlayersWithMatchesScenario()`, `CreateSubstitutionScenario()`, `CreateSeasonWithTeamsAndSubmissions()`).
+- **Prefer** calling one existing helper and destructuring what you need (e.g. `var (seasonId, teamName, _, _) = await CreateTwoPlayersWithMatchesScenario();`) over duplicating the same setup in the test.
+- If no helper exists, add a **private** helper in `Specifications.cs` (in the appropriate region) and use it from the test so the test stays short and readable.
+
+## Structure of specification files
+
+- New spec groups live in **partial class** files (e.g. `TeamSpecifications.cs`) that extend the shared `Specifications` partial class.
+- Each file typically has a short doc comment stating it covers a given service in AAA style and does not use the DB directly in test bodies.
+- Group tests by region (e.g. `#region Team modifications disabled`, `#region Create team`).
+
+## Example (good)
+
+```csharp
+[Fact]
+[Trait("Category", "Team")]
+public async Task WhenDeletingTeamWithExistingMatchups_ThenReturnsFail()
+{
+    // Arrange: season with teams and matches (Team1 has matchups vs OpponentTeam)
+    var (seasonId, teamName, _, _) = await CreateTwoPlayersWithMatchesScenario();
+
+    // Act
+    var result = await _teamService.DeleteAsync(seasonId, teamName);
+
+    // Assert
+    result.Success.ShouldBeFalse();
+    result.Message.ShouldContain("cannot be deleted");
+    result.Message.ShouldContain("matches");
+}
+```
+
+## Example (avoid)
+
+- Long Arrange that recreates what a helper already does.
+- Using `_context` or `_teamRepository` (etc.) directly inside a test method.
+- Test names that don’t follow WhenX_ThenY.
+- Asserting only `Success` when the message is relevant; prefer `result.Message.ShouldContain(...)` for failure cases.

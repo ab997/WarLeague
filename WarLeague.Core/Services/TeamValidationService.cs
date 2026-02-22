@@ -19,7 +19,7 @@ public class TeamValidationService
 
     public async Task<BaseResult> ValidateAllTeamsInSeasonAsync(int seasonId)
     {
-        var season = await _seasonRepository.GetById(seasonId);
+        var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
         var teams = await _teamRepository.GetBySeasonAsync(seasonId);
 

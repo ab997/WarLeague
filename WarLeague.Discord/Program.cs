@@ -44,6 +44,7 @@ builder.Services.AddScoped<PlayerRepository>();
 builder.Services.AddScoped<MatchRepository>();
 builder.Services.AddScoped<RoundRobinMatchupRepository>();
 builder.Services.AddScoped<PlayoffMatchupRepository>();
+builder.Services.AddScoped<TeamStandingsRepository>();
 builder.Services.AddScoped<WeekRepository>();
 builder.Services.AddScoped<DeckSubmissionRepository>();
 builder.Services.AddScoped<FormatRepository>();
@@ -70,7 +71,8 @@ builder.Services.AddScoped<TeamValidationService>();
 builder.Services.AddScoped<RoundRobinService>();
 builder.Services.AddScoped<PlayoffService>();
 builder.Services.AddScoped<MatchupServiceFactory>();
-builder.Services.AddScoped<StandingsService>();
+builder.Services.AddScoped<TiebreakerService>();
+builder.Services.AddScoped<TeamStandingsService>();
 builder.Services.AddScoped<PlayoffBracketService>();
 
 
@@ -85,8 +87,7 @@ var discordClient = new DiscordSocketClient(new DiscordSocketConfig
     AlwaysDownloadUsers = true
 });
 
-// we disable auto service scope create so that we can create our own scope and set GuildId in GuildContextService before executing command
-var interactionService = new InteractionService(discordClient, new InteractionServiceConfig { AutoServiceScopes = false });
+var interactionService = new InteractionService(discordClient);
 builder.Services.AddSingleton(discordClient);
 builder.Services.AddSingleton(interactionService);
 

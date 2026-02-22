@@ -65,4 +65,15 @@ public class TeamRepository
             .Where(t => t.SeasonId == id)
             .ToListAsync();
     }
+
+    /// <summary>
+    /// Teams for a season, optionally filtered by name prefix (case-insensitive), for autocomplete.
+    /// </summary>
+    public async Task<List<Team>> GetBySeasonAndNamePrefixAsync(int seasonId, string? prefix, int limit)
+    {
+        var query = _context.Teams.Where(t => t.SeasonId == seasonId);
+        if (!string.IsNullOrWhiteSpace(prefix))
+            query = query.Where(t => t.Name.StartsWith(prefix));
+        return await query.OrderBy(t => t.Name).Take(limit).ToListAsync();
+    }
 }

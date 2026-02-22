@@ -67,10 +67,10 @@ namespace WarLeague.Core.Repositories
               .SingleAsync(s => s.Active);
         }
 
-        public async Task<Season> GetById(int seasonId)
+        public async Task<Season> GetSingleActiveSeasonByIdAsync(int seasonId)
         {
             return await _context.Seasons
-                .SingleAsync(s => s.Id == seasonId);
+                .SingleAsync(s => s.Id == seasonId && s.Active);
         }
     }
 }

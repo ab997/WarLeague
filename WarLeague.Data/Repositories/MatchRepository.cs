@@ -57,4 +57,13 @@ public class MatchRepository
             .ToList();
         return candidateMatches;
     }
+
+    /// <summary>
+    /// Returns true if any match references the given team (Team1Id, Team2Id, or WinnerTeamId).
+    /// </summary>
+    public async Task<bool> AnyMatchReferencesTeamAsync(int teamId)
+    {
+        return await _context.Matches
+            .AnyAsync(m => m.Team1Id == teamId || m.Team2Id == teamId || m.WinnerTeamId == teamId);
+    }
 }

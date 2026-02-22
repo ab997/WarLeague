@@ -38,7 +38,7 @@ namespace WarLeague.Core.Services
             }
 
             // Validate submissionsRequired against season minimum
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             if (submissionsRequired > season.MinimumTeamMembers)
             {
@@ -97,7 +97,7 @@ namespace WarLeague.Core.Services
             }
 
             // Get the season to check team modification status
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             // Update week status to Open
             BaseResult updateResult = await UpdateAsync(seasonId, weekNumber, null, null, null, WeekStatus.Open, null);
@@ -158,7 +158,7 @@ namespace WarLeague.Core.Services
             // Validate submissionsRequired against season minimum if being updated
             if (submissionsRequired.HasValue)
             {
-                var season = await _seasonRepository.GetById(seasonId);
+                var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
                 if (submissionsRequired.Value > season.MinimumTeamMembers)
                 {
@@ -215,7 +215,7 @@ namespace WarLeague.Core.Services
             }
 
             // Phase-agnostic: only require submissions from teams that participate this week (delegated to matchup service)
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             var matchupService = _matchupServiceFactory.GetMatchupService(season);
             var requiredTeamIds = await matchupService.GetTeamIdsRequiredForSubmissionsAsync(teams, openWeek.WeekNumber);
@@ -291,7 +291,7 @@ namespace WarLeague.Core.Services
             }
 
             // Get season to determine which matchup service to use
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             var matchupService = _matchupServiceFactory.GetMatchupService(season);
             BaseResult updateWinnersResult = await matchupService.UpdateMatchupWinnersForWeekAsync(activeWeek, matches);
@@ -399,7 +399,7 @@ namespace WarLeague.Core.Services
         /// </summary>
         public async Task<BaseResult> GenerateRoundRobinScheduleAsync(int seasonId, int numberOfWeeks)
         {
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
             if (season.Phase != SeasonPhase.RoundRobin)
                 return new BaseResult(false, "Season is not in Round Robin phase. This command is only for round-robin seasons.");
 

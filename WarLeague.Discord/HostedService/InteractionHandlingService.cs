@@ -1,4 +1,4 @@
-﻿using Discord;
+using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
@@ -57,16 +57,13 @@ namespace WarLeague.Discord.HostedService
         private async Task OnInteractionAsync(SocketInteraction interaction)
         {
 #pragma warning disable CS8602 // Dereference of a possibly null reference.
-            var commandOptions = (interaction as SocketSlashCommand).Data.Options
-              .Select(o => new
-              {
-                  Name = o.Name,
-                  Type = o.Type.ToString(),
-                  Value = o.Value
-              });
+            var commandName = interaction is SocketSlashCommand slashCmd ? slashCmd.CommandName : interaction.Type.ToString();
+            object commandOptions = interaction is SocketSlashCommand slash
+                ? slash.Data.Options.Select(o => new { Name = o.Name, Type = o.Type.ToString(), Value = o.Value })
+                : Enumerable.Empty<object>();
             using (LogContext.PushProperty("ChannelName", interaction.Channel.Name))
             using (LogContext.PushProperty("InteractionType", interaction.Type.ToString()))
-            using (LogContext.PushProperty("CommandName", (interaction as SocketSlashCommand).CommandName))
+            using (LogContext.PushProperty("CommandName", commandName))
             using (LogContext.PushProperty("Username", interaction.User.Username))
             using (LogContext.PushProperty("CommandOptions", commandOptions))
             {
@@ -75,7 +72,7 @@ namespace WarLeague.Discord.HostedService
                     var context = new SocketInteractionContext(_discord, interaction);
 
                     _logger.LogInformation($"Interaction received: Username: {interaction.User.Username} ChannelName: {interaction.Channel.Name} " +
-                        $"CommandName: {(interaction as SocketSlashCommand).CommandName}");
+                        $"CommandName: {commandName}");
 
                     var result = await _interactions.ExecuteCommandAsync(context, _services);
 

@@ -1,5 +1,4 @@
 
-using Microsoft.SqlServer.Server;
 using WarLeague.Data.Entities;
 using WarLeague.Data.Enums;
 using WarLeague.Core.Model;
@@ -15,15 +14,17 @@ namespace WarLeague.Core.Services
         private readonly ConferenceRepository _conferenceRepository;
         private readonly WeekRepository _weekRepository;
         private readonly PlayoffService _playoffService;
+        private readonly TeamStandingsService _teamStandingsService;
         private readonly WarLeagueDbContext _context;
 
-        public SeasonService(SeasonRepository seasonRepository, FormatRepository formatRepository, ConferenceRepository conferenceRepository, WeekRepository weekRepository, PlayoffService playoffService, WarLeagueDbContext context)
+        public SeasonService(SeasonRepository seasonRepository, FormatRepository formatRepository, ConferenceRepository conferenceRepository, WeekRepository weekRepository, PlayoffService playoffService, TeamStandingsService teamStandingsService, WarLeagueDbContext context)
         {
             _seasonRepository = seasonRepository;
             _formatRepository = formatRepository;
             _conferenceRepository = conferenceRepository;
             _weekRepository = weekRepository;
             _playoffService = playoffService;
+            _teamStandingsService = teamStandingsService;
             _context = context;
         }
 
@@ -87,7 +88,7 @@ namespace WarLeague.Core.Services
 
         public async Task<SeasonResult> SetTeamModificationsAsync(int seasonId, bool enabled) 
         {
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
             season.DisableTeamModification = !enabled;
 
             await _seasonRepository.UpdateAsync(season);
@@ -98,7 +99,7 @@ namespace WarLeague.Core.Services
         {
             //TODO: transaction
             using var transaction = await _context.Database.BeginTransactionAsync();
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             if (season.Phase == SeasonPhase.Playoffs)
             {
@@ -129,6 +130,12 @@ namespace WarLeague.Core.Services
 
             season.Phase = SeasonPhase.Playoffs;
             await _seasonRepository.UpdateAsync(season);
+
+            var generateResult = await _teamStandingsService.GenerateStandingsFromRoundRobinAsync(seasonId);
+            if (!generateResult.Success)
+            {
+                return generateResult;
+            }
 
             var (_, playoffTeams, nonPlayoffTeams) = await _playoffService.GetFirstPlayoffWeekMatchupsAndQualifiersAsync(seasonId);
             var playoffNames = playoffTeams.Count > 0 ? string.Join(", ", playoffTeams.Select(t => t.Name)) : "(none)";

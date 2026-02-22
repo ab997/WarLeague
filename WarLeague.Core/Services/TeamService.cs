@@ -18,7 +18,9 @@ namespace WarLeague.Core.Services
         private readonly SeasonRepository _seasonRepository;
         private readonly PlayerRepository _playerRepository;
         private readonly ConferenceRepository _conferenceRepository;
-        public TeamService(WarLeagueDbContext context, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, SeasonRepository seasonRepository, PlayerRepository playerRepository, ConferenceRepository conferenceRepository)
+        private readonly MatchRepository _matchRepository;
+
+        public TeamService(WarLeagueDbContext context, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, SeasonRepository seasonRepository, PlayerRepository playerRepository, ConferenceRepository conferenceRepository, MatchRepository matchRepository)
         {
             _context = context;
             _teamRepository = teamRepository;
@@ -26,13 +28,14 @@ namespace WarLeague.Core.Services
             _seasonRepository = seasonRepository;
             _playerRepository = playerRepository;
             _conferenceRepository = conferenceRepository;
+            _matchRepository = matchRepository;
         }
 
         public async Task<BaseResult> CreateAsync(int seasonId, string teamName, int captainId, string conferenceName, bool canBypassTeamModificationCheck, ulong? discordRoleId = null)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
 
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -100,12 +103,18 @@ namespace WarLeague.Core.Services
                 return new BaseResult(false, $"Team with name '{teamName}' not found.");
             }
 
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             // no bypass param consciously: not even admins have any reason to delete teams mid season
             if (season.DisableTeamModification)
             {
                 return new BaseResult { Success = false, Message = "Team modifications are currently disabled for this season." };
+            }
+
+            bool hasMatches = await _matchRepository.AnyMatchReferencesTeamAsync(team.Id);
+            if (hasMatches)
+            {
+                return new BaseResult { Success = false, Message = "Team cannot be deleted because it has matches or matchups. Remove or reassign those first." };
             }
 
             await _teamRepository.DeleteAsync(team);
@@ -121,7 +130,7 @@ namespace WarLeague.Core.Services
         /// <returns></returns>
         public async Task<BaseResult> CaptainAddMemberAsync(int seasonId, int captainId, int playerId, bool canBypassTeamModificationCheck)
         {
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -140,7 +149,7 @@ namespace WarLeague.Core.Services
 
         public async Task<BaseResult> AddMemberAsync(int seasonId, int playerId, string teamName, bool canBypassTeamModificationCheck)
         {
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -164,7 +173,7 @@ namespace WarLeague.Core.Services
                 return new BaseResult { Success = false, Message = $"Player with id {playerId} is already a member of another team in this season." };
             }
 
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -185,7 +194,7 @@ namespace WarLeague.Core.Services
 
         public async Task<BaseResult> CaptainRemoveMemberAsync(int seasonId, int captainId, int playerId, bool canBypassTeamModificationCheck)
         {
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -210,7 +219,7 @@ namespace WarLeague.Core.Services
                 return new BaseResult { Success = false, Message = "The team captain cannot be removed. Transfer captainship first if needed." };
             }
 
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -236,7 +245,7 @@ namespace WarLeague.Core.Services
 
         public async Task<BaseResult> RemoveMemberAsync(int seasonId, int playerId, bool canBypassTeamModificationCheck)
         {
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -268,7 +277,7 @@ namespace WarLeague.Core.Services
         }
         public async Task<BaseResult> TransferMemberAsync(int seasonId, int playerId, string teamName, bool canBypassTeamModificationCheck)
         {
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -283,7 +292,7 @@ namespace WarLeague.Core.Services
         }
         public async Task<BaseResult> TransferMemberAsync(int seasonId, int playerId, int teamId, bool canBypassTeamModificationCheck)
         {
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -320,7 +329,7 @@ namespace WarLeague.Core.Services
 
         public async Task<BaseResult> TransferCaptainshipAsync(int seasonId, int newCaptainId, string teamName, bool canBypassTeamModificationCheck)
         {
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -353,7 +362,7 @@ namespace WarLeague.Core.Services
 
         public async Task<BaseResult> AssignDiscordRoleIdAsync(int seasonId, string teamName, ulong discordRoleId, bool canBypassTeamModificationCheck)
         {
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {
@@ -374,7 +383,7 @@ namespace WarLeague.Core.Services
 
         public async Task<BaseResult> UpdateConferenceAsync(int seasonId, string teamName, string conferenceName, bool canBypassTeamModificationCheck)
         {
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             if (season.DisableTeamModification && !canBypassTeamModificationCheck)
             {

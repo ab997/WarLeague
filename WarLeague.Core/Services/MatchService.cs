@@ -236,7 +236,7 @@ namespace WarLeague.Core.Services
         /// </summary>
         public async Task<BaseResult> EnsureTeamMatchupsForWeekAsync(int seasonId, Week week, List<Team> teams)
         {
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             var matchupService = _matchupServiceFactory.GetMatchupService(season);
 
@@ -258,7 +258,7 @@ namespace WarLeague.Core.Services
         public async Task<GeneratePairingsResult> GeneratePairingsAsync(int seasonId, Week week, List<Team> teams)
         {
             // Get season to determine which matchup service to use
-            var season = await _seasonRepository.GetById(seasonId);
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             var matchupService = _matchupServiceFactory.GetMatchupService(season);
 
