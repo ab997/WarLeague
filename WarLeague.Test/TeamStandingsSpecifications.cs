@@ -132,5 +132,48 @@ public partial class Specifications
             "Among the two tied teams, the one with better tiebreakers must have made it to playoffs.");
     }
 
+    [Fact]
+    [Trait("Category", "TeamStandings")]
+    public async Task WhenGeneratingStandings_ThenStoredTiebreakersMatchRule()
+    {
+        // Arrange
+        var (seasonId, _, _) = await GetSeasonWeekAndTeamsForPlayoffsFirstWeekAsync(teamsPerConference: 2, playersPerTeam: 2);
+
+        // Act
+        var standings = await _teamStandingsService.GetStandingsForSeasonAsync(seasonId);
+
+        // Assert
+        standings.ShouldNotBeEmpty();
+        foreach (var standing in standings)
+        {
+            var expectedTiebreaker = standing.Wins.GetValueOrDefault() * 1_000_000 - standing.TeamId;
+            standing.Tiebreaker.ShouldBe(expectedTiebreaker);
+        }
+    }
+
+    [Fact]
+    [Trait("Category", "TeamStandings")]
+    public async Task WhenGettingRoundRobinStandingsForDisplay_ThenUsesTiebreakerOrderAndValue()
+    {
+        // Arrange: round-robin completed, but still in round-robin phase
+        var (seasonId, _) = await GetSeasonWithRoundRobinWeekCompleted_NotPlayoffsAsync(teamsPerConference: 2, playersPerTeam: 2);
+
+        // Act
+        var entries = await _teamStandingsService.GetRoundRobinStandingsForDisplayAsync(seasonId);
+
+        // Assert
+        entries.ShouldNotBeEmpty();
+        foreach (var entry in entries)
+        {
+            var expectedTiebreaker = entry.Wins * 1_000_000 - entry.TeamId;
+            entry.Tiebreaker.ShouldBe(expectedTiebreaker);
+        }
+
+        for (var i = 1; i < entries.Count; i++)
+        {
+            entries[i - 1].Tiebreaker.ShouldBeGreaterThanOrEqualTo(entries[i].Tiebreaker);
+        }
+    }
+
     #endregion
 }

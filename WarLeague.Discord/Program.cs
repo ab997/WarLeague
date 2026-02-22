@@ -71,6 +71,7 @@ builder.Services.AddScoped<TeamValidationService>();
 builder.Services.AddScoped<RoundRobinService>();
 builder.Services.AddScoped<PlayoffService>();
 builder.Services.AddScoped<MatchupServiceFactory>();
+builder.Services.AddScoped<TiebreakerService>();
 builder.Services.AddScoped<TeamStandingsService>();
 builder.Services.AddScoped<PlayoffBracketService>();
 

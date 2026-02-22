@@ -9,6 +9,7 @@ namespace WarLeague.Core.Services;
 
 public class TeamStandingsService
 {
+    private readonly TiebreakerService _tiebreakerService;
     private readonly TeamStandingsRepository _teamStandingsRepository;
     private readonly RoundRobinMatchupRepository _roundRobinMatchupRepository;
     private readonly WeekRepository _weekRepository;
@@ -18,6 +19,7 @@ public class TeamStandingsService
     private readonly SeasonRepository _seasonRepository;
 
     public TeamStandingsService(
+        TiebreakerService tiebreakerService,
         TeamStandingsRepository teamStandingsRepository,
         RoundRobinMatchupRepository roundRobinMatchupRepository,
         WeekRepository weekRepository,
@@ -26,6 +28,7 @@ public class TeamStandingsService
         PlayoffMatchupRepository playoffMatchupRepository,
         SeasonRepository seasonRepository)
     {
+        _tiebreakerService = tiebreakerService;
         _teamStandingsRepository = teamStandingsRepository;
         _roundRobinMatchupRepository = roundRobinMatchupRepository;
         _weekRepository = weekRepository;
@@ -36,20 +39,7 @@ public class TeamStandingsService
     }
 
     /// <summary>
-    /// Default tiebreaker: higher wins first, then lower Team.Id.
-    /// Used to order teams when generating seeds.
-    /// </summary>
-    private static int GetTiebreakerValue(int wins, int teamId)
-    {
-        // Encode so that OrderByDescending(tiebreaker) gives: wins desc, then teamId asc
-        // Use a large multiplier so wins dominate (e.g. wins * 1_000_000 - teamId)
-        return wins * 1_000_000 - teamId;
-    }
-
-    
-
-    /// <summary>
-    /// Gets round-robin standings (W-L per team) from completed weeks. Tiebreaker: wins desc, losses asc, then TeamId.
+    /// Gets round-robin standings (W-L per team) from completed weeks ordered by centralized tiebreaker ranking.
     /// </summary>
     public async Task<List<RoundRobinStandingsEntry>> GetRoundRobinStandingsForDisplayAsync(int seasonId)
     {
@@ -57,25 +47,30 @@ public class TeamStandingsService
         var teams = await _teamRepository.GetBySeasonAsync(seasonId);
         var conferences = await _conferenceRepository.GetBySeasonAsync(seasonId);
         var conferenceById = conferences.ToDictionary(c => c.Id);
+        var ranking = _tiebreakerService.RankTeams(teams, data);
 
-        return teams
+        var entriesByTeamId = teams
             .Select(t => new RoundRobinStandingsEntry
             {
                 TeamId = t.Id,
                 TeamName = t.Name,
                 ConferenceName = conferenceById.TryGetValue(t.ConferenceId, out var conf) ? conf.Name : "",
+                Tiebreaker = ranking.TiebreakerByTeamId.GetValueOrDefault(t.Id, 0),
                 Wins = data.WinsByTeamId.GetValueOrDefault(t.Id, 0),
                 Losses = data.LossesByTeamId.GetValueOrDefault(t.Id, 0)
             })
-            .OrderByDescending(e => e.Wins)
-            .ThenBy(e => e.Losses)
-            .ThenBy(e => e.TeamId)
+            .ToDictionary(entry => entry.TeamId);
+
+        return ranking.OrderedTeams
+            .Where(team => entriesByTeamId.ContainsKey(team.Id))
+            .Select(team => entriesByTeamId[team.Id])
             .ToList();
     }
 
     /// <summary>
     /// Generates TeamStandings from round-robin results: computes wins per team,
-    /// takes top N per conference by PlayoffTeamsCount, then assigns Tiebreaker per team.
+    /// ranks each conference by centralized tiebreaker, takes top N by PlayoffTeamsCount,
+    /// then stores those tiebreaker values in TeamStandings.
     /// Overwrites any existing standings for the season.
     /// </summary>
     public async Task<BaseResult> GenerateStandingsFromRoundRobinAsync(int seasonId)
@@ -95,22 +90,22 @@ public class TeamStandingsService
         var winsByTeamId = data.WinsByTeamId;
         var teams = await _teamRepository.GetBySeasonAsync(seasonId);
         var conferences = await _conferenceRepository.GetBySeasonAsync(seasonId);
+        var allTiebreakers = _tiebreakerService.RankTeams(teams, data).TiebreakerByTeamId;
         var playoffTeams = new List<Team>();
 
         foreach (var conference in conferences.Where(c => c.PlayoffTeamsCount > 0))
         {
             var conferenceTeams = teams.Where(t => t.ConferenceId == conference.Id).ToList();
-            var seeded = conferenceTeams
-                .OrderByDescending(t => winsByTeamId.GetValueOrDefault(t.Id, 0))
-                .ThenBy(t => t.Id)
+            var conferenceRanking = _tiebreakerService.RankTeams(conferenceTeams, data);
+            var seeded = conferenceRanking.OrderedTeams
                 .Take(conference.PlayoffTeamsCount)
                 .ToList();
             playoffTeams.AddRange(seeded);
         }
 
-        // Global seed order: same as current PlayoffService (wins desc, then Team.Id)
+        // Global seed order uses centralized tiebreaker values.
         var seededOrder = playoffTeams
-            .OrderByDescending(t => winsByTeamId.GetValueOrDefault(t.Id, 0))
+            .OrderByDescending(t => allTiebreakers.GetValueOrDefault(t.Id, 0))
             .ThenBy(t => t.Id)
             .ToList();
 
@@ -125,7 +120,7 @@ public class TeamStandingsService
             {
                 SeasonId = seasonId,
                 TeamId = team.Id,
-                Tiebreaker = GetTiebreakerValue(wins, team.Id),
+                Tiebreaker = allTiebreakers.GetValueOrDefault(team.Id, 0),
                 Wins = wins
             });
         }

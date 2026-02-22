@@ -42,6 +42,7 @@ public static class TestServiceProvider
         services.AddScoped<RoundRobinService>();
         services.AddScoped<PlayoffService>();
         services.AddScoped<MatchupServiceFactory>();
+        services.AddScoped<TiebreakerService>();
         services.AddScoped<MatchService>();
         services.AddScoped<DeckSubmissionService>();
         services.AddScoped<SubstitutionService>();

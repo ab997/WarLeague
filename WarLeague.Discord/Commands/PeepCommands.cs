@@ -223,7 +223,7 @@ namespace WarLeague.Discord.Commands
                 {
                     foreach (var group in byConference)
                     {
-                        var list = group.OrderByDescending(e => e.Wins).ThenBy(e => e.Losses).ThenBy(e => e.TeamId).ToList();
+                        var list = group.ToList();
                         var body = FormatStandingsTable(list);
                         var eb = new EmbedBuilder()
                             .WithTitle($"Standings — {group.Key}")
@@ -764,7 +764,7 @@ namespace WarLeague.Discord.Commands
             var lines = entries.Select((e, i) =>
             {
                 var rank = (i + 1).ToString();
-                return $"{rank}. **{e.TeamName}** — {e.Wins}–{e.Losses}";
+                return $"{rank}. **{e.TeamName}** — {e.Wins}–{e.Losses} (TB: {e.Tiebreaker})";
             });
             return string.Join("\n", lines);
         }
