@@ -493,6 +493,33 @@ namespace WarLeague.Test
         }
 
         /// <summary>
+        /// Prepares a season with two conferences, week 1 completed (round-robin with reported results),
+        /// still in RoundRobin phase (no phase switch). Use for testing guards that require Playoffs (e.g. UpdateSeed).
+        /// </summary>
+        private async Task<(int seasonId, List<Team> teams)> GetSeasonWithRoundRobinWeekCompleted_NotPlayoffsAsync(int teamsPerConference = 2, int playersPerTeam = 2)
+        {
+            var (seasonId, _) = await CreateSeasonWithTwoConferencesAndSubmissions(teamsPerConference, playersPerTeam);
+            await CloseSubmissionsAsync(seasonId);
+            (await _weekService.TransitionToInProgressAsync(seasonId)).Success.ShouldBeTrue();
+            var week1 = await _weekRepository.GetByWeekNumberAndSeasonAsync(1, seasonId);
+            var teams = (await GetTeamsAsync(seasonId)).OrderBy(t => t.Id).ToList();
+            var matches = await _matchRepository.GetByWeekIdAsync(week1!.Id);
+            var byTeamMatchup = matches.GroupBy(m => new { m.Team1Id, m.Team2Id }).ToList();
+            foreach (var group in byTeamMatchup)
+            {
+                var loserTeamId = group.Key.Team2Id;
+                var loserPlayerIds = await GetTeamPlayerIds(seasonId, loserTeamId);
+                foreach (var match in group)
+                {
+                    var loserId = loserPlayerIds.Contains(match.Player1Id) ? match.Player1Id : match.Player2Id;
+                    (await _matchService.ReportLossAsync(seasonId, loserId, "https://example.com/rr")).Success.ShouldBeTrue();
+                }
+            }
+            (await _weekService.TransitionToCompletedAsync(seasonId)).Success.ShouldBeTrue();
+            return (seasonId, teams);
+        }
+
+        /// <summary>
         /// Prepares a season in Playoffs phase with week 1 completed (round-robin with winners),
         /// week 2 created as the first playoff week. Use for testing EnsureTeamMatchupsForWeekAsync
         /// and GeneratePairingsAsync with PlayoffService (MatchupServiceFactory resolves to PlayoffService).

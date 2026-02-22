@@ -74,35 +74,8 @@ public partial class Specifications
     [Trait("Category", "TeamStandings")]
     public async Task WhenUpdatingSeedBeforePhaseSwitch_ThenReturnsFail()
     {
-        // Arrange: season still in RoundRobin (two teams, one week completed, do not switch to playoffs)
-        var (_, seasonId) = await CreateFormatAndSeason();
-        (await _conferenceService.CreateAsync(seasonId, "Conf", 2)).Success.ShouldBeTrue();
-        var p1 = await CreatePlayer(9001);
-        var p2 = await CreatePlayer(9002);
-        var p3 = await CreatePlayer(9003);
-        var p4 = await CreatePlayer(9004);
-        var team1Id = await CreateTeam(seasonId, "T1", p1.Id, "Conf");
-        var team2Id = await CreateTeam(seasonId, "T2", p3.Id, "Conf");
-        await AddPlayerToTeam(p2.Id, seasonId, team1Id);
-        await AddPlayerToTeam(p4.Id, seasonId, team2Id);
-        await CreateWeekAsync(seasonId, 1, 2);
-        await OpenWeekAsync(seasonId, 1);
-        var teams = await GetTeamsAsync(seasonId);
-        await SubmitDeckAsync(seasonId, p1.Id, 1);
-        await SubmitDeckAsync(seasonId, p2.Id, 2);
-        await SubmitDeckAsync(seasonId, p3.Id, 1);
-        await SubmitDeckAsync(seasonId, p4.Id, 2);
-        await CloseSubmissionsAsync(seasonId);
-        (await _weekService.TransitionToInProgressAsync(seasonId)).Success.ShouldBeTrue();
-        var week1 = await _weekRepository.GetByWeekNumberAndSeasonAsync(1, seasonId);
-        var matches = await _matchRepository.GetByWeekIdAsync(week1!.Id);
-        foreach (var m in matches)
-        {
-            var loserId = m.Player1Id;
-            (await _matchService.ReportLossAsync(seasonId, loserId, "https://example.com/rr")).Success.ShouldBeTrue();
-        }
-        (await _weekService.TransitionToCompletedAsync(seasonId)).Success.ShouldBeTrue();
-        // Season is still RoundRobin - no phase switch
+        // Arrange: season still in RoundRobin (one week completed, do not switch to playoffs)
+        var (seasonId, teams) = await GetSeasonWithRoundRobinWeekCompleted_NotPlayoffsAsync(teamsPerConference: 2, playersPerTeam: 2);
 
         // Act: try to update seed (no standings exist; guard says not Playoffs)
         var team = teams.First();
