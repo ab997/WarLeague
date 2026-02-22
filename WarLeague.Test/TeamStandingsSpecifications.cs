@@ -121,5 +121,34 @@ public partial class Specifications
         result.Message.ShouldContain("playoff matchups already exist", Case.Insensitive);
     }
 
+    [Fact]
+    [Trait("Category", "TeamStandings")]
+    public async Task WhenOnlyThreePlayoffSlotsAndTwoTeamsTied_ThenTiebreakerDecidesWhoMakesPlayoffs()
+    {
+        // Arrange: 4 teams, 1 week round-robin played; 2 teams win, 2 teams lose.
+        // Conference allows only 3 teams into playoffs. Tiebreaker = lower Team.Id.
+        var (seasonId, week2, teams) = await GetSeasonFourTeamsThreePlayoffSlotsTiebreakerScenarioAsync(playersPerTeam: 2);
+        var allTeamIds = teams.Select(t => t.Id).ToHashSet();
+
+        // Assert: standings (from phase switch) have exactly 3 teams
+        var standings = await _teamStandingsService.GetStandingsForSeasonAsync(seasonId);
+        standings.Count.ShouldBe(3);
+        var playoffTeamIds = standings.Select(s => s.TeamId).ToHashSet();
+        var excludedTeamId = allTeamIds.Single(id => !playoffTeamIds.Contains(id));
+        var lastSeedTeamId = standings.First(s => s.Seed == 3).TeamId;
+        // Among the two tied (0-win) teams, the one with better tiebreaker (lower Id) must have made it
+        lastSeedTeamId.ShouldBeLessThan(excludedTeamId,
+            "The team that got the last playoff spot (seed 3) must have better tiebreaker (lower Team.Id) than the excluded tied team.");
+
+        // Act: proceed to playoffs (open first playoff week so bracket is built from standings)
+        var openResult = await _weekService.TransitionToOpenWeekAsync(seasonId, week2.WeekNumber);
+
+        // Assert: opening week succeeds; the team that made it is still the one with better tiebreaker
+        openResult.Success.ShouldBeTrue();
+        var standingsAfter = await _teamStandingsService.GetStandingsForSeasonAsync(seasonId);
+        standingsAfter.First(s => s.Seed == 3).TeamId.ShouldBe(lastSeedTeamId,
+            "Among the two tied teams, the one with better tiebreakers must have made it to playoffs.");
+    }
+
     #endregion
 }

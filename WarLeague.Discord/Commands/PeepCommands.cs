@@ -187,7 +187,7 @@ namespace WarLeague.Discord.Commands
             await DeferAsync(ephemeral: false);
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-            var entries = await _teamStandingsService.GetRoundRobinStandingsAsync(season.Id);
+            var entries = await _teamStandingsService.GetRoundRobinStandingsForDisplayAsync(season.Id);
 
             if (entries.Count == 0)
             {

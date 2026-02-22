@@ -75,27 +75,27 @@ public class TeamStandingsService
         foreach (var t in teams)
             h2hByTeamId[t.Id] = 0;
 
-        return new RoundRobinWinsAndH2H(winsByTeamId, h2hByTeamId, matchups);
+        var lossesByTeamId = new Dictionary<int, int>();
+        foreach (var t in teams)
+            lossesByTeamId[t.Id] = 0;
+        foreach (var m in matchups.Where(m => m.TeamWinnerId.HasValue && m.MatchupType != MatchupType.Bye))
+        {
+            var loserId = m.Team1Id == m.TeamWinnerId!.Value ? m.Team2Id : m.Team1Id;
+            lossesByTeamId[loserId] = lossesByTeamId.GetValueOrDefault(loserId, 0) + 1;
+        }
+
+        return new RoundRobinWinsAndH2H(winsByTeamId, lossesByTeamId, h2hByTeamId, matchups);
     }
 
     /// <summary>
     /// Gets round-robin standings (W-L per team) from completed weeks. Tiebreaker: wins desc, losses asc, then TeamId.
     /// </summary>
-    public async Task<List<RoundRobinStandingsEntry>> GetRoundRobinStandingsAsync(int seasonId)
+    public async Task<List<RoundRobinStandingsEntry>> GetRoundRobinStandingsForDisplayAsync(int seasonId)
     {
         var data = await GetRoundRobinWinsAndH2HAsync(seasonId);
         var teams = await _teamRepository.GetBySeasonAsync(seasonId);
         var conferences = await _conferenceRepository.GetBySeasonAsync(seasonId);
         var conferenceById = conferences.ToDictionary(c => c.Id);
-
-        var losses = new Dictionary<int, int>();
-        foreach (var t in teams)
-            losses[t.Id] = 0;
-        foreach (var m in data.Matchups.Where(m => m.TeamWinnerId.HasValue && m.MatchupType != MatchupType.Bye))
-        {
-            var loserId = m.Team1Id == m.TeamWinnerId!.Value ? m.Team2Id : m.Team1Id;
-            losses[loserId] = losses.GetValueOrDefault(loserId, 0) + 1;
-        }
 
         return teams
             .Select(t => new RoundRobinStandingsEntry
@@ -104,7 +104,7 @@ public class TeamStandingsService
                 TeamName = t.Name,
                 ConferenceName = conferenceById.TryGetValue(t.ConferenceId, out var conf) ? conf.Name : "",
                 Wins = data.WinsByTeamId.GetValueOrDefault(t.Id, 0),
-                Losses = losses.GetValueOrDefault(t.Id, 0)
+                Losses = data.LossesByTeamId.GetValueOrDefault(t.Id, 0)
             })
             .OrderByDescending(e => e.Wins)
             .ThenBy(e => e.Losses)
