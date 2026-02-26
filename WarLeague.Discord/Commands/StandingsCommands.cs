@@ -11,7 +11,7 @@ using WarLeague.Data.Data.Enums;
 
 namespace WarLeague.Discord.Commands;
 
-[Group("standings", "Playoff standings (tiebreaker ordering) - only when season is in Playoffs and no playoff matchups yet")]
+[Group("standings", "Playoff standings (tiebreaker ordering)")]
 [RequireAppPermission(PermissionType.Admin)]
 [EnsureChannelIsInFormatCategory]
 [EnsureSingleActiveSeason]
@@ -73,7 +73,7 @@ public class StandingsCommands : InteractionModuleBase<SocketInteractionContext>
         await FollowupAsync(ResultHelper.Stringify(result));
     }
 
-    [SlashCommand("generate", "Regenerate playoff standings from round-robin results (overwrites current tiebreakers). Only when no playoff matchups exist yet.")]
+    [SlashCommand("generate", "Regenerate playoff standings from round-robin results (overwrites current tiebreakers).")]
     public async Task GenerateAsync()
     {
         await DeferAsync(ephemeral: false);
