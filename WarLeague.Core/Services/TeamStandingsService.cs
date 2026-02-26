@@ -1,6 +1,7 @@
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Data.Data.Entities;
+using WarLeague.Data.Data.Enums;
 using WarLeague.Data.Entities;
 using WarLeague.Data.Enums;
 
@@ -48,34 +49,36 @@ public class TeamStandingsService
     /// </summary>
     public async Task<List<RoundRobinStandingsEntry>> GetRoundRobinStandingsForDisplayAsync(int seasonId)
     {
-        var teams = await _teamRepository.GetBySeasonAsync(seasonId);
+        var teams = (await _teamRepository.GetBySeasonAsync(seasonId)).ToList();
         var matchups = await _roundRobinMatchupRepository.GetBySeasonIdForCompletedWeeksAsync(seasonId);
         var matches = await _matchRepository.GetBySeasonIdForCompletedWeeksAsync(seasonId);
         var conferences = await _conferenceRepository.GetBySeasonAsync(seasonId);
         var conferenceById = conferences.ToDictionary(c => c.Id);
 
-        var result = _tiebreakerService.RankTeams(teams, matchups, matches);
+        var tiebreakers = _tiebreakerService.RankTeams(teams, matchups, matches);
+
+        var statsByTeamId = ComputeDisplayStats(teams, matchups, matches);
+
+        var orderedTeams = teams
+            .OrderByDescending(t => tiebreakers.GetValueOrDefault(t.Id, 0))
+            .ThenBy(t => t.Id)
+            .ToList();
 
         var entriesByTeamId = teams.ToDictionary(t => t.Id, t =>
         {
-            var stats = result.StatsByTeamId.GetValueOrDefault(t.Id);
+            var stats = statsByTeamId.GetValueOrDefault(t.Id);
             return new RoundRobinStandingsEntry
             {
                 TeamId = t.Id,
                 TeamName = t.Name,
                 ConferenceName = conferenceById.TryGetValue(t.ConferenceId, out var conf) ? conf.Name : "",
-                Tiebreaker = result.TiebreakerByTeamId.GetValueOrDefault(t.Id, 0),
-                Wins = stats?.Wins ?? 0,
-                Losses = stats?.Losses ?? 0,
-                SeriesDiff = stats?.SeriesDiff ?? 0,
-                GameDiff = stats?.GameDiff ?? 0,
-                SeriesPct = stats?.SeriesPct ?? 0,
-                GamePct = stats?.GamePct ?? 0,
-                SOS = stats?.SOS
+                Tiebreaker = (int)tiebreakers.GetValueOrDefault(t.Id, 0),
+                Wins = stats.Wins,
+                Losses = stats.Losses
             };
         });
 
-        return result.OrderedTeams
+        return orderedTeams
             .Where(team => entriesByTeamId.ContainsKey(team.Id))
             .Select(team => entriesByTeamId[team.Id])
             .ToList();
@@ -99,13 +102,18 @@ public class TeamStandingsService
             return new BaseResult(false, "Cannot generate or regenerate standings: playoff matchups already exist for this season.");
         }
 
-        var teams = await _teamRepository.GetBySeasonAsync(seasonId);
+        var teams = (await _teamRepository.GetBySeasonAsync(seasonId)).ToList();
         var matchups = await _roundRobinMatchupRepository.GetBySeasonIdForCompletedWeeksAsync(seasonId);
         var matches = await _matchRepository.GetBySeasonIdForCompletedWeeksAsync(seasonId);
 
-        var result = _tiebreakerService.RankTeams(teams, matchups, matches);
-        var orderedTeams = result.OrderedTeams;
-        var allTiebreakers = result.TiebreakerByTeamId;
+        var tiebreakers = _tiebreakerService.RankTeams(teams, matchups, matches);
+
+        var orderedTeams = teams
+            .OrderByDescending(t => tiebreakers.GetValueOrDefault(t.Id, 0))
+            .ThenBy(t => t.Id)
+            .ToList();
+
+        var statsByTeamId = ComputeDisplayStats(teams, matchups, matches);
 
         await _teamStandingsRepository.DeleteBySeasonIdAsync(seasonId);
 
@@ -113,12 +121,12 @@ public class TeamStandingsService
         for (var i = 0; i < orderedTeams.Count; i++)
         {
             var team = orderedTeams[i];
-            var wins = result.StatsByTeamId.GetValueOrDefault(team.Id)?.Wins ?? 0;
+            var wins = statsByTeamId.GetValueOrDefault(team.Id).Wins;
             standings.Add(new TeamStandings
             {
                 SeasonId = seasonId,
                 TeamId = team.Id,
-                Tiebreaker = allTiebreakers.GetValueOrDefault(team.Id, 0),
+                Tiebreaker = (int)tiebreakers.GetValueOrDefault(team.Id, 0),
                 Seed = i + 1,
                 Wins = wins
             });
@@ -173,5 +181,37 @@ public class TeamStandingsService
             sorted[i].Seed = i + 1;
         await _teamStandingsRepository.UpdateRangeAsync(sorted);
         return new BaseResult(true, "Tiebreaker updated.");
+    }
+
+    private static IReadOnlyDictionary<int, (int Wins, int Losses)> ComputeDisplayStats(
+        IReadOnlyList<Team> teams,
+        IReadOnlyList<RoundRobinMatchup> matchups,
+        IReadOnlyList<Match> matches)
+    {
+        var winsByTeamId = teams.ToDictionary(t => t.Id, _ => 0);
+        var lossesByTeamId = teams.ToDictionary(t => t.Id, _ => 0);
+
+        foreach (var m in matchups)
+        {
+            if (!m.TeamWinnerId.HasValue) continue;
+            if (m.MatchupType == MatchupType.Bye)
+                winsByTeamId[m.TeamWinnerId.Value] = winsByTeamId.GetValueOrDefault(m.TeamWinnerId.Value, 0) + 1;
+            else
+            {
+                winsByTeamId[m.TeamWinnerId.Value] = winsByTeamId.GetValueOrDefault(m.TeamWinnerId.Value, 0) + 1;
+                var loserId = m.Team1Id == m.TeamWinnerId.Value ? m.Team2Id : m.Team1Id;
+                lossesByTeamId[loserId] = lossesByTeamId.GetValueOrDefault(loserId, 0) + 1;
+            }
+        }
+
+        var result = new Dictionary<int, (int Wins, int Losses)>();
+        foreach (var t in teams)
+        {
+            result[t.Id] = (
+                Wins: winsByTeamId.GetValueOrDefault(t.Id, 0),
+                Losses: lossesByTeamId.GetValueOrDefault(t.Id, 0));
+        }
+
+        return result;
     }
 }
