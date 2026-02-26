@@ -11,7 +11,7 @@ using WarLeague.Data.Data.Enums;
 
 namespace WarLeague.Discord.Commands;
 
-[Group("standings", "Playoff standings (tiebreaker ordering) - only when season is in Playoffs and no playoff matchups yet")]
+[Group("standings", "Playoff standings (tiebreaker ordering)")]
 [RequireAppPermission(PermissionType.Admin)]
 [EnsureChannelIsInFormatCategory]
 [EnsureSingleActiveSeason]
@@ -32,7 +32,7 @@ public class StandingsCommands : InteractionModuleBase<SocketInteractionContext>
         _teamRepository = teamRepository;
     }
 
-    [SlashCommand("list", "List playoff standings (position, team, tiebreaker, wins) for the active season")]
+    [SlashCommand("list", "List playoff standings (position, team, tiebreaker, wins-losses) for the active season")]
     public async Task ListAsync()
     {
         await DeferAsync(ephemeral: false);
@@ -46,8 +46,16 @@ public class StandingsCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
+        var statsByTeamId = await _teamStandingsService.GetDisplayStatsForSeasonAsync(season.Id);
+
         var lines = standings
-            .Select((s, i) => $"**{i + 1}.** {s.Team.Name} — Tiebreaker: {s.Tiebreaker}" + (s.Wins.HasValue ? $", Wins: {s.Wins}" : ""));
+            .Select((s, i) =>
+            {
+                var stats = statsByTeamId.GetValueOrDefault(s.TeamId);
+                var wins = s.Wins ?? stats.Wins;
+                var losses = stats.Losses;
+                return $"**{i + 1}.** {s.Team.Name} — {wins}–{losses} (TB: {s.Tiebreaker})";
+            });
         var message = "**Playoff standings**\n" + string.Join("\n", lines);
         if (message.Length > 1900)
             message = message[..1900] + "...";
@@ -73,7 +81,7 @@ public class StandingsCommands : InteractionModuleBase<SocketInteractionContext>
         await FollowupAsync(ResultHelper.Stringify(result));
     }
 
-    [SlashCommand("generate", "Regenerate playoff standings from round-robin results (overwrites current tiebreakers). Only when no playoff matchups exist yet.")]
+    [SlashCommand("generate", "Regenerate playoff standings from round-robin results (overwrites current tiebreakers).")]
     public async Task GenerateAsync()
     {
         await DeferAsync(ephemeral: false);

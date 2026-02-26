@@ -254,19 +254,19 @@ namespace WarLeague.Core.Services
 
             var matchupService = _matchupServiceFactory.GetMatchupService(season);
 
-            List<(Team a, Team b)>? existingMatchups = await matchupService.GetExistingTeamMatchupsAsync(week, teams);
+            List<(Team a, Team b)>? existingMatchups = await matchupService.GetExistingTeamMatchupsAsync(week.Id);
             if (existingMatchups != null && existingMatchups.Count > 0)
             {
                 return new BaseResult(true, "Team pairings already exist for this week.");
             }
 
-            List<(Team a, Team b)> teamMatchups = await matchupService.GetTeamMatchups(teams, week.WeekNumber);
+            List<(Team a, Team b)> teamMatchups = await matchupService.GetTeamMatchupsAsync(week.Id);
             if (teamMatchups.Count == 0)
             {
                 return new BaseResult(false, "No team pairings were generate, this is probably a bug");
             }
 
-            return await matchupService.SaveTeamMatchupsAsync(week, teams, teamMatchups);
+            return await matchupService.SaveTeamMatchupsAsync(week.Id, teamMatchups);
         }
 
         public async Task<GeneratePairingsResult> GeneratePairingsAsync(int seasonId, Week week, List<Team> teams)
@@ -277,25 +277,11 @@ namespace WarLeague.Core.Services
             var matchupService = _matchupServiceFactory.GetMatchupService(season);
 
             // Team matchups are created when the week is opened (or by generate-round-robin-schedule). We only use existing ones here.
-            List<(Team a, Team b)>? existingMatchups = await matchupService.GetExistingTeamMatchupsAsync(week, teams);
+            List<(Team a, Team b)>? existingMatchups = await matchupService.GetExistingTeamMatchupsAsync(week.Id);
             if (existingMatchups == null || existingMatchups.Count == 0)
             {
                 return new GeneratePairingsResult { Success = false, Message = "No team pairings for this week. Open the week first to generate team pairings." };
             }
-
-            List<(Team a, Team b)> teamMatchups = existingMatchups;
-
-            // Build quick lookup: player -> team for this season.
-            var memberships = await _playerSeasonTeamRepository.GetBySeasonAsync(seasonId);
-            var membershipByPlayerId = memberships
-                .GroupBy(m => m.PlayerId)
-                .ToDictionary(g => g.Key, g => g.First());
-
-            // Group deck submissions by team, preserving SeatNumber.
-            var submissionsByTeamId = week.DeckSubmissions
-                .Where(ds => membershipByPlayerId.ContainsKey(ds.PlayerId))
-                .GroupBy(ds => membershipByPlayerId[ds.PlayerId].TeamId)
-                .ToDictionary(g => g.Key, g => g.ToList());
 
             // Safety: don't generate duplicates if matches already exist for this week.
             var existingMatches = await _matchRepository.GetByWeekIdAsync(week.Id);
@@ -304,9 +290,9 @@ namespace WarLeague.Core.Services
                 return new GeneratePairingsResult { Success = false, Message = $"Matches already exist for week {week.WeekNumber}. Refusing to generate new pairings to avoid duplicates." };
             }
 
-            var (createdMatches, matchupOutputs) = matchupService.GetIndividualMatchups(week, teamMatchups, submissionsByTeamId);
+            var (createdMatches, matchupOutputs) = await matchupService.GetIndividualMatchupsAsync(week.Id);
 
-            var byeTeams = await matchupService.GetByeTeamsForPairingsDisplayAsync(teamMatchups, teams);
+            var byeTeams = await matchupService.GetByeTeamsForPairingsDisplayAsync(week.Id);
 
             if (createdMatches.Count == 0)
             {

@@ -28,15 +28,27 @@ namespace WarLeague.Discord.Commands
         private readonly WeekService _weekService;
         private readonly DiscordApiHelperService _helperService;
         private readonly MatchupServiceFactory _matchupServiceFactory;
+        private readonly PlayoffMatchupRepository _playoffMatchupRepository;
+        private readonly SeasonRepository _seasonRepository;
+        private readonly TeamRepository _teamRepository;
+        private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
 
         public WeekCommands(
             DiscordApiHelperService helperService,
             WeekService weekService,
-            MatchupServiceFactory matchupServiceFactory)
+            MatchupServiceFactory matchupServiceFactory,
+            PlayoffMatchupRepository playoffMatchupRepository,
+            SeasonRepository seasonRepository,
+            TeamRepository teamRepository,
+            PlayerSeasonTeamRepository playerSeasonTeamRepository)
         {
             _helperService = helperService;
             _weekService = weekService;
             _matchupServiceFactory = matchupServiceFactory;
+            _playoffMatchupRepository = playoffMatchupRepository;
+            _seasonRepository = seasonRepository;
+            _teamRepository = teamRepository;
+            _playerSeasonTeamRepository = playerSeasonTeamRepository;
         }
         [SlashCommand("create", "1 -> Creates a week (Status: null -> NotOpenYet)")]
         public async Task Create( int weekNumber,
@@ -142,7 +154,18 @@ namespace WarLeague.Discord.Commands
 
             BaseResult result = await _weekService.TransitionToCompletedAsync(season.Id);
 
-            await FollowupAsync(Stringify(result));
+            var message = Stringify(result);
+
+            if (result.Success)
+            {
+                var seasonClosedMessage = await BuildSeasonClosedMessageIfFinalsAsync(season);
+                if (!string.IsNullOrWhiteSpace(seasonClosedMessage))
+                {
+                    message += "\n\n" + seasonClosedMessage;
+                }
+            }
+
+            await FollowupAsync(message);
         }
 
         [SlashCommand("suggest-round-robin", "Shows suggested number of round-robin weeks based on teams per conference")]
@@ -292,6 +315,84 @@ namespace WarLeague.Discord.Commands
 
             var message = $"Season {season.SeasonNumber} • {phaseText}\n**Weeks:**\n" + string.Join("\n", lines);
             await FollowupAsync(message);
+        }
+
+        private async Task<string?> BuildSeasonClosedMessageIfFinalsAsync(Season season)
+        {
+            if (season.Phase != SeasonPhase.Playoffs)
+            {
+                return null;
+            }
+
+            var playoffMatchups = await _playoffMatchupRepository.GetBySeasonIdAsync(season.Id);
+            if (playoffMatchups.Count == 0)
+            {
+                return null;
+            }
+
+            var finalWeekNumber = playoffMatchups.Max(m => m.Week.WeekNumber);
+            var finalWeekMatchups = playoffMatchups
+                .Where(m => m.Week.WeekNumber == finalWeekNumber)
+                .ToList();
+
+            if (finalWeekMatchups.Count == 0)
+            {
+                return null;
+            }
+
+            var winnerTeamIds = finalWeekMatchups
+                .Select(m =>
+                {
+                    if (m.MatchupType == MatchupType.Bye || m.Team1Id == m.Team2Id)
+                    {
+                        return (int?)m.Team1Id;
+                    }
+
+                    return m.TeamWinnerId;
+                })
+                .Where(id => id.HasValue)
+                .Select(id => id.Value)
+                .Distinct()
+                .ToList();
+
+            if (winnerTeamIds.Count != 1)
+            {
+                return null;
+            }
+
+            int championTeamId = winnerTeamIds[0];
+
+            var activeSeason = await _seasonRepository.GetSingleActiveSeasonByIdAsync(season.Id);
+            if (activeSeason.Active)
+            {
+                activeSeason.Active = false;
+                await _seasonRepository.UpdateAsync(activeSeason);
+            }
+
+            var teams = await _teamRepository.GetBySeasonAsync(season.Id);
+            var championTeam = teams.SingleOrDefault(t => t.Id == championTeamId);
+            var teamName = championTeam?.Name ?? $"Team #{championTeamId}";
+
+            var memberships = await _playerSeasonTeamRepository.GetBySeasonAsync(season.Id);
+            var members = memberships
+                .Where(pst => pst.TeamId == championTeamId)
+                .Select(pst => pst.Player)
+                .Distinct()
+                .OrderBy(p => p.UserName)
+                .ToList();
+
+            var membersText = members.Count == 0
+                ? "<no registered members>"
+                : string.Join(", ", members.Select(p => $"<@{p.DiscordUserId}>"));
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"Season {season.SeasonNumber} has concluded.");
+            sb.AppendLine($"Champion: **{teamName}**");
+            sb.AppendLine($"Members: {membersText}");
+            sb.AppendLine();
+            sb.AppendLine("The season is now closed and has been set to inactive.");
+
+            return sb.ToString();
         }
 
         private static List<Embed> BuildPairingsEmbeds(

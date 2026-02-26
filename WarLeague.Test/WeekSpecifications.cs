@@ -359,6 +359,30 @@ namespace WarLeague.Test
             result.Success.ShouldBeTrue();
         }
 
+        [Fact]
+        [Trait("Category", "Week")]
+        public async Task WhenGeneratingRoundRobinScheduleForMultipleWeeks_ThenEachWeekHasTeamPairings()
+        {
+            // Arrange: season in round-robin phase with teams and submissions
+            var (seasonId, _) = await CreateSeasonWithTwoConferencesAndSubmissions(teamsPerConference: 2, playersPerTeam: 2);
+
+            // Act: generate schedule for first 3 weeks
+            var result = await _weekService.GenerateRoundRobinScheduleAsync(seasonId, numberOfWeeks: 3);
+
+            // Assert
+            result.Success.ShouldBeTrue();
+
+            var weeks = await _weekRepository.GetBySeasonAsync(seasonId);
+            weeks.Count.ShouldBeGreaterThanOrEqualTo(3);
+
+            for (int weekNumber = 1; weekNumber <= 3; weekNumber++)
+            {
+                var week = weeks.Single(w => w.WeekNumber == weekNumber);
+                var rrMatchups = _context.RoundRobinMatchups.Where(rm => rm.WeekId == week.Id).ToList();
+                rrMatchups.Count.ShouldBeGreaterThan(0);
+            }
+        }
+
         #endregion
     }
 }

@@ -145,12 +145,13 @@ public partial class Specifications
         // Act
         var standings = await _teamStandingsService.GetStandingsForSeasonAsync(seasonId);
 
-        // Assert
+        // Assert: tiebreaker = (n - rankIndex) * 1_000_000 - TeamId (higher rank = higher value)
         standings.ShouldNotBeEmpty();
-        foreach (var standing in standings)
+        var n = standings.Count;
+        for (var i = 0; i < n; i++)
         {
-            var expectedTiebreaker = standing.Wins.GetValueOrDefault() * 1_000_000 - standing.TeamId;
-            standing.Tiebreaker.ShouldBe(expectedTiebreaker);
+            var expectedTiebreaker = (n - i) * 1_000_000 - standings[i].TeamId;
+            standings[i].Tiebreaker.ShouldBe(expectedTiebreaker);
         }
     }
 
@@ -164,17 +165,15 @@ public partial class Specifications
         // Act
         var entries = await _teamStandingsService.GetRoundRobinStandingsForDisplayAsync(seasonId);
 
-        // Assert
+        // Assert: order by tiebreaker desc; value = (n - rankIndex) * 1_000_000 - TeamId
         entries.ShouldNotBeEmpty();
-        foreach (var entry in entries)
-        {
-            var expectedTiebreaker = entry.Wins * 1_000_000 - entry.TeamId;
-            entry.Tiebreaker.ShouldBe(expectedTiebreaker);
-        }
-
-        for (var i = 1; i < entries.Count; i++)
-        {
+        var n = entries.Count;
+        for (var i = 1; i < n; i++)
             entries[i - 1].Tiebreaker.ShouldBeGreaterThanOrEqualTo(entries[i].Tiebreaker);
+        for (var i = 0; i < n; i++)
+        {
+            var expectedTiebreaker = (n - i) * 1_000_000 - entries[i].TeamId;
+            entries[i].Tiebreaker.ShouldBe(expectedTiebreaker);
         }
     }
 

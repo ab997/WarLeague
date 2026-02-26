@@ -15,7 +15,6 @@ public class WeekRepository
         _context = context;
     }
 
-
     public async Task<List<Week>> GetBySeasonAsync(int seasonId)
     {
         return await _context.Weeks
@@ -23,6 +22,14 @@ public class WeekRepository
             .OrderBy(w => w.WeekNumber)
             .ToListAsync();
     }
+
+    public async Task<Week?> GetByIdAsync(int weekId)
+    {
+        return await _context.Weeks
+             .Include(w => w.DeckSubmissions)
+            .SingleOrDefaultAsync(w => w.Id == weekId);
+    }
+
 
     public async Task<Week> AddAsync(Week week)
     {
