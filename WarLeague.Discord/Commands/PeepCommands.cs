@@ -31,6 +31,7 @@ namespace WarLeague.Discord.Commands
         private readonly DiscordApiHelperService _helperService;
         private readonly TeamStandingsService _teamStandingsService;
         private readonly PlayoffBracketService _bracketService;
+        private readonly MatchupServiceFactory _matchupServiceFactory;
 
         public PeepCommands(
             SeasonRepository seasonRepository,
@@ -42,7 +43,8 @@ namespace WarLeague.Discord.Commands
             DiscordApiHelperService helperService,
             FormatRepository formatRepository,
             TeamStandingsService teamStandingsService,
-            PlayoffBracketService bracketService)
+            PlayoffBracketService bracketService,
+            MatchupServiceFactory matchupServiceFactory)
         {
             _seasonRepository = seasonRepository;
             _weekRepository = weekRepository;
@@ -54,6 +56,7 @@ namespace WarLeague.Discord.Commands
             _formatRepository = formatRepository;
             _teamStandingsService = teamStandingsService;
             _bracketService = bracketService;
+            _matchupServiceFactory = matchupServiceFactory;
         }
 
         [SlashCommand("format-info", "Shows information about the current format and its seasons")]
@@ -168,7 +171,53 @@ namespace WarLeague.Discord.Commands
                 "1) Create format\n2) Create season\n3) Activate season\n4) Create weeks\n5) Open a week (enable deck submissions)\n6) Close submissions (lock decks)\n7) Generate pairings (move week to InProgress)\n8) Players report matches (only their own, only losses)\n9) Complete the week\n10) Repeat for the next week",
                 inline: false);
 
+            eb.AddField(
+                "From Round Robin to Playoffs",
+                "1) Finish round-robin: all intended weeks must be **Completed** (check with `/week list` or `/peep overview`).\n" +
+                "2) Set playoff slots: in each conference that should send teams to playoffs, set a non-zero `playoff-teams` via `/conference create` or `/conference update` (at least one conference is required).\n" +
+                "3) Switch phase: in the format's category, run `/season switch-to-playoffs` (one-way; locks round-robin results, generates standings, and marks playoff qualifiers).\n" +
+                "4) Run playoffs: create playoff weeks with `/week create`, then use `/week open` → `/week close-submissions` → `/week generate-pairings` → `/week close`, and view `/peep bracket` for the bracket.",
+                inline: false);
+
             await FollowupAsync(embeds: new[] { eb.Build() });
+        }
+
+        [SlashCommand("standings-playoffs", "Show playoff standings for the active season (W–L only)")]
+        [RequireAppPermission(PermissionType.Admin)]
+        [EnsureChannelIsInFormatCategory]
+        [EnsureSingleActiveSeason]
+        public async Task StandingsPlayoffsAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+            var standings = await _teamStandingsService.GetStandingsForSeasonAsync(season.Id);
+
+            if (standings.Count == 0)
+            {
+                await FollowupAsync("No playoff standings for this season. Use `/season switch-to-playoffs` first, or `/standings generate` to populate from round-robin results.");
+                return;
+            }
+
+            var statsByTeamId = await _teamStandingsService.GetDisplayStatsForSeasonAsync(season.Id);
+
+            var ordered = standings
+                .OrderBy(s => s.Seed)
+                .ThenBy(s => s.TeamId)
+                .ToList();
+
+            var lines = ordered.Select((s, i) =>
+            {
+                var stats = statsByTeamId.GetValueOrDefault(s.TeamId);
+                var wins = s.Wins ?? stats.Wins;
+                var losses = stats.Losses;
+                return $"**{i + 1}.** {s.Team.Name} — {wins}–{losses}";
+            });
+
+            var message = "**Playoff standings**\n" + string.Join("\n", lines);
+            if (message.Length > 1900)
+                message = message[..1900] + "...";
+            await FollowupAsync(message);
         }
 
         [SlashCommand("standings-round-robin", "Show current round-robin standings (W–L per team)")]
@@ -317,6 +366,68 @@ namespace WarLeague.Discord.Commands
             }
 
             await FollowupAsync(output);
+        }
+
+        [SlashCommand("team-pairings", "Shows team-vs-team pairings (and byes) for a week or all weeks")]
+        [EnsureChannelIsInFormatCategory]
+        [EnsureSingleActiveSeason]
+        public async Task TeamPairingsAsync(
+            [Summary("week-number", "Week number to inspect (default: all weeks)")]
+            [Autocomplete(typeof(WeekNumberAutocompleteHandler))]
+            int? weekNumber = null)
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+            var teams = await _teamRepository.GetBySeasonAsync(season.Id);
+            if (teams.Count < 2)
+            {
+                await FollowupAsync("Not enough teams in this season to have pairings.");
+                return;
+            }
+
+            var matchupService = _matchupServiceFactory.GetMatchupService(season);
+            var sb = new StringBuilder();
+
+            if (weekNumber.HasValue)
+            {
+                var week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber.Value, season.Id);
+                if (week is null)
+                {
+                    await FollowupAsync($"Week {weekNumber.Value} not found in this season.");
+                    return;
+                }
+
+                await AppendPairingsForWeekAsync(sb, week, teams, matchupService);
+
+                if (sb.Length == 0)
+                {
+                    await FollowupAsync($"No team-vs-team pairings exist for week {week.WeekNumber}. If this is a round-robin week, open the week or generate the round-robin schedule first.");
+                    return;
+                }
+
+                await FollowupAsync(sb.ToString());
+                return;
+            }
+
+            var weeks = await _weekRepository.GetBySeasonAsync(season.Id);
+            foreach (var week in weeks.OrderBy(w => w.WeekNumber))
+            {
+                var before = sb.Length;
+                await AppendPairingsForWeekAsync(sb, week, teams, matchupService);
+                if (sb.Length > before)
+                {
+                    sb.AppendLine();
+                }
+            }
+
+            if (sb.Length == 0)
+            {
+                await FollowupAsync("No team-vs-team pairings exist for any week in this season.");
+                return;
+            }
+
+            await FollowupAsync(sb.ToString());
         }
 
         [SlashCommand("season-current", "Shows the current active season in this format")]
@@ -630,6 +741,42 @@ namespace WarLeague.Discord.Commands
             }
 
             await FollowupAsync(sbAll.ToString().TrimEnd(), flags: MessageFlags.SuppressEmbeds);
+        }
+
+        private static async Task AppendPairingsForWeekAsync(
+            StringBuilder sb,
+            Week week,
+            IReadOnlyList<Team> teams,
+            IMatchupService matchupService)
+        {
+            var teamMatchups = await matchupService.GetExistingTeamMatchupsAsync(week, teams);
+            if (teamMatchups is null || teamMatchups.Count == 0)
+                return;
+
+            var byeTeams = await matchupService.GetByeTeamsForPairingsDisplayAsync(teamMatchups, teams);
+
+            sb.AppendLine($"**Week {week.WeekNumber} — Team pairings**");
+            sb.AppendLine();
+
+            foreach (var (a, b) in teamMatchups)
+            {
+                if (a.Id == b.Id)
+                    continue;
+
+                sb.AppendLine($"- {a.Name} vs {b.Name}");
+            }
+
+            if (byeTeams.Count > 0)
+            {
+                var byeNames = string.Join(", ",
+                    byeTeams
+                        .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                        .Select(t => t.Name));
+                sb.AppendLine();
+                sb.AppendLine($"Byes (auto-advance): {byeNames}");
+            }
+
+            sb.AppendLine();
         }
 
         private async Task<string> BuildWeekResultsAsync(int weekId, int weekNumber)

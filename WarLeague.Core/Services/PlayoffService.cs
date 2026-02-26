@@ -102,28 +102,31 @@ namespace WarLeague.Core.Services
                 .OrderBy(w => w.WeekNumber)
                 .ToList();
 
-            var existingPlayoffMatchups = await _playoffMatchupRepository.GetBySeasonIdAsync(season.Id);
+            List<PlayoffMatchup> existingPlayoffMatchups = await _playoffMatchupRepository.GetBySeasonIdAsync(season.Id);
             
             if (existingPlayoffMatchups.Count == 0)
             {
                 // First playoff week - seed teams based on round-robin standings
                 return await GetFirstPlayoffWeekMatchupsAsync(season, teams);
             }
-            else
-            {
-                // Subsequent playoff week - advance winners from previous week
-                var previousWeek = playoffWeeks
-                    .Where(w => w.WeekNumber < weekNumber)
-                    .OrderByDescending(w => w.WeekNumber)
-                    .FirstOrDefault();
 
-                if (previousWeek == null)
+            List<PlayoffMatchup> previousWeekMatchups = existingPlayoffMatchups.Where(x => x.Week.WeekNumber == weekNumber - 1).ToList();
+
+            // otherwise get them from existing matchups
+            return existingPlayoffMatchups
+                .Where(m => m.Week.WeekNumber == weekNumber)
+                .OrderBy(m => m.BracketPosition)
+                .Select(m =>
                 {
-                    return new List<(Team, Team)>();
-                }
-
-                return await GetSubsequentPlayoffWeekMatchupsAsync(previousWeek, weekNumber);
-            }
+                    var teamA = teams.FirstOrDefault(t => t.Id == m.Team1Id);
+                    var teamB = teams.FirstOrDefault(t => t.Id == m.Team2Id);
+                    if (teamA == null || teamB == null)
+                    {
+                        throw new InvalidOperationException($"Teams in matchup not found in provided team list. Team1Id: {m.Team1Id}, Team2Id: {m.Team2Id}");
+                    }
+                    return (teamA, teamB);
+                })
+                .ToList();
         }
 
         private async Task<List<(Team a, Team b)>> GetFirstPlayoffWeekMatchupsAsync(Season season, IReadOnlyList<Team> teams)
@@ -200,30 +203,6 @@ namespace WarLeague.Core.Services
             var playoffIds = playoffTeams.Select(t => t.Id).ToHashSet();
             var nonPlayoffTeams = teams.Where(t => !playoffIds.Contains(t.Id)).ToList();
             return (matchups, playoffTeams, nonPlayoffTeams);
-        }
-
-        private async Task<List<(Team a, Team b)>> GetSubsequentPlayoffWeekMatchupsAsync(Week previousWeek, int currentWeekNumber)
-        {
-            var previousMatchups = await _playoffMatchupRepository.GetByWeekIdAsync(previousWeek.Id);
-            var winnersWithPosition = previousMatchups
-                .Where(m => m.TeamWinnerId.HasValue)
-                .OrderBy(m => m.BracketPosition)
-                .Select(m => m.TeamWinnerId!.Value)
-                .ToList();
-
-            if (winnersWithPosition.Count < 2)
-            {
-                return new List<(Team, Team)>();
-            }
-
-            // Get team objects, maintaining order by bracket position
-            var allTeams = await _teamRepository.GetBySeasonAsync(previousWeek.SeasonId);
-            var teamDict = allTeams.Where(t => winnersWithPosition.Contains(t.Id)).ToDictionary(t => t.Id);
-            var winnerTeams = winnersWithPosition.Select(id => teamDict[id]).ToList();
-
-            // Generate bracket matchups for next round
-            // Round will be calculated in SaveTeamMatchupsAsync based on matchup count
-            return GenerateBracketMatchups(winnerTeams, round: 0);
         }
 
         private static List<(Team a, Team b)> GenerateBracketMatchups(List<Team> teams, int round)

@@ -32,7 +32,7 @@ public class StandingsCommands : InteractionModuleBase<SocketInteractionContext>
         _teamRepository = teamRepository;
     }
 
-    [SlashCommand("list", "List playoff standings (position, team, tiebreaker, wins) for the active season")]
+    [SlashCommand("list", "List playoff standings (position, team, tiebreaker, wins-losses) for the active season")]
     public async Task ListAsync()
     {
         await DeferAsync(ephemeral: false);
@@ -46,8 +46,16 @@ public class StandingsCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
+        var statsByTeamId = await _teamStandingsService.GetDisplayStatsForSeasonAsync(season.Id);
+
         var lines = standings
-            .Select((s, i) => $"**{i + 1}.** {s.Team.Name} — Tiebreaker: {s.Tiebreaker}" + (s.Wins.HasValue ? $", Wins: {s.Wins}" : ""));
+            .Select((s, i) =>
+            {
+                var stats = statsByTeamId.GetValueOrDefault(s.TeamId);
+                var wins = s.Wins ?? stats.Wins;
+                var losses = stats.Losses;
+                return $"**{i + 1}.** {s.Team.Name} — {wins}–{losses} (TB: {s.Tiebreaker})";
+            });
         var message = "**Playoff standings**\n" + string.Join("\n", lines);
         if (message.Length > 1900)
             message = message[..1900] + "...";

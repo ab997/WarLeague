@@ -180,6 +180,15 @@ public class TeamStandingsService
         return new BaseResult(true, "Tiebreaker updated.");
     }
 
+    public async Task<IReadOnlyDictionary<int, (int Wins, int Losses)>> GetDisplayStatsForSeasonAsync(int seasonId)
+    {
+        var teams = (await _teamRepository.GetBySeasonAsync(seasonId)).ToList();
+        var matchups = await _roundRobinMatchupRepository.GetBySeasonIdForCompletedWeeksAsync(seasonId);
+        var matches = await _matchRepository.GetBySeasonIdForCompletedWeeksAsync(seasonId);
+
+        return ComputeDisplayStats(teams, matchups, matches);
+    }
+
     private static IReadOnlyDictionary<int, (int Wins, int Losses)> ComputeDisplayStats(
         IReadOnlyList<Team> teams,
         IReadOnlyList<RoundRobinMatchup> matchups,
