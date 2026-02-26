@@ -23,7 +23,7 @@ Every complex scenario must reuse smaller, already-proven building blocks from `
 
 - [x] Create conference in season
 - [x] Create teams with auto-generated captains
-- [ ] Conference assignment paths (multiple conferences)
+- [x] Two-conference round-robin to playoffs with standings verification
 
 ### 4) Week lifecycle
 
@@ -36,7 +36,8 @@ Every complex scenario must reuse smaller, already-proven building blocks from `
 - [x] Transition to InProgress (generates pairings)
 - [x] Complete week (all matches reported)
 - [x] Complete week fails (not all matches reported)
-- [ ] Transition guard failures (e.g. already InProgress week exists)
+- [x] MoveToInProgress fails when another week already InProgress
+- [x] OpenWeek fails when another week already Open
 
 ### 5) Players and membership
 
@@ -59,11 +60,14 @@ Every complex scenario must reuse smaller, already-proven building blocks from `
 - [x] Full round-robin with N weeks (5 teams, 5 rounds via GetSuggestedRoundsAsync)
 - [x] Transition to Playoffs phase (generates standings from round-robin results)
 - [x] Verify standings seeding after playoffs transition
+- [x] SetPhaseToPlayoffs fails when unfinished weeks exist
+- [x] SetPhaseToPlayoffs fails when no weeks exist
+- [x] SetPhaseToPlayoffs fails when PlayoffTeamsCount is 0
 
 ### 9) Standings, tiebreakers, playoffs
 
 - [ ] Tiebreaker cases
-- [ ] Playoff bracket progression
+- [ ] Playoff bracket progression scenarios
 
 ## Reuse expectations
 

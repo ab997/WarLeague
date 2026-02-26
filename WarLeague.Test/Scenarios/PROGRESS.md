@@ -31,6 +31,13 @@
 - [x] Builder: `SubstitutePlayer(int teamIndex, int playerOutSeat)` — swaps bench player into a match
 - [x] Builder tracks `LastSubstitution` for verifying swap in specs
 - [x] Scenario 9: `Scenario_SubstitutePlayer_PairingsReflectSubstitution_Succeeds`
+- [x] Builder: `TryOpenWeek()`, `TryMoveToInProgress()`, `TrySetPhaseToPlayoffs()` — non-asserting variants
+- [x] Scenario 10: `Scenario_MoveToInProgress_WhenAnotherWeekAlreadyInProgress_Fails`
+- [x] Scenario 11: `Scenario_OpenWeek_WhenAnotherWeekAlreadyOpen_Fails`
+- [x] Scenario 12: `Scenario_SetPhaseToPlayoffs_WhenUnfinishedWeeksExist_Fails`
+- [x] Scenario 13: `Scenario_SetPhaseToPlayoffs_WhenNoWeeksExist_Fails`
+- [x] Scenario 14: `Scenario_SetPhaseToPlayoffs_WhenPlayoffTeamsCountIsZero_Fails`
+- [x] Scenario 15: `Scenario_TwoConferences_FullRoundRobin_SetPhaseToPlayoffs_Succeeds`
 
 ## Invariants confirmed
 
@@ -43,6 +50,5 @@
 
 ## Next session recommended start
 
-- [ ] Add transition guard failure scenarios (e.g. already InProgress week exists).
-- [ ] Add tiebreaker scenarios (manual tiebreaker updates, edge cases).
 - [ ] Add playoff bracket progression scenarios (continuing from round-robin → playoffs).
+- [ ] Add tiebreaker scenarios (manual tiebreaker updates, edge cases).

@@ -155,6 +155,61 @@ public partial class Specifications
 
     #endregion
 
+    #region Scenario: Week transition guards
+
+    [Fact]
+    [Trait("Category", "Scenario")]
+    public async Task Scenario_MoveToInProgress_WhenAnotherWeekAlreadyInProgress_Fails()
+    {
+        var s = await NewScenario()
+            .CreateFormat()
+            .WithSeason()
+            .WithConference("Alpha")
+            .WithTeams(4)
+            .WithPlayersPerTeam(3)
+            .WithWeek(weekNumber: 1, submissionsRequired: 3)
+            .OpenWeek()
+            .SubmitDecksForAllTeams(submissionsPerTeam: 3)
+            .CloseSubmissions()
+            .MoveToInProgress();
+
+        // Week 1 is InProgress but not completed — create and try to move week 2
+        s = await s
+            .WithWeek(weekNumber: 2, submissionsRequired: 3)
+            .OpenWeek()
+            .SubmitDecksForAllTeams(submissionsPerTeam: 3)
+            .CloseSubmissions()
+            .TryMoveToInProgress();
+
+        s.LastResult.ShouldNotBeNull();
+        s.LastResult!.Success.ShouldBeFalse();
+        s.LastResult.Message.ShouldContain("already InProgress", Case.Insensitive);
+    }
+
+    [Fact]
+    [Trait("Category", "Scenario")]
+    public async Task Scenario_OpenWeek_WhenAnotherWeekAlreadyOpen_Fails()
+    {
+        var s = await NewScenario()
+            .CreateFormat()
+            .WithSeason()
+            .WithConference("Alpha")
+            .WithTeams(4)
+            .WithWeek(weekNumber: 1, submissionsRequired: 1)
+            .OpenWeek();
+
+        // Week 1 is Open — create week 2 and try to open it
+        s = await s
+            .WithWeek(weekNumber: 2, submissionsRequired: 1)
+            .TryOpenWeek();
+
+        s.LastResult.ShouldNotBeNull();
+        s.LastResult!.Success.ShouldBeFalse();
+        s.LastResult.Message.ShouldContain("already Open", Case.Insensitive);
+    }
+
+    #endregion
+
     #region Scenario: Full round-robin season → playoffs with standings
 
     [Fact]
@@ -178,6 +233,100 @@ public partial class Specifications
         standings.Count.ShouldBe(5);
         for (var i = 0; i < standings.Count; i++)
             standings[i].Seed.ShouldBe(i + 1);
+    }
+
+    #endregion
+
+    #region Scenario: Two-conference round-robin to playoffs
+
+    [Fact]
+    [Trait("Category", "Scenario")]
+    public async Task Scenario_TwoConferences_FullRoundRobin_SetPhaseToPlayoffs_Succeeds()
+    {
+        var s = await NewScenario()
+            .CreateFormat()
+            .WithSeason()
+            .WithConference("Alpha", playoffTeams: 1)
+            .WithTeams(3, "Alpha")
+            .WithConference("Beta", playoffTeams: 1)
+            .WithTeams(3, "Beta")
+            .WithPlayersPerTeam(3)
+            .PlayFullRoundRobin(submissionsPerTeam: 3)
+            .SetPhaseToPlayoffs();
+
+        s.LastResult.ShouldNotBeNull();
+        s.LastResult!.Success.ShouldBeTrue(s.LastResult.Message);
+        s.TotalRoundsPlayed.ShouldBeGreaterThan(0);
+
+        var standings = await _teamStandingsService.GetStandingsForSeasonAsync(s.SeasonId);
+        standings.Count.ShouldBe(6);
+        for (var i = 0; i < standings.Count; i++)
+            standings[i].Seed.ShouldBe(i + 1);
+    }
+
+    #endregion
+
+    #region Scenario: SetPhaseToPlayoffs guards
+
+    [Fact]
+    [Trait("Category", "Scenario")]
+    public async Task Scenario_SetPhaseToPlayoffs_WhenUnfinishedWeeksExist_Fails()
+    {
+        var s = await NewScenario()
+            .CreateFormat()
+            .WithSeason()
+            .WithConference("Alpha", playoffTeams: 2)
+            .WithTeams(4)
+            .WithPlayersPerTeam(3)
+            .WithWeek(weekNumber: 1, submissionsRequired: 3)
+            .OpenWeek()
+            .SubmitDecksForAllTeams(submissionsPerTeam: 3)
+            .CloseSubmissions()
+            .MoveToInProgress()
+            .TrySetPhaseToPlayoffs();
+
+        s.LastResult.ShouldNotBeNull();
+        s.LastResult!.Success.ShouldBeFalse();
+        s.LastResult.Message.ShouldContain("all round-robin weeks must be completed", Case.Insensitive);
+    }
+
+    [Fact]
+    [Trait("Category", "Scenario")]
+    public async Task Scenario_SetPhaseToPlayoffs_WhenNoWeeksExist_Fails()
+    {
+        var s = await NewScenario()
+            .CreateFormat()
+            .WithSeason()
+            .WithConference("Alpha", playoffTeams: 2)
+            .WithTeams(4)
+            .TrySetPhaseToPlayoffs();
+
+        s.LastResult.ShouldNotBeNull();
+        s.LastResult!.Success.ShouldBeFalse();
+        s.LastResult.Message.ShouldContain("season has no weeks", Case.Insensitive);
+    }
+
+    [Fact]
+    [Trait("Category", "Scenario")]
+    public async Task Scenario_SetPhaseToPlayoffs_WhenPlayoffTeamsCountIsZero_Fails()
+    {
+        var s = await NewScenario()
+            .CreateFormat()
+            .WithSeason()
+            .WithConference("Alpha", playoffTeams: 1)
+            .WithTeams(4)
+            .WithPlayersPerTeam(3)
+            .PlayFullRoundRobin(submissionsPerTeam: 3);
+
+        // Reset playoff teams to 0 after round-robin completes
+        var updateResult = await _conferenceService.UpdateAsync(s.SeasonId, "Alpha", playoffTeamsCount: 0);
+        updateResult.Success.ShouldBeTrue(updateResult.Message);
+
+        s = await s.TrySetPhaseToPlayoffs();
+
+        s.LastResult.ShouldNotBeNull();
+        s.LastResult!.Success.ShouldBeFalse();
+        s.LastResult.Message.ShouldContain("have not set the number of teams to advance to playoffs", Case.Insensitive);
     }
 
     #endregion

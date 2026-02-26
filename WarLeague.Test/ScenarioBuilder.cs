@@ -105,6 +105,12 @@ public class ScenarioBuilder
         return this;
     }
 
+    public async Task<ScenarioBuilder> TrySetPhaseToPlayoffs()
+    {
+        LastResult = await _seasonService.SetPhaseToPlayoffsAsync(SeasonId);
+        return this;
+    }
+
     #endregion
 
     #region Conference
@@ -193,6 +199,12 @@ public class ScenarioBuilder
         return this;
     }
 
+    public async Task<ScenarioBuilder> TryOpenWeek()
+    {
+        LastResult = await _weekService.TransitionToOpenWeekAsync(SeasonId, CurrentWeekNumber);
+        return this;
+    }
+
     public async Task<ScenarioBuilder> CloseSubmissions()
     {
         LastResult = await _weekService.TransitionToCloseSubmissionsAsync(SeasonId);
@@ -216,6 +228,12 @@ public class ScenarioBuilder
         result.Success.ShouldBeTrue(result.Message);
         Matches.Clear();
         Matches.AddRange(result.CreatedMatches ?? []);
+        return this;
+    }
+
+    public async Task<ScenarioBuilder> TryMoveToInProgress()
+    {
+        LastResult = await _weekService.TransitionToInProgressAsync(SeasonId);
         return this;
     }
 
@@ -410,6 +428,9 @@ public static class ScenarioBuilderExtensions
     public static async Task<ScenarioBuilder> TryCloseSubmissions(this Task<ScenarioBuilder> task)
         => await (await task).TryCloseSubmissions();
 
+    public static async Task<ScenarioBuilder> TryOpenWeek(this Task<ScenarioBuilder> task)
+        => await (await task).TryOpenWeek();
+
     public static async Task<ScenarioBuilder> MoveToInProgress(this Task<ScenarioBuilder> task)
         => await (await task).MoveToInProgress();
 
@@ -418,6 +439,12 @@ public static class ScenarioBuilderExtensions
 
     public static async Task<ScenarioBuilder> TryCompleteWeek(this Task<ScenarioBuilder> task)
         => await (await task).TryCompleteWeek();
+
+    public static async Task<ScenarioBuilder> TryMoveToInProgress(this Task<ScenarioBuilder> task)
+        => await (await task).TryMoveToInProgress();
+
+    public static async Task<ScenarioBuilder> TrySetPhaseToPlayoffs(this Task<ScenarioBuilder> task)
+        => await (await task).TrySetPhaseToPlayoffs();
 
     public static async Task<ScenarioBuilder> PlayFullRoundRobin(this Task<ScenarioBuilder> task, int submissionsPerTeam = 1)
         => await (await task).PlayFullRoundRobin(submissionsPerTeam);

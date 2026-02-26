@@ -5,7 +5,7 @@
 - [ ] Format create duplicate should fail with clear message.
 - [ ] Format delete existing should remove persisted format.
 - [ ] Format update rules should persist JSON payload.
-- [ ] Multiple conferences in one season.
+- [x] Multiple conferences in one season.
 - [x] Transition to InProgress and verify pairings generated.
 
 ## Mid-term
@@ -31,6 +31,9 @@
 - [x] `PlayFullRoundRobin(int)` - query suggested rounds and loop full week happy-path.
 - [x] `SetPhaseToPlayoffs()` - transition season to Playoffs phase.
 - [x] `SubstitutePlayer(int teamIndex, int playerOutSeat)` - swap bench player into a match.
+- [x] `TryOpenWeek()` - non-asserting open week variant.
+- [x] `TryMoveToInProgress()` - non-asserting move-to-in-progress variant.
+- [x] `TrySetPhaseToPlayoffs()` - non-asserting set-phase-to-playoffs variant.
 
 ## Notes
 
