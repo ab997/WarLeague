@@ -36,9 +36,13 @@ public class TiebreakerService
                 lossesByTeamId[loserId] = lossesByTeamId.GetValueOrDefault(loserId, 0) + 1;
         }
 
-        // Series wins / losses from individual matches (used as secondary tiebreaker).
+        // Series wins / losses from individual matches (used as secondary tiebreaker),
+        // and per-game wins / losses using Player1Wins / Player2Wins (used as an
+        // additional, more granular tiebreaker).
         var seriesWByTeamId = teamList.ToDictionary(t => t.Id, _ => 0);
         var seriesLByTeamId = teamList.ToDictionary(t => t.Id, _ => 0);
+        var gamesWByTeamId = teamList.ToDictionary(t => t.Id, _ => 0);
+        var gamesLByTeamId = teamList.ToDictionary(t => t.Id, _ => 0);
 
         foreach (var match in matches.Where(m => m.WinnerTeamId.HasValue))
         {
@@ -50,6 +54,21 @@ public class TiebreakerService
 
             if (teamIds.Contains(loserId))
                 seriesLByTeamId[loserId] = seriesLByTeamId.GetValueOrDefault(loserId, 0) + 1;
+
+            // Per-game wins/losses using Player1Wins / Player2Wins.
+            var p1Wins = match.Player1Wins ?? 0;
+            var p2Wins = match.Player2Wins ?? 0;
+
+            if (teamIds.Contains(match.Team1Id))
+            {
+                gamesWByTeamId[match.Team1Id] = gamesWByTeamId.GetValueOrDefault(match.Team1Id, 0) + p1Wins;
+                gamesLByTeamId[match.Team1Id] = gamesLByTeamId.GetValueOrDefault(match.Team1Id, 0) + p2Wins;
+            }
+            if (teamIds.Contains(match.Team2Id))
+            {
+                gamesWByTeamId[match.Team2Id] = gamesWByTeamId.GetValueOrDefault(match.Team2Id, 0) + p2Wins;
+                gamesLByTeamId[match.Team2Id] = gamesLByTeamId.GetValueOrDefault(match.Team2Id, 0) + p1Wins;
+            }
         }
 
         // Head-to-head matrix for all teams in the candidate set (only non-bye matchups).
@@ -76,9 +95,11 @@ public class TiebreakerService
         }
 
         // Primary: overall wins-losses; Secondary: H2H among tied teams;
-        // Tertiary: series diff (seriesW - seriesL); Final: caller applies Team.Id ordering.
+        // Tertiary: series diff (seriesW - seriesL); Quaternary: game diff using Player1Wins/Player2Wins.
         const decimal WinsWeight = 1_000_000m;
         const decimal H2HWeight = 1_000m;
+        const decimal SeriesWeight = 1m;
+        const decimal GameWeight = 0.001m;
 
         var rawScores = new Dictionary<int, decimal>();
 
@@ -120,10 +141,14 @@ public class TiebreakerService
                 var seriesW = seriesWByTeamId.GetValueOrDefault(id, 0);
                 var seriesL = seriesLByTeamId.GetValueOrDefault(id, 0);
                 var seriesDiff = seriesW - seriesL;
+                var gamesW = gamesWByTeamId.GetValueOrDefault(id, 0);
+                var gamesL = gamesLByTeamId.GetValueOrDefault(id, 0);
+                var gameDiff = gamesW - gamesL;
 
                 var score = recordScore * WinsWeight
                             + h2hScore * H2HWeight
-                            + seriesDiff;
+                            + seriesDiff * SeriesWeight
+                            + gameDiff * GameWeight;
 
                 rawScores[id] = score;
             }
