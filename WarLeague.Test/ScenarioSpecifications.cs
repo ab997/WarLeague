@@ -266,6 +266,42 @@ public partial class Specifications
 
     #endregion
 
+    #region Scenario: Two-conference playoff qualifiers
+
+    [Theory]
+    [Trait("Category", "Scenario")]
+    [InlineData(3, 1, 3, 1, 2, 4)]
+    [InlineData(3, 2, 3, 2, 4, 2)]
+    [InlineData(4, 1, 4, 1, 2, 6)]
+    [InlineData(4, 2, 4, 2, 4, 4)]
+    [InlineData(4, 3, 4, 1, 4, 4)]
+    [InlineData(3, 1, 4, 2, 3, 4)]
+    [InlineData(3, 2, 3, 1, 3, 3)]
+    public async Task Scenario_TwoConferences_PlayoffQualifiers_Succeeds(
+        int alphaTeams, int alphaPlayoff,
+        int betaTeams, int betaPlayoff,
+        int expectedPlayoff, int expectedNonPlayoff)
+    {
+        var s = await NewScenario()
+            .CreateFormat()
+            .WithSeason()
+            .WithConference("Alpha", playoffTeams: alphaPlayoff)
+            .WithTeams(alphaTeams, "Alpha")
+            .WithConference("Beta", playoffTeams: betaPlayoff)
+            .WithTeams(betaTeams, "Beta")
+            .WithPlayersPerTeam(3)
+            .PlayFullRoundRobin(submissionsPerTeam: 3)
+            .SetPhaseToPlayoffs();
+
+        var (_, playoffTeams, nonPlayoffTeams) =
+            await _playoffService.GetFirstPlayoffWeekMatchupsAndQualifiersAsync(s.SeasonId);
+
+        playoffTeams.Count.ShouldBe(expectedPlayoff);
+        nonPlayoffTeams.Count.ShouldBe(expectedNonPlayoff);
+    }
+
+    #endregion
+
     #region Scenario: SetPhaseToPlayoffs guards
 
     [Fact]

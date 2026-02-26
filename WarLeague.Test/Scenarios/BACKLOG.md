@@ -18,7 +18,7 @@
 ## Long-term
 
 - [ ] Deck submission requirements per seat.
-- [ ] Pairing generation across conferences and playoffs.
+- [x] Pairing generation across conferences and playoffs (two-conference playoff qualifiers).
 - [x] Full round-robin season with standings generation (5 teams, 5 rounds).
 - [ ] Tiebreaker edge cases and manual tiebreaker updates.
 

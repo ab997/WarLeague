@@ -38,6 +38,7 @@
 - [x] Scenario 13: `Scenario_SetPhaseToPlayoffs_WhenNoWeeksExist_Fails`
 - [x] Scenario 14: `Scenario_SetPhaseToPlayoffs_WhenPlayoffTeamsCountIsZero_Fails`
 - [x] Scenario 15: `Scenario_TwoConferences_FullRoundRobin_SetPhaseToPlayoffs_Succeeds`
+- [x] Scenario 16: `Scenario_TwoConferences_Top2PerConference_PlayoffQualifiers_Succeeds`
 
 ## Invariants confirmed
 
