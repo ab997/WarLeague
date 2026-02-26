@@ -1,6 +1,0 @@
-- Playoffs use week-based structure (each playoff round is a separate week), not bracket-driven. Season.Phase enum (RoundRobin/Playoffs) determines which IMatchupService implementation to use via MatchupServiceFactory.
-- First playoff week: seeds teams based on round-robin standings (wins from RoundRobinMatchup.TeamWinnerId in completed weeks). Each conference sends top N teams based on Conference.PlayoffTeamsCount (int, 0 = no playoffs). Teams seeded by wins, then by TeamId as tiebreaker.
-- Subsequent playoff weeks: winners from previous week's PlayoffMatchup records advance to next round. Winners ordered by BracketPosition to maintain bracket integrity.
-- PlayoffMatchup entity: WeekId, Team1Id, Team2Id, TeamWinnerId, Round (calculated from matchup count), BracketPosition. Unique indexes: (WeekId, BracketPosition) and (WeekId, Team1Id, Team2Id) with normalized team order (Team1Id < Team2Id).
-- Phase switch: Season.Phase can only transition RoundRobin -> Playoffs (one-way, irreversible). Requires at least one conference with PlayoffTeamsCount > 0. Configure via `season switch-to-playoffs` and `conference create/update` commands.
-- Player matches (Match table) work identically to round-robin - same pairing by seat number and reporting logic. Deck submissions tied to Week, not PlayoffMatchup.
