@@ -14,6 +14,23 @@
 - [x] Scenario 3: `Scenario_CreateWeek_OpenIt_SubmitDecks_CloseSubmissions_Succeeds`
 - [x] Scenario 4: `Scenario_CloseSubmissions_WhenNoTeamSubmitted_Fails`
 - [x] Scenario 5: `Scenario_CloseSubmissions_WhenOnlySomeTeamsSubmitted_Fails`
+- [x] Builder: `WithPlayersPerTeam(int)` — adds non-captain players to fill teams
+- [x] Builder: `MoveToInProgress()`, `CompleteWeek()`, `TryCompleteWeek()`
+- [x] Builder: `ReportAllMatchResults()`, `ReportMatchResults(int[])` (partial reporting support)
+- [x] Builder tracks `List<Match> Matches` populated by `MoveToInProgress()`
+- [x] Builder wired to `MatchService` for match result reporting
+- [x] Scenario 6: `Scenario_FullWeekLifecycle_SubmitDecks_MoveToInProgress_ReportAllMatches_CompleteWeek_Succeeds`
+- [x] Scenario 7: `Scenario_CompleteWeek_WhenNotAllMatchesReported_Fails`
+- [x] Builder wired to `MatchupServiceFactory` and `SeasonRepository` for round-robin support
+- [x] Builder: `PlayFullRoundRobin(int)` — queries suggested rounds, loops full week happy-path for each
+- [x] Builder: `SetPhaseToPlayoffs()` — transitions season to Playoffs (generates standings)
+- [x] Builder tracks `TotalRoundsPlayed` set by `PlayFullRoundRobin()`
+- [x] Scenario 8: `Scenario_FiveTeams_FullRoundRobin_SetPhaseToPlayoffs_Succeeds`
+- [x] Builder wired to `SubstitutionService` for player substitution
+- [x] Builder tracks `TeamNames` alongside `TeamIds`
+- [x] Builder: `SubstitutePlayer(int teamIndex, int playerOutSeat)` — swaps bench player into a match
+- [x] Builder tracks `LastSubstitution` for verifying swap in specs
+- [x] Scenario 9: `Scenario_SubstitutePlayer_PairingsReflectSubstitution_Succeeds`
 
 ## Invariants confirmed
 
@@ -26,6 +43,6 @@
 
 ## Next session recommended start
 
-- [ ] Add week transition to InProgress (generates pairings).
-- [ ] Add match reporting scenarios.
-- [ ] Add week completion scenarios.
+- [ ] Add transition guard failure scenarios (e.g. already InProgress week exists).
+- [ ] Add tiebreaker scenarios (manual tiebreaker updates, edge cases).
+- [ ] Add playoff bracket progression scenarios (continuing from round-robin → playoffs).

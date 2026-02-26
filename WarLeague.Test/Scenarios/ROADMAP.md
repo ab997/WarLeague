@@ -33,12 +33,15 @@ Every complex scenario must reuse smaller, already-proven building blocks from `
 - [x] Close submissions (happy path)
 - [x] Close submissions fails when no teams submitted
 - [x] Close submissions fails when only some teams submitted
-- [ ] Transition to InProgress (generates pairings)
+- [x] Transition to InProgress (generates pairings)
+- [x] Complete week (all matches reported)
+- [x] Complete week fails (not all matches reported)
 - [ ] Transition guard failures (e.g. already InProgress week exists)
 
 ### 5) Players and membership
 
 - [ ] Add extra players to teams
+- [x] Substitution: bench player swaps into a match, verified in pairings
 - [ ] Roster management
 
 ### 6) Deck submissions and pairings
@@ -48,12 +51,17 @@ Every complex scenario must reuse smaller, already-proven building blocks from `
 
 ### 7) Match reporting
 
-- [ ] Report win/result flows
+- [x] Report win/result flows (via builder ReportAllMatchResults / ReportMatchResults)
 - [ ] Invalid replay/invalid player edge cases
 
-### 8) Standings, tiebreakers, playoffs
+### 8) Full round-robin season
 
-- [ ] Standings updates
+- [x] Full round-robin with N weeks (5 teams, 5 rounds via GetSuggestedRoundsAsync)
+- [x] Transition to Playoffs phase (generates standings from round-robin results)
+- [x] Verify standings seeding after playoffs transition
+
+### 9) Standings, tiebreakers, playoffs
+
 - [ ] Tiebreaker cases
 - [ ] Playoff bracket progression
 

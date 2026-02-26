@@ -6,27 +6,31 @@
 - [ ] Format delete existing should remove persisted format.
 - [ ] Format update rules should persist JSON payload.
 - [ ] Multiple conferences in one season.
-- [ ] Transition to InProgress and verify pairings generated.
+- [x] Transition to InProgress and verify pairings generated.
 
 ## Mid-term
 
 - [ ] Season duplicate number guard.
 - [ ] Team modification enable/disable behavior.
-- [ ] Week completion (all matches reported).
-- [ ] Week completion fails (unreported matches).
+- [x] Week completion (all matches reported).
+- [x] Week completion fails (unreported matches).
 
 ## Long-term
 
 - [ ] Deck submission requirements per seat.
 - [ ] Pairing generation across conferences and playoffs.
-- [ ] Match reporting and final standings/tiebreakers.
+- [x] Full round-robin season with standings generation (5 teams, 5 rounds).
+- [ ] Tiebreaker edge cases and manual tiebreaker updates.
 
 ## Builder methods to add
 
-- [ ] `WithPlayers(int count)` - add non-captain players to teams.
-- [ ] `TransitionToInProgress()` - close submissions -> generate pairings -> in progress.
-- [ ] `ReportAllMatchWins()` - report results for all matches in current week.
-- [ ] `CompleteWeek()` - transition week to completed.
+- [x] `WithPlayersPerTeam(int totalPerTeam)` - add non-captain players to teams.
+- [x] `MoveToInProgress()` - close submissions -> generate pairings -> in progress.
+- [x] `ReportAllMatchResults()` / `ReportMatchResults(int[])` - report results for all/partial matches.
+- [x] `CompleteWeek()` / `TryCompleteWeek()` - transition week to completed (assert/try pattern).
+- [x] `PlayFullRoundRobin(int)` - query suggested rounds and loop full week happy-path.
+- [x] `SetPhaseToPlayoffs()` - transition season to Playoffs phase.
+- [x] `SubstitutePlayer(int teamIndex, int playerOutSeat)` - swap bench player into a match.
 
 ## Notes
 
