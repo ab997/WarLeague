@@ -1,9 +1,10 @@
-﻿using Discord;
+using Discord;
 using Discord.Interactions;
 using WarLeague.Data.Entities;
 using WarLeague.Core.Model;
 using WarLeague.Core.Services;
 using WarLeague.Discord.Helpers;
+using WarLeague.Discord.Autocomplete;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 using WarLeague.Data.Data.Enums;
@@ -32,7 +33,7 @@ namespace WarLeague.Discord.Commands
 
         [SlashCommand("substitution", "Substitute a player in a match for another available player from the same team")]
         public async Task SubstitutionAsync(
-             [Summary("team-name", "The team for which substitution is being made")] string teamName,
+             [Summary("team-name", "The team for which substitution is being made")][Autocomplete(typeof(TeamAutocompleteHandler))] string teamName,
              [Summary("player-in", "Player who will play instead of the current player")] IUser playerIn,
              [Summary("player-out", "Player who is being substituted")] IUser playerOut
             )

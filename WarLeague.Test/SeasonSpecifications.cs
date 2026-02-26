@@ -1,4 +1,4 @@
-﻿using Shouldly;
+using Shouldly;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -11,6 +11,7 @@ namespace WarLeague.Test
         #region Season Behavior Specifications
 
         [Fact]
+        [Trait("Category", "Season")]
         public async Task WhenCreatingSeasonWithValidParameters_ThenReturnsSuccess()
         {
             // Arrange
@@ -25,6 +26,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Season")]
         public async Task WhenCreatingDuplicateSeasonNumber_ThenReturnsFail()
         {
             // Arrange
@@ -40,6 +42,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Season")]
         public async Task WhenSettingSeasonActive_ThenReturnsSuccess()
         {
             // Arrange
@@ -56,16 +59,14 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Season")]
         public async Task WhenDisablingTeamModifications_ThenReturnsSuccess()
         {
             // Arrange
-            await _formatService.CreateFormatAsync("HAT");
-            var format = await _formatService.GetFormatAsync("HAT");
-            await _seasonService.CreateAsync(format!.Id, 1, 4);
-            var season = format.Seasons.First();
+            var (formatId, seasonId) = await CreateFormatAndSeason();
 
             // Act
-            SeasonResult result = await _seasonService.SetTeamModificationsAsync(season.Id, enabled: false);
+            SeasonResult result = await _seasonService.SetTeamModificationsAsync(seasonId, enabled: false);
 
             // Assert
             result.Success.ShouldBeTrue();
@@ -73,16 +74,14 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Season")]
         public async Task WhenEnablingTeamModifications_ThenReturnsSuccess()
         {
             // Arrange
-            await _formatService.CreateFormatAsync("HAT");
-            var format = await _formatService.GetFormatAsync("HAT");
-            await _seasonService.CreateAsync(format!.Id, 1, 4);
-            var season = format.Seasons.First();
+            var (formatId, seasonId) = await CreateFormatAndSeason();
 
             // Act
-            var result = await _seasonService.SetTeamModificationsAsync(season.Id, enabled: true);
+            var result = await _seasonService.SetTeamModificationsAsync(seasonId, enabled: true);
 
             // Assert
             result.Success.ShouldBeTrue();

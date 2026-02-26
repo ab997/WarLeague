@@ -37,28 +37,11 @@
 - [x] No pinging for peep commands
 - [x] Peep all results:
   - [x] Remove attachments
+
 - [ ] Decide which commands should be ephemeral (private)
 - [ ] Add a system for reporting messages in a separate channel
-
-## BYE WEEKS & PLAYOFFS & CONFERENCES
-
-- [x] Add Matchup table for explicit tracking
-- [x] Add Conference table (Id, SeasonId, Name)
-- [x] Add ConferenceId (nullable) to Team table
-- [x] Update RoundRobin pairing to filter by conference when applicable
-- [ ] Update MatchService.GeneratePairingsAsync to handle conference-filtered pairings
-
-- [ ] Add PlayoffMatchup table (SeasonId, Round, BracketPosition, Team1Id, Team2Id, WinnerTeamId, AdvancesToMatchupId, Status)
-- [ ] Update Match table: WeekId nullable, add PlayoffMatchupId nullable
-- [ ] Implement SingleEliminationPairing strategy for playoffs
-- [ ] Playoff bracket creation and advancement logic
-- [ ] Database constraints:
-  - [ ] Match: Check constraint - exactly one of WeekId or PlayoffMatchupId must be set (not both null, not both set)
-  - [x] Match: Check constraint - Player1Id != Player2Id (cannot play yourself)
-  - [x] DeckSubmission: Unique index on (PlayerId, WeekId) - player can only submit once per week
-  - [ ] Conference: Unique index on (SeasonId, Name)
-  - [ ] PlayoffMatchup: Unique index on (SeasonId, Round, BracketPosition)
-  - [ ] TeamWeekBye: Unique index on (TeamId, WeekId) if implemented
+- [x] fix match reporting (winners report, add wins and losses per replay)
+    - [x]  when this is implemented, add a better tiebreaker logic that can use this match win/loss for tb calc
 
 ## TECHNICAL
 
@@ -69,7 +52,7 @@
   - [ ] Banlist
   - [ ] Card pool
 - [x] Discord roles are not unique by name -> we need to migrate from using "admin" and "captain" to integer IDs.
-- [ ] When it makes sense (such as for example when chosing between existing finite choices -> team names, players in team, etc) limit the suggestions in UI
+- [x] When it makes sense (such as for example when chosing between existing finite choices -> team names, players in team, etc) limit the suggestions in UI
 - [ ] database daily backup
 - [x] Return-null-as-failure is a design smell. return result instead.
 - [x] each week transition should check that IN status and OUT status are ok

@@ -1,4 +1,4 @@
-﻿using Shouldly;
+using Shouldly;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -10,6 +10,7 @@ namespace WarLeague.Test
         #region Format Behavior Specifications
 
         [Fact]
+        [Trait("Category", "Format")]
         public async Task WhenCreatingValidFormat_ThenReturnsSuccess()
         {
             // Arrange
@@ -23,6 +24,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Format")]
         public async Task WhenCreatingDuplicateFormat_ThenReturnsFail()
         {
             // Arrange
@@ -36,6 +38,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Format")]
         public async Task WhenDeletingExistingFormat_ThenReturnsSuccess()
         {
             // Arrange
@@ -49,6 +52,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Format")]
         public async Task WhenUpdatingFormatRules_ThenReturnsSuccess()
         {
             // Arrange

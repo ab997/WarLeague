@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using WarLeague.Data.Entities;
+using WarLeague.Data.Enums;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
@@ -14,6 +15,7 @@ namespace WarLeague.Discord.Commands;
 [Group("deck", "Deck submission commands")]
 [EnsureChannelIsInFormatCategory]
 [EnsureSingleActiveSeason]
+[EnsureSingleValidOpenWeek]
 [RequireAppPermission(PermissionType.Admin, Group = "Permission")]
 [RequireAppPermission(PermissionType.Captain, Group = "Permission")]
 [InitializeGuildContext]
@@ -26,6 +28,8 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
     private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
     private readonly TeamRepository _teamRepository;
     private readonly DeckSubmissionService _deckSubmissionService;
+    private readonly DeckSubmissionRepository _deckSubmissionRepository;
+    private readonly WeekRepository _weekRepository;
     private readonly HttpClient _httpClient;
 
     public DeckCommands(
@@ -34,6 +38,8 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         PlayerSeasonTeamRepository playerSeasonTeamRepository,
         TeamRepository teamRepository,
         DeckSubmissionService deckSubmissionService,
+        DeckSubmissionRepository deckSubmissionRepository,
+        WeekRepository weekRepository,
         HttpClient httpClient)
     {
         _helperService = helperService;
@@ -41,6 +47,8 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         _playerSeasonTeamRepository = playerSeasonTeamRepository;
         _teamRepository = teamRepository;
         _deckSubmissionService = deckSubmissionService;
+        _deckSubmissionRepository = deckSubmissionRepository;
+        _weekRepository = weekRepository;
         _httpClient = httpClient;
     }
 
@@ -117,6 +125,53 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         BaseResult result = await _deckSubmissionService.DeleteSubmissionAsync(season.Id, targetPlayer.Id);
 
         await FollowupAsync(Stringify(result));
+    }
+
+    [SlashCommand("list", "Lists submitted decks for each team (current open week)")]
+    public async Task ListAsync()
+    {
+        await DeferAsync(ephemeral: false);
+
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+        Week? openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(season.Id, WeekStatus.Open);
+        if (openWeek is null)
+        {
+            await FollowupAsync("No open week for deck submissions. Open a week first to submit and list decks.");
+            return;
+        }
+
+        var submissions = await _deckSubmissionRepository.GetByWeekIdAsync(openWeek.Id);
+        if (submissions.Count == 0)
+        {
+            await FollowupAsync($"Week {openWeek.WeekNumber}: no deck submissions yet.");
+            return;
+        }
+
+        var psts = await _playerSeasonTeamRepository.GetBySeasonAsync(season.Id);
+        var playerToTeamId = psts
+            .Where(pst => pst.TeamId != 0)
+            .GroupBy(pst => pst.PlayerId)
+            .ToDictionary(g => g.Key, g => g.First().TeamId);
+
+        var teams = await _teamRepository.GetBySeasonAsync(season.Id);
+        var teamIdToName = teams.ToDictionary(t => t.Id, t => t.Name);
+
+        var byTeam = submissions
+            .Where(ds => playerToTeamId.TryGetValue(ds.PlayerId, out _))
+            .GroupBy(ds => playerToTeamId[ds.PlayerId])
+            .OrderBy(g => teamIdToName.GetValueOrDefault(g.Key, ""), StringComparer.OrdinalIgnoreCase);
+
+        var lines = new List<string> { $"**Week {openWeek.WeekNumber} — Deck submissions**", "" };
+        foreach (var group in byTeam)
+        {
+            var teamName = teamIdToName.GetValueOrDefault(group.Key, $"Team#{group.Key}");
+            var parts = group
+                .OrderBy(ds => ds.SeatNumber)
+                .Select(ds => $"{ds.Player?.UserName ?? $"P#{ds.PlayerId}"} (seat {ds.SeatNumber})");
+            lines.Add($"**{teamName}:** " + string.Join(", ", parts));
+        }
+
+        await FollowupAsync(string.Join("\n", lines));
     }
 
     private async Task<string?> ValidateDeckSubmissionPermission(Season season, Player callerPlayer, Player targetPlayer)

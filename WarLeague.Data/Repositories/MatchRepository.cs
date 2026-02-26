@@ -14,6 +14,17 @@ public class MatchRepository
         _context = context;
     }
 
+    /// <summary>
+    /// Gets all matches for completed weeks in the given season (for tiebreaker series/game aggregates).
+    /// </summary>
+    public async Task<List<Match>> GetBySeasonIdForCompletedWeeksAsync(int seasonId)
+    {
+        return await _context.Matches
+            .Include(m => m.Week)
+            .Where(m => m.Week.SeasonId == seasonId && m.Week.Status == WeekStatus.Completed)
+            .OrderBy(m => m.Week.WeekNumber)
+            .ToListAsync();
+    }
 
     public async Task<List<Match>> GetByWeekIdAsync(int weekId)
     {
@@ -56,5 +67,14 @@ public class MatchRepository
                          (m.Player1Id == loserId && m.Player2Id == winnerId)))
             .ToList();
         return candidateMatches;
+    }
+
+    /// <summary>
+    /// Returns true if any match references the given team (Team1Id, Team2Id, or WinnerTeamId).
+    /// </summary>
+    public async Task<bool> AnyMatchReferencesTeamAsync(int teamId)
+    {
+        return await _context.Matches
+            .AnyAsync(m => m.Team1Id == teamId || m.Team2Id == teamId || m.WinnerTeamId == teamId);
     }
 }

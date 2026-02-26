@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text;
@@ -12,23 +12,27 @@ namespace WarLeague.Core.Services
     public class DeckSubmissionService
     {
         private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
-        private readonly TeamRepository _teamRepository;
         private readonly WeekRepository _weekRepository;
         private readonly DeckSubmissionRepository _deckSubmissionRepository;
-        public DeckSubmissionService(PlayerSeasonTeamRepository playerSeasonTeamRepository, TeamRepository teamRepository, WeekRepository weekRepository, DeckSubmissionRepository deckSubmissionRepository)
+        private readonly MatchupServiceFactory _matchupServiceFactory;
+        private readonly SeasonRepository _seasonRepository;
+
+        public DeckSubmissionService(
+            PlayerSeasonTeamRepository playerSeasonTeamRepository,
+            WeekRepository weekRepository,
+            DeckSubmissionRepository deckSubmissionRepository,
+            MatchupServiceFactory matchupServiceFactory,
+            SeasonRepository seasonRepository)
         {
             _playerSeasonTeamRepository = playerSeasonTeamRepository;
-            _teamRepository = teamRepository;
             _weekRepository = weekRepository;
             _deckSubmissionRepository = deckSubmissionRepository;
+            _matchupServiceFactory = matchupServiceFactory;
+            _seasonRepository = seasonRepository;
         }
         public async Task<BaseResult> SubmitAsync(int seasonId, int playerId, string deckContent, int seatNumber)
         {
-            (BaseResult value, Week? openWeek) = await EnsureSingleValidOpenWeekAsync(seasonId);
-            if (!value.Success || openWeek is null)
-            {
-                return value;
-            }
+            Week openWeek = (await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.Open))!;
 
             if (seatNumber < 1 || seatNumber > openWeek.SubmissionsRequired)
             {
@@ -43,6 +47,14 @@ namespace WarLeague.Core.Services
             if (pst is null)
             {
                 return new BaseResult { Success = false, Message = "Player is not on any team for the active season." };
+            }
+
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(openWeek.SeasonId);
+            var matchupService = _matchupServiceFactory.GetMatchupService(season);
+            var canSubmitResult = await matchupService.ValidateTeamCanSubmitForWeekAsync(openWeek.Id, pst.TeamId);
+            if (!canSubmitResult.Success)
+            {
+                return canSubmitResult;
             }
 
             // Check if seat is already taken by a different player on the team
@@ -81,11 +93,7 @@ namespace WarLeague.Core.Services
 
         public async Task<BaseResult> DeleteSubmissionAsync(int seasonId, int playerId)
         {
-            (BaseResult value, Week? openWeek) = await EnsureSingleValidOpenWeekAsync(seasonId);
-            if (!value.Success || openWeek is null)
-            {
-                return value;
-            }
+            Week openWeek = (await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.Open))!;
 
             bool deleted = await _deckSubmissionRepository.DeleteByPlayerAndWeekAsync(playerId, openWeek.Id);
             if (!deleted)
@@ -94,27 +102,6 @@ namespace WarLeague.Core.Services
             }
 
             return new BaseResult { Success = true, Message = $"Deck submission deleted for player for week {openWeek.WeekNumber}." };
-        }
-
-        private async Task<(BaseResult value, Week? openWeek)> EnsureSingleValidOpenWeekAsync(int seasonId)
-        {
-            Week? openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.Open);
-            if (openWeek is null)
-            {
-                return (
-                    value: new BaseResult { Success = false, Message = "No open week found for the season." },
-                    openWeek: null);
-            }
-            if (openWeek.Status != WeekStatus.Open)
-            {
-                return (
-                    value: new BaseResult { Success = false, Message = "Deck submissions are not open for the current week." },
-                    openWeek: null);
-            }
-
-            return (
-                value: new BaseResult { Success = true, Message = "Valid single open week."},
-                openWeek: openWeek);
         }
     }
 }

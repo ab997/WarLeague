@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using WarLeague.Data;
 using WarLeague.Data.Entities;
 
@@ -67,10 +67,10 @@ namespace WarLeague.Core.Repositories
               .SingleAsync(s => s.Active);
         }
 
-        public async Task<Season?> GetByIdOrDefault(int seasonId)
+        public async Task<Season> GetSingleActiveSeasonByIdAsync(int seasonId)
         {
             return await _context.Seasons
-                .SingleOrDefaultAsync(s => s.Id == seasonId);
+                .SingleAsync(s => s.Id == seasonId && s.Active);
         }
     }
 }

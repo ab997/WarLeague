@@ -1,4 +1,4 @@
-﻿using Shouldly;
+using Shouldly;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -11,6 +11,7 @@ namespace WarLeague.Test
         #region Substitution Behavior Specifications
 
         [Fact]
+        [Trait("Category", "Substitution")]
         public async Task WhenSubstitutingPlayerWithValidScenario_ThenReturnsSuccess()
         {
             // Arrange
@@ -24,6 +25,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Substitution")]
         public async Task WhenSubstitutingWithNonExistentTeam_ThenReturnsFail()
         {
             // Arrange
@@ -37,6 +39,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Substitution")]
         public async Task WhenSubstitutingPlayerInNotOnTeam_ThenReturnsFail()
         {
             // Arrange
@@ -51,6 +54,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Substitution")]
         public async Task WhenSubstitutingPlayerOutNotOnTeam_ThenReturnsFail()
         {
             // Arrange
@@ -65,6 +69,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Substitution")]
         public async Task WhenSubstitutingWithNoInProgressWeek_ThenReturnsFail()
         {
             // Arrange
@@ -79,6 +84,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Substitution")]
         public async Task WhenSubstitutingWithPlayerInAlreadyScheduled_ThenReturnsFail()
         {
             // Arrange
@@ -92,6 +98,7 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "Substitution")]
         public async Task WhenSubstitutingWithPlayerOutNotScheduled_ThenReturnsFail()
         {
             // Arrange

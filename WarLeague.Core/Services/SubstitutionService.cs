@@ -94,6 +94,12 @@ public class SubstitutionService
             scheduledMatch.Player2Id = playerInId;
         }
 
+        // Keep canonical order (Player1Id < Player2Id) for DB constraint
+        if (scheduledMatch.Player1Id > scheduledMatch.Player2Id)
+        {
+            (scheduledMatch.Player1Id, scheduledMatch.Player2Id) = (scheduledMatch.Player2Id, scheduledMatch.Player1Id);
+        }
+
         await _matchRepository.UpdateAsync(scheduledMatch);
 
         // Update the deck submission if it exists

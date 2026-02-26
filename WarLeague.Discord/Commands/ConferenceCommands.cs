@@ -1,4 +1,5 @@
 using Discord.Interactions;
+using WarLeague.Discord.Autocomplete;
 using WarLeague.Core.Model;
 using WarLeague.Core.Services;
 using WarLeague.Data.Data.Enums;
@@ -26,33 +27,36 @@ public class ConferenceCommands : InteractionModuleBase<SocketInteractionContext
     }
 
     [SlashCommand("create", "Creates a conference in the active season")]
-    public async Task CreateAsync([Summary("name", "Conference name")] string name)
+    public async Task CreateAsync(
+        [Summary("name", "Conference name")][Autocomplete(typeof(ConferenceAutocompleteHandler))] string name,
+        [Summary("playoff-teams", "Number of teams that qualify for playoffs")] int playoffTeams)
     {
         await DeferAsync(ephemeral: false);
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-        BaseResult result = await _conferenceService.CreateAsync(season.Id, name);
+        BaseResult result = await _conferenceService.CreateAsync(season.Id, name, playoffTeams);
 
         await FollowupAsync(ResultHelper.Stringify(result));
     }
 
-    [SlashCommand("update", "Renames a conference in the active season")]
+    [SlashCommand("update", "Updates a conference in the active season")]
     public async Task UpdateAsync(
-        [Summary("current-name", "Current conference name")] string currentName,
-        [Summary("new-name", "New conference name")] string newName)
+        [Summary("current-name", "Current conference name")][Autocomplete(typeof(ConferenceAutocompleteHandler))] string currentName,
+        [Summary("new-name", "New conference name (optional)")] string? newName = null,
+        [Summary("playoff-teams", "Number of teams that qualify for playoffs")] int? playoffTeams = null)
     {
         await DeferAsync(ephemeral: false);
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-        BaseResult result = await _conferenceService.UpdateAsync(season.Id, currentName, newName);
+        BaseResult result = await _conferenceService.UpdateAsync(season.Id, currentName, newName, playoffTeams);
 
         await FollowupAsync(ResultHelper.Stringify(result));
     }
 
     [SlashCommand("delete", "Deletes a conference in the active season")]
-    public async Task DeleteAsync([Summary("name", "Conference name")] string name)
+    public async Task DeleteAsync([Summary("name", "Conference name")][Autocomplete(typeof(ConferenceAutocompleteHandler))] string name)
     {
         await DeferAsync(ephemeral: false);
 
@@ -69,9 +73,7 @@ public class ConferenceCommands : InteractionModuleBase<SocketInteractionContext
         await DeferAsync(ephemeral: false);
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-
         BaseResult result = await _conferenceService.ListAsync(season.Id);
-
         await FollowupAsync(ResultHelper.Stringify(result));
     }
 }

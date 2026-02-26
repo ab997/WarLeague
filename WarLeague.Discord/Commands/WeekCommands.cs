@@ -5,14 +5,15 @@ using System.Globalization;
 using System.Text;
 using WarLeague.Data.Entities;
 using WarLeague.Data.Enums;
+using WarLeague.Data.Data.Enums;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
 
+using WarLeague.Discord.Autocomplete;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 using static WarLeague.Discord.Helpers.ResultHelper;
-using WarLeague.Data.Data.Enums;
 
 namespace WarLeague.Discord.Commands
 {
@@ -26,32 +27,57 @@ namespace WarLeague.Discord.Commands
     {
         private readonly WeekService _weekService;
         private readonly DiscordApiHelperService _helperService;
-        private readonly MatchService _matchService;
+        private readonly MatchupServiceFactory _matchupServiceFactory;
+        private readonly PlayoffMatchupRepository _playoffMatchupRepository;
+        private readonly SeasonRepository _seasonRepository;
+        private readonly TeamRepository _teamRepository;
+        private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
+
         public WeekCommands(
             DiscordApiHelperService helperService,
             WeekService weekService,
-            MatchService matchService)
+            MatchupServiceFactory matchupServiceFactory,
+            PlayoffMatchupRepository playoffMatchupRepository,
+            SeasonRepository seasonRepository,
+            TeamRepository teamRepository,
+            PlayerSeasonTeamRepository playerSeasonTeamRepository)
         {
             _helperService = helperService;
             _weekService = weekService;
-            _matchService = matchService;
+            _matchupServiceFactory = matchupServiceFactory;
+            _playoffMatchupRepository = playoffMatchupRepository;
+            _seasonRepository = seasonRepository;
+            _teamRepository = teamRepository;
+            _playerSeasonTeamRepository = playerSeasonTeamRepository;
         }
         [SlashCommand("create", "1 -> Creates a week (Status: null -> NotOpenYet)")]
-        public async Task Create(int weekNumber,
-            [Summary("submissions-required", "Number of submissions (players per team) required for the week")] int submissionsRequired, 
-            [Summary("start-date", "Start date (YYYY-MM-DD)")] string startDateStr,
-            [Summary("end-date", "End date (YYYY-MM-DD)")] string endDateStr,
-            [Summary("submissions-close-date", "Submissions close date (YYYY-MM-DD)")] string subCloseDateStr
+        public async Task Create( int weekNumber,
+            [Summary("submissions-required", "Number of submissions (players per team) required for the week")] int submissionsRequired,
+            [Summary("start-date", "Start date (YYYY-MM-DD)")] string? startDateStr = null,
+            [Summary("end-date", "End date (YYYY-MM-DD)")] string? endDateStr = null,
+            [Summary("submissions-close-date", "Submissions close date (YYYY-MM-DD)")] string? subCloseDateStr = null
             )
         {
             await DeferAsync(ephemeral: false);
 
-            if (!DateTime.TryParse(startDateStr, out var startDate) ||
-                !DateTime.TryParse(endDateStr, out var endDate) ||
-                !DateTime.TryParse(subCloseDateStr, out var subCloseDate))
+            DateTime? startDate = null;
+            DateTime? endDate = null;
+            DateTime? subCloseDate = null;
+
+            if (startDateStr is { } s1)
             {
-                await FollowupAsync("Invalid date format. Use YYYY-MM-DD.");
-                return;
+                if (!DateTime.TryParse(s1, out var parsed)) { await FollowupAsync("Invalid start date format. Use YYYY-MM-DD."); return; }
+                startDate = parsed;
+            }
+            if (endDateStr is { } s2)
+            {
+                if (!DateTime.TryParse(s2, out var parsed)) { await FollowupAsync("Invalid end date format. Use YYYY-MM-DD."); return; }
+                endDate = parsed;
+            }
+            if (subCloseDateStr is { } s3)
+            {
+                if (!DateTime.TryParse(s3, out var parsed)) { await FollowupAsync("Invalid submissions close date format. Use YYYY-MM-DD."); return; }
+                subCloseDate = parsed;
             }
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
@@ -60,8 +86,9 @@ namespace WarLeague.Discord.Commands
 
             await FollowupAsync(Stringify(result));
         }
+
         [SlashCommand("delete", "Deletes a week")]
-        public async Task DeleteAsync(int weekNumber)
+        public async Task DeleteAsync([Autocomplete(typeof(WeekNumberAutocompleteHandler))] int weekNumber)
         {
             await DeferAsync(ephemeral: false);
 
@@ -75,7 +102,7 @@ namespace WarLeague.Discord.Commands
 
 
         [SlashCommand("open", "2 -> Opens the current week by allowing deck submissions (Status: NotOpenYet -> Open)")]
-        public async Task OpenAsync(int weekNumber)
+        public async Task OpenAsync([Autocomplete(typeof(WeekNumberAutocompleteHandler))] int weekNumber)
         {
             await DeferAsync(ephemeral: false);
 
@@ -127,6 +154,61 @@ namespace WarLeague.Discord.Commands
 
             BaseResult result = await _weekService.TransitionToCompletedAsync(season.Id);
 
+            var message = Stringify(result);
+
+            if (result.Success)
+            {
+                var seasonClosedMessage = await BuildSeasonClosedMessageIfFinalsAsync(season);
+                if (!string.IsNullOrWhiteSpace(seasonClosedMessage))
+                {
+                    message += "\n\n" + seasonClosedMessage;
+                }
+            }
+
+            await FollowupAsync(message);
+        }
+
+        [SlashCommand("suggest-round-robin", "Shows suggested number of round-robin weeks based on teams per conference")]
+        public async Task SuggestRoundRobinAsync()
+        {
+            await DeferAsync(ephemeral: false);
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+            if (season.Phase != SeasonPhase.RoundRobin)
+            {
+                await FollowupAsync("This command is only for round-robin seasons. Current season phase is Playoffs.");
+                return;
+            }
+
+            var matchupService = _matchupServiceFactory.GetMatchupService(season);
+            var suggestion = await matchupService.GetSuggestedRoundsAsync(season.Id);
+            if (suggestion == null || suggestion.Conferences.Count == 0)
+            {
+                await FollowupAsync("Not enough teams or conferences to suggest round-robin weeks. Add at least 2 teams in at least one conference.");
+                return;
+            }
+
+            var lines = suggestion.Conferences
+                .Select(c => $"**{c.ConferenceName}**: {c.TeamCount} teams → {c.Rounds} rounds");
+            var message = $"Suggested round-robin: **{suggestion.TotalSuggestedWeeks} weeks**.\n" + string.Join("\n", lines) +
+                "\n\nUse `/week generate-round-robin-schedule` to create these weeks and pre-generate team-vs-team pairings.";
+            await FollowupAsync(message);
+        }
+
+        [SlashCommand("generate-round-robin-schedule", "Creates weeks 1..N (if missing) and pre-generates team-vs-team pairings for each round-robin week")]
+        public async Task GenerateRoundRobinScheduleAsync(
+            [Summary("weeks", "Number of weeks to ensure (1 through this number)")] int weeks)
+        {
+            await DeferAsync(ephemeral: false);
+
+            if (weeks < 1)
+            {
+                await FollowupAsync("Number of weeks must be at least 1.");
+                return;
+            }
+
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+            BaseResult result = await _weekService.GenerateRoundRobinScheduleAsync(season.Id, weeks);
             await FollowupAsync(Stringify(result));
         }
 
@@ -151,7 +233,7 @@ namespace WarLeague.Discord.Commands
         }
 
         [SlashCommand("update", "Updates a week")]
-        public async Task Update(int weekNumber,
+        public async Task Update([Autocomplete(typeof(WeekNumberAutocompleteHandler))] int weekNumber,
            [Summary("submissions-required", "Number of submissions (players per team) required for the week")] int? submissionsRequired = null,
            [Summary("start-date", "Start date (YYYY-MM-DD)")] string? startDateStr = null,
            [Summary("end-date", "End date (YYYY-MM-DD)")] string? endDateStr = null,
@@ -210,8 +292,108 @@ namespace WarLeague.Discord.Commands
             }
         }
 
+        [SlashCommand("list", "Lists all weeks of the active season with status and dates")]
+        public async Task ListAsync()
+        {
+            await DeferAsync(ephemeral: false);
 
+            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+            var weeks = await _weekService.GetWeeksBySeasonAsync(season.Id);
+            var phaseText = season.Phase == SeasonPhase.Playoffs ? "Playoffs" : "Round Robin";
 
+            if (weeks.Count == 0)
+            {
+                await FollowupAsync($"Season {season.SeasonNumber} ({phaseText}): no weeks yet.");
+                return;
+            }
+
+            static string Fmt(DateTime? d) => d.HasValue ? d.Value.ToString("MM-dd") : "—";
+            var lines = weeks
+                .OrderBy(w => w.WeekNumber)
+                .Select(w => $"W{w.WeekNumber}: {w.Status} ({Fmt(w.StartDate)}→{Fmt(w.EndDate)})")
+                .ToList();
+
+            var message = $"Season {season.SeasonNumber} • {phaseText}\n**Weeks:**\n" + string.Join("\n", lines);
+            await FollowupAsync(message);
+        }
+
+        private async Task<string?> BuildSeasonClosedMessageIfFinalsAsync(Season season)
+        {
+            if (season.Phase != SeasonPhase.Playoffs)
+            {
+                return null;
+            }
+
+            var playoffMatchups = await _playoffMatchupRepository.GetBySeasonIdAsync(season.Id);
+            if (playoffMatchups.Count == 0)
+            {
+                return null;
+            }
+
+            var finalWeekNumber = playoffMatchups.Max(m => m.Week.WeekNumber);
+            var finalWeekMatchups = playoffMatchups
+                .Where(m => m.Week.WeekNumber == finalWeekNumber)
+                .ToList();
+
+            if (finalWeekMatchups.Count == 0)
+            {
+                return null;
+            }
+
+            var winnerTeamIds = finalWeekMatchups
+                .Select(m =>
+                {
+                    if (m.MatchupType == MatchupType.Bye || m.Team1Id == m.Team2Id)
+                    {
+                        return (int?)m.Team1Id;
+                    }
+
+                    return m.TeamWinnerId;
+                })
+                .Where(id => id.HasValue)
+                .Select(id => id.Value)
+                .Distinct()
+                .ToList();
+
+            if (winnerTeamIds.Count != 1)
+            {
+                return null;
+            }
+
+            int championTeamId = winnerTeamIds[0];
+
+            var activeSeason = await _seasonRepository.GetSingleActiveSeasonByIdAsync(season.Id);
+            if (activeSeason.Active)
+            {
+                activeSeason.Active = false;
+                await _seasonRepository.UpdateAsync(activeSeason);
+            }
+
+            var teams = await _teamRepository.GetBySeasonAsync(season.Id);
+            var championTeam = teams.SingleOrDefault(t => t.Id == championTeamId);
+            var teamName = championTeam?.Name ?? $"Team #{championTeamId}";
+
+            var memberships = await _playerSeasonTeamRepository.GetBySeasonAsync(season.Id);
+            var members = memberships
+                .Where(pst => pst.TeamId == championTeamId)
+                .Select(pst => pst.Player)
+                .Distinct()
+                .OrderBy(p => p.UserName)
+                .ToList();
+
+            var membersText = members.Count == 0
+                ? "<no registered members>"
+                : string.Join(", ", members.Select(p => $"<@{p.DiscordUserId}>"));
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"Season {season.SeasonNumber} has concluded.");
+            sb.AppendLine($"Champion: **{teamName}**");
+            sb.AppendLine($"Members: {membersText}");
+            sb.AppendLine();
+            sb.AppendLine("The season is now closed and has been set to inactive.");
+
+            return sb.ToString();
+        }
 
         private static List<Embed> BuildPairingsEmbeds(
             Season season,
@@ -275,7 +457,7 @@ namespace WarLeague.Discord.Commands
                 eb.AddField($"{wm.TeamA.Name} vs {wm.TeamB.Name}", fieldValue, inline: false);
             }
 
-            foreach (Team byeTeam in byeTeams.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase))
+            if (byeTeams.Count > 0)
             {
                 if (eb.Fields.Count >= 25)
                 {
@@ -284,7 +466,8 @@ namespace WarLeague.Discord.Commands
                     eb = NewEmbed(pageNumber);
                 }
 
-                eb.AddField($"{byeTeam.Name} vs BYE", "_Automatic BYE week._", inline: false);
+                var byeNames = string.Join(", ", byeTeams.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).Select(t => t.Name));
+                eb.AddField("Byes (auto-advance)", byeNames, inline: false);
             }
 
             embeds.Add(eb.Build());

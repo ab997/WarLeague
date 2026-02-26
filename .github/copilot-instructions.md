@@ -15,3 +15,4 @@
 - NEVER break this dependency rule: Commands -> Services -> Repositories -> Database. Services can call other services, repositories can call other repositories.
 - NEVER run database migrations or database update.
 - NEVER run tests.
+- All service logic MUST BE Season Phase agnostic -> delegate any season phase specific logic to a IMatchupService implementations.

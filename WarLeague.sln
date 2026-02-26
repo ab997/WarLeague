@@ -21,6 +21,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "instructions", "instructions", "{4042F90E-A051-410A-968D-8C6006A2ECED}"
 	ProjectSection(SolutionItems) = preProject
 		.github\instructions\deck-submissions.instructions.md = .github\instructions\deck-submissions.instructions.md
+		.github\instructions\playoffs.instructions.md = .github\instructions\playoffs.instructions.md
 		.github\instructions\roundrobin.instructions.md = .github\instructions\roundrobin.instructions.md
 		.github\instructions\substitution.instructions.md = .github\instructions\substitution.instructions.md
 	EndProjectSection

@@ -9,6 +9,7 @@ using WarLeague.Core.Services;
 using WarLeague.Discord.Enums;
 using WarLeague.Discord.Helpers;
 using WarLeague.Discord.Model;
+using WarLeague.Discord.Autocomplete;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 using static WarLeague.Discord.Helpers.ResultHelper;
@@ -26,19 +27,17 @@ namespace WarLeague.Discord.Commands;
 public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 {
     private readonly TeamService _teamService;
-    private readonly WarLeagueDbContext _context;
     private readonly DiscordPlayerService _playerService;
     private readonly DiscordApiHelperService _helperService;
     private readonly TeamRepository _teamRepository;
     private readonly DiscordRoleService _roleService;
     private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
     private readonly PermissionRepository _permissionRepository;
-    public TeamCommands(DiscordPlayerService playerService, DiscordApiHelperService helperService, TeamRepository teamRepository, WarLeagueDbContext dbContext, TeamService teamService, DiscordRoleService roleService, PlayerSeasonTeamRepository playerSeasonTeamRepository, PermissionRepository permissionRepository)
+    public TeamCommands(DiscordPlayerService playerService, DiscordApiHelperService helperService, TeamRepository teamRepository, TeamService teamService, DiscordRoleService roleService, PlayerSeasonTeamRepository playerSeasonTeamRepository, PermissionRepository permissionRepository)
     {
         _playerService = playerService;
         _helperService = helperService;
         _teamRepository = teamRepository;
-        _context = dbContext;
         _teamService = teamService;
         _roleService = roleService;
         _playerSeasonTeamRepository = playerSeasonTeamRepository;
@@ -49,7 +48,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("create", "Creates team with you as captain")]
     public async Task CreateAsync(
         [Summary("team-name", "Name of the team")] string teamName,
-        [Summary("conference-name", "Conference for the team")] string conferenceName)
+        [Summary("conference-name", "Conference for the team")][Autocomplete(typeof(ConferenceAutocompleteHandler))] string conferenceName)
     {
         await DeferAsync(ephemeral: false);
 
@@ -84,7 +83,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     [RequireAppPermission(PermissionType.Admin)]
     public async Task AdminCreateAsync(
        [Summary("team-name", "Name of the team")] string teamName,
-         [Summary("conference-name", "Conference for the team")] string conferenceName,
+         [Summary("conference-name", "Conference for the team")][Autocomplete(typeof(ConferenceAutocompleteHandler))] string conferenceName,
        [Summary("captain", "User to set as captain")] IUser captain)
     {
         await DeferAsync(ephemeral: false);
@@ -116,8 +115,8 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("update-conference", "Moves a team to another conference (Admin only)")]
     [RequireAppPermission(PermissionType.Admin)]
     public async Task UpdateConferenceAsync(
-        [Summary("team-name", "Name of the team")] string teamName,
-        [Summary("conference-name", "Target conference name")] string conferenceName)
+        [Summary("team-name", "Name of the team")][Autocomplete(typeof(TeamAutocompleteHandler))] string teamName,
+        [Summary("conference-name", "Target conference name")][Autocomplete(typeof(ConferenceAutocompleteHandler))] string conferenceName)
     {
         await DeferAsync(ephemeral: false);
 
@@ -130,7 +129,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
     [SlashCommand("delete", "Deletes team")]
     public async Task DeleteAsync(
-       [Summary("team-name", "Name of the team")] string teamName)
+       [Summary("team-name", "Name of the team")][Autocomplete(typeof(TeamAutocompleteHandler))] string teamName)
     {
         await DeferAsync(ephemeral: false);
 
@@ -262,7 +261,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("admin-add-member", "Adds a member to any team (Admin only)")]
     [RequireAppPermission(PermissionType.Admin)]
     public async Task AdminAddMemberAsync(
-      [Summary("team-name", "Name of the team")] string teamName,
+      [Summary("team-name", "Name of the team")][Autocomplete(typeof(TeamAutocompleteHandler))] string teamName,
       [Summary("member", "User to add")] IUser user)
     {
         await DeferAsync(ephemeral: false);
@@ -347,7 +346,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     [RequireAppPermission(PermissionType.Admin)]
     public async Task AdminTransferMemberAsync(
     [Summary("member", "User to transfer")] IUser user,
-    [Summary("team-name", "Target team name")] string teamName)
+    [Summary("team-name", "Target team name")][Autocomplete(typeof(TeamAutocompleteHandler))] string teamName)
     {
         await DeferAsync(ephemeral: false);
 
@@ -415,7 +414,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("admin-transfer-captainship", "Transfers captainship to another team member (Admin only)")]
     [RequireAppPermission(PermissionType.Admin)]
     public async Task AdminTransferCaptainshipAsync(
-    [Summary("team-name", "Name of the team")] string teamName,
+    [Summary("team-name", "Name of the team")][Autocomplete(typeof(TeamAutocompleteHandler))] string teamName,
     [Summary("new-captain", "User to become captain")] IUser newCaptain)
     {
         await DeferAsync(ephemeral: false);
@@ -549,6 +548,26 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         }
 
         await FollowupAsync($"Team color updated to {hexCode}.");
+    }
+
+    [SlashCommand("list", "Lists teams in the active season")]
+    public async Task ListAsync()
+    {
+        await DeferAsync(ephemeral: false);
+
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+        var teams = await _teamRepository.GetBySeasonAsync(season.Id);
+
+        if (teams.Count == 0)
+        {
+            await FollowupAsync("No teams in the active season.");
+            return;
+        }
+
+        var lines = teams
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(t => $"• **{t.Name}**" + (string.IsNullOrEmpty(t.Conference?.Name) ? "" : $" — {t.Conference.Name}"));
+        await FollowupAsync($"**Season {season.SeasonNumber} — Teams:**\n" + string.Join("\n", lines));
     }
 
     private static Color? TryParseHexColor(string hexCode)

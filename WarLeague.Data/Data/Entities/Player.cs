@@ -8,4 +8,5 @@ public class Player
     public ulong DiscordUserId { get; set; }
     public string UserName { get; set; } = "";
     public IEnumerable<PlayerSeasonTeam> PlayerSeasonTeams { get; set; } = null!;
+    public IEnumerable<DeckSubmission> DeckSubmissions { get; set; } = null!;
 }

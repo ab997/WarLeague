@@ -12,10 +12,11 @@ namespace WarLeague.Test
         #region Deck Submission Behavior Specifications
 
         [Fact]
+        [Trait("Category", "DeckSubmission")]
         public async Task WhenSubmittingFirstDeck_ThenReturnsSuccess()
         {
             // Arrange
-            var (seasonId, playerId) = await CreateSeasonWithTeamAndOpenWeek();
+            var (seasonId, playerId, _, _) = await CreateSeasonWithTeamAndOpenWeek();
 
             // Act
             var result = await _deckSubmissionService.SubmitAsync(seasonId, playerId, "deck content", seatNumber: 1);
@@ -25,10 +26,11 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "DeckSubmission")]
         public async Task WhenResubmittingDeck_ThenUpdatesExistingSubmission()
         {
             // Arrange
-            var (seasonId, playerId) = await CreateSeasonWithTeamAndOpenWeek();
+            var (seasonId, playerId, _, _) = await CreateSeasonWithTeamAndOpenWeek();
             await _deckSubmissionService.SubmitAsync(seasonId, playerId, "original deck", 1);
 
             // Act
@@ -39,31 +41,30 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "DeckSubmission")]
         public async Task WhenSubmittingToOccupiedSeatOnSameTeam_ThenReturnsFail()
         {
             // Arrange
-            var (seasonId, player1Id, player2Id) = await CreateSeasonWithTeamAndTwoPlayersAndOpenWeek();
+            var (seasonId, player1Id, _, cpt1Id) = await CreateSeasonWithTeamAndOpenWeek();
             await _deckSubmissionService.SubmitAsync(seasonId, player1Id, "deck1", seatNumber: 1);
 
             // Act
-            var result = await _deckSubmissionService.SubmitAsync(seasonId, player2Id, "deck2", seatNumber: 1);
+            var result = await _deckSubmissionService.SubmitAsync(seasonId, cpt1Id, "deck2", seatNumber: 1);
 
             // Assert
             result.Success.ShouldBeFalse();
         }
 
         [Fact]
+        [Trait("Category", "DeckSubmission")]
         public async Task WhenSubmittingToSameSeatOnDifferentTeams_ThenBothSucceed()
         {
             // Arrange
-            var (formatId, seasonId) = await CreateFormatAndSeason();
-            var team1PlayerId = await CreateTeamWithPlayer(seasonId, "Team1");
-            var team2PlayerId = await CreateTeamWithPlayer(seasonId, "Team2");
-            await CreateOpenWeek(seasonId);
+            var (seasonId, player1Id, player2Id, _) = await CreateSeasonWithTeamAndOpenWeek();
 
             // Act
-            var result1 = await _deckSubmissionService.SubmitAsync(seasonId, team1PlayerId, "deck1", 1);
-            var result2 = await _deckSubmissionService.SubmitAsync(seasonId, team2PlayerId, "deck2", 1);
+            var result1 = await _deckSubmissionService.SubmitAsync(seasonId, player1Id, "deck1", 1);
+            var result2 = await _deckSubmissionService.SubmitAsync(seasonId, player2Id, "deck2", 1);
 
             // Assert
             result1.Success.ShouldBeTrue();
@@ -71,10 +72,11 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "DeckSubmission")]
         public async Task WhenSubmittingWithInvalidSeatNumber_ThenReturnsFail()
         {
             // Arrange
-            var (seasonId, playerId) = await CreateSeasonWithTeamAndOpenWeek(submissionsRequired: 3);
+            var (seasonId, playerId, _, _) = await CreateSeasonWithTeamAndOpenWeek(submissionsRequired: 3);
 
             // Act
             var result0 = await _deckSubmissionService.SubmitAsync(seasonId, playerId, "deck", seatNumber: 0);
@@ -86,26 +88,24 @@ namespace WarLeague.Test
         }
 
         [Fact]
-        public async Task WhenSubmittingWithNoOpenWeek_ThenReturnsFail()
+        [Trait("Category", "DeckSubmission")]
+        public async Task WhenSubmittingWithNoOpenWeek_ThenThrowException()
         {
             // Arrange
             var (formatId, seasonId) = await CreateFormatAndSeason();
-            var playerId = await CreateTeamWithPlayer(seasonId, "Team1");
+            var (playerId, _) = await CreateTeamWithPlayer(seasonId, "Team1");
             await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 3);
 
-            // Act
-            var result = await _deckSubmissionService.SubmitAsync(seasonId, playerId, "deck", 1);
-
-            // Assert
-            result.Success.ShouldBeFalse();
+            // Act Assert
+            Should.Throw<Exception>(async () => await _deckSubmissionService.SubmitAsync(seasonId, playerId, "deck", 1));
         }
 
         [Fact]
+        [Trait("Category", "DeckSubmission")]
         public async Task WhenSubmittingAsPlayerNotOnTeam_ThenReturnsFail()
         {
             // Arrange
-            var (formatId, seasonId) = await CreateFormatAndSeason();
-            await CreateOpenWeek(seasonId);
+            var (seasonId, _, _, _) = await CreateSeasonWithTeamAndOpenWeek();
             var unassignedPlayer = await CreatePlayer(999999);
 
             // Act
@@ -116,10 +116,11 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "DeckSubmission")]
         public async Task WhenDeletingExistingSubmission_ThenReturnsSuccess()
         {
             // Arrange
-            var (seasonId, playerId) = await CreateSeasonWithTeamAndOpenWeek();
+            var (seasonId, playerId, _, _) = await CreateSeasonWithTeamAndOpenWeek();
             await _deckSubmissionService.SubmitAsync(seasonId, playerId, "deck", 1);
 
             // Act
@@ -130,10 +131,11 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "DeckSubmission")]
         public async Task WhenDeletingNonExistentSubmission_ThenReturnsFail()
         {
             // Arrange
-            var (seasonId, playerId) = await CreateSeasonWithTeamAndOpenWeek();
+            var (seasonId, playerId, _, _) = await CreateSeasonWithTeamAndOpenWeek();
 
             // Act
             var result = await _deckSubmissionService.DeleteSubmissionAsync(seasonId, playerId);
@@ -143,11 +145,13 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "DeckSubmission")]
         public async Task WhenDeletingSubmissionWithMultipleWeeks_ThenDeletesFromOpenWeekOnly()
         {
             // Arrange - Create season with team and players
             var (_, seasonId) = await CreateFormatAndSeason();
             var (player1, player2, _) = await CreateTwoPlayersOnSameTeam(seasonId, "Team1");
+            var (player3, player4, _) = await CreateTwoPlayersOnSameTeam(seasonId, "Team2");
 
             // Week 1: Create, submit, and close
             await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 1);
@@ -157,7 +161,7 @@ namespace WarLeague.Test
 
             // Week 2: Create, make open, and submit
             await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(14), null, 1);
-            await _weekService.UpdateAsync(seasonId, 2, null, null, null, WeekStatus.Open, 2);
+            await _weekService.TransitionToOpenWeekAsync(seasonId, 2);
             await _deckSubmissionService.SubmitAsync(seasonId, player1.Id, "week2 deck", 1);
 
             // Act - Delete submission
@@ -181,10 +185,11 @@ namespace WarLeague.Test
         }
 
         [Fact]
+        [Trait("Category", "DeckSubmission")]
         public async Task WhenDeletingSubmission_ThenFreesSeatForOtherPlayers()
         {
             // Arrange
-            var (seasonId, player1Id, player2Id) = await CreateSeasonWithTeamAndTwoPlayersAndOpenWeek();
+            var (seasonId, player1Id, player2Id, _) = await CreateSeasonWithTeamAndOpenWeek();
             await _deckSubmissionService.SubmitAsync(seasonId, player1Id, "deck1", 1);
             await _deckSubmissionService.DeleteSubmissionAsync(seasonId, player1Id);
 
