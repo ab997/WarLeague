@@ -10,7 +10,6 @@ namespace WarLeague.Core.Services
     public class PlayoffService : IMatchupService
     {
         private readonly PlayoffMatchupRepository _playoffMatchupRepository;
-        private readonly RoundRobinMatchupRepository _roundRobinMatchupRepository;
         private readonly WeekRepository _weekRepository;
         private readonly TeamRepository _teamRepository;
         private readonly ConferenceRepository _conferenceRepository;
@@ -19,7 +18,6 @@ namespace WarLeague.Core.Services
 
         public PlayoffService(
             PlayoffMatchupRepository playoffMatchupRepository,
-            RoundRobinMatchupRepository roundRobinMatchupRepository,
             WeekRepository weekRepository,
             TeamRepository teamRepository,
             ConferenceRepository conferenceRepository,
@@ -27,7 +25,6 @@ namespace WarLeague.Core.Services
             TeamStandingsRepository teamStandingsRepository)
         {
             _playoffMatchupRepository = playoffMatchupRepository;
-            _roundRobinMatchupRepository = roundRobinMatchupRepository;
             _weekRepository = weekRepository;
             _teamRepository = teamRepository;
             _conferenceRepository = conferenceRepository;

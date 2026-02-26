@@ -13,7 +13,6 @@ public class TeamStandingsService
     private readonly TeamStandingsRepository _teamStandingsRepository;
     private readonly RoundRobinMatchupRepository _roundRobinMatchupRepository;
     private readonly MatchRepository _matchRepository;
-    private readonly WeekRepository _weekRepository;
     private readonly ConferenceRepository _conferenceRepository;
     private readonly TeamRepository _teamRepository;
     private readonly PlayoffMatchupRepository _playoffMatchupRepository;
@@ -25,7 +24,6 @@ public class TeamStandingsService
         TeamStandingsRepository teamStandingsRepository,
         RoundRobinMatchupRepository roundRobinMatchupRepository,
         MatchRepository matchRepository,
-        WeekRepository weekRepository,
         ConferenceRepository conferenceRepository,
         TeamRepository teamRepository,
         PlayoffMatchupRepository playoffMatchupRepository,
@@ -36,7 +34,6 @@ public class TeamStandingsService
         _teamStandingsRepository = teamStandingsRepository;
         _roundRobinMatchupRepository = roundRobinMatchupRepository;
         _matchRepository = matchRepository;
-        _weekRepository = weekRepository;
         _conferenceRepository = conferenceRepository;
         _teamRepository = teamRepository;
         _playoffMatchupRepository = playoffMatchupRepository;
