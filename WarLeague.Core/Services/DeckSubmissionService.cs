@@ -51,7 +51,7 @@ namespace WarLeague.Core.Services
 
             var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(openWeek.SeasonId);
             var matchupService = _matchupServiceFactory.GetMatchupService(season);
-            var canSubmitResult = await matchupService.ValidateTeamCanSubmitForWeekAsync(season, openWeek, pst.TeamId);
+            var canSubmitResult = await matchupService.ValidateTeamCanSubmitForWeekAsync(openWeek.Id, pst.TeamId);
             if (!canSubmitResult.Success)
             {
                 return canSubmitResult;

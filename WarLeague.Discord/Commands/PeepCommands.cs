@@ -749,11 +749,11 @@ namespace WarLeague.Discord.Commands
             IReadOnlyList<Team> teams,
             IMatchupService matchupService)
         {
-            var teamMatchups = await matchupService.GetExistingTeamMatchupsAsync(week, teams);
+            var teamMatchups = await matchupService.GetExistingTeamMatchupsAsync(week.Id);
             if (teamMatchups is null || teamMatchups.Count == 0)
                 return;
 
-            var byeTeams = await matchupService.GetByeTeamsForPairingsDisplayAsync(teamMatchups, teams);
+            var byeTeams = await matchupService.GetByeTeamsForPairingsDisplayAsync(week.Id);
 
             sb.AppendLine($"**Week {week.WeekNumber} — Team pairings**");
             sb.AppendLine();

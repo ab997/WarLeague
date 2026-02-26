@@ -12,6 +12,7 @@ namespace WarLeague.Core.Services
         private readonly PlayoffMatchupRepository _playoffMatchupRepository;
         private readonly WeekRepository _weekRepository;
         private readonly TeamRepository _teamRepository;
+        private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
         private readonly ConferenceRepository _conferenceRepository;
         private readonly SeasonRepository _seasonRepository;
         private readonly TeamStandingsRepository _teamStandingsRepository;
@@ -20,6 +21,7 @@ namespace WarLeague.Core.Services
             PlayoffMatchupRepository playoffMatchupRepository,
             WeekRepository weekRepository,
             TeamRepository teamRepository,
+            PlayerSeasonTeamRepository playerSeasonTeamRepository,
             ConferenceRepository conferenceRepository,
             SeasonRepository seasonRepository,
             TeamStandingsRepository teamStandingsRepository)
@@ -27,16 +29,25 @@ namespace WarLeague.Core.Services
             _playoffMatchupRepository = playoffMatchupRepository;
             _weekRepository = weekRepository;
             _teamRepository = teamRepository;
+            _playerSeasonTeamRepository = playerSeasonTeamRepository;
             _conferenceRepository = conferenceRepository;
             _seasonRepository = seasonRepository;
             _teamStandingsRepository = teamStandingsRepository;
         }
 
-        public (List<Match> createdMatches, List<WeeklyMatchup> matchupOutputs) GetIndividualMatchups(Week week, List<(Team a, Team b)> teamMatchups, Dictionary<int, List<DeckSubmission>> submissionsByTeamId)
+        public async Task<(List<Match> createdMatches, List<WeeklyMatchup> matchupOutputs)> GetIndividualMatchupsAsync(int weekId)
         {
+            var (week, season, teams) = await LoadWeekSeasonAndTeamsAsync(weekId);
+            var teamMatchups = await GetExistingTeamMatchupsAsync(weekId);
+            if (teamMatchups is null || teamMatchups.Count == 0)
+            {
+                return (new List<Match>(), new List<WeeklyMatchup>());
+            }
+
+            var submissionsByTeamId = await BuildSubmissionsByTeamAsync(week, season.Id);
+
             var createdMatches = new List<Match>();
 
-            // We will also build output per matchup.
             var matchupOutputs = new List<WeeklyMatchup>();
             foreach (var (teamA, teamB) in teamMatchups)
             {
@@ -85,16 +96,14 @@ namespace WarLeague.Core.Services
             return (createdMatches, matchupOutputs);
         }
 
-        public async Task<List<(Team a, Team b)>> GetTeamMatchups(IReadOnlyList<Team> teams, int weekNumber)
+        public async Task<List<(Team a, Team b)>> GetTeamMatchupsAsync(int weekId)
         {
+            var (week, season, teams) = await LoadWeekSeasonAndTeamsAsync(weekId);
+
             if (teams.Count == 0)
             {
                 return new List<(Team, Team)>();
             }
-
-            // Get the season from first team's SeasonId
-            var firstTeam = teams.First();
-            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(firstTeam.SeasonId);
 
             // Check if this is the first playoff week by looking for existing playoff matchups
             var allWeeks = await _weekRepository.GetBySeasonAsync(season.Id);
@@ -110,23 +119,83 @@ namespace WarLeague.Core.Services
                 return await GetFirstPlayoffWeekMatchupsAsync(season, teams);
             }
 
-            List<PlayoffMatchup> previousWeekMatchups = existingPlayoffMatchups.Where(x => x.Week.WeekNumber == weekNumber - 1).ToList();
-
-            // otherwise get them from existing matchups
-            return existingPlayoffMatchups
+            var weekNumber = week.WeekNumber;
+            // If matchups already exist for this playoff week, just project them back to (Team, Team).
+            var matchupsForWeek = existingPlayoffMatchups
                 .Where(m => m.Week.WeekNumber == weekNumber)
                 .OrderBy(m => m.BracketPosition)
-                .Select(m =>
-                {
-                    var teamA = teams.FirstOrDefault(t => t.Id == m.Team1Id);
-                    var teamB = teams.FirstOrDefault(t => t.Id == m.Team2Id);
-                    if (teamA == null || teamB == null)
-                    {
-                        throw new InvalidOperationException($"Teams in matchup not found in provided team list. Team1Id: {m.Team1Id}, Team2Id: {m.Team2Id}");
-                    }
-                    return (teamA, teamB);
-                })
                 .ToList();
+
+            if (matchupsForWeek.Count > 0)
+            {
+                return matchupsForWeek
+                    .Select(m =>
+                    {
+                        var teamA = teams.FirstOrDefault(t => t.Id == m.Team1Id);
+                        var teamB = teams.FirstOrDefault(t => t.Id == m.Team2Id);
+                        if (teamA == null || teamB == null)
+                        {
+                            throw new InvalidOperationException($"Teams in matchup not found in provided team list. Team1Id: {m.Team1Id}, Team2Id: {m.Team2Id}");
+                        }
+                        return (teamA, teamB);
+                    })
+                    .ToList();
+            }
+
+            // Otherwise, derive next-round bracket from previous week's winners (ordered by BracketPosition).
+            var previousWeekMatchups = existingPlayoffMatchups
+                .Where(x => x.Week.WeekNumber == weekNumber - 1)
+                .OrderBy(x => x.BracketPosition)
+                .ToList();
+
+            if (previousWeekMatchups.Count == 0)
+            {
+                return new List<(Team, Team)>();
+            }
+
+            var winners = new List<Team>();
+            foreach (var pm in previousWeekMatchups)
+            {
+                int winnerTeamId;
+                if (pm.MatchupType == MatchupType.Bye || pm.Team1Id == pm.Team2Id)
+                {
+                    winnerTeamId = pm.Team1Id;
+                }
+                else
+                {
+                    if (!pm.TeamWinnerId.HasValue)
+                    {
+                        throw new InvalidOperationException($"Winner not set for playoff matchup (Id={pm.Id}) in week {weekNumber - 1}.");
+                    }
+                    winnerTeamId = pm.TeamWinnerId.Value;
+                }
+
+                var winnerTeam = teams.FirstOrDefault(t => t.Id == winnerTeamId)
+                    ?? throw new InvalidOperationException($"Winner team with Id {winnerTeamId} not found in teams list.");
+
+                winners.Add(winnerTeam);
+            }
+
+            if (winners.Count < 2)
+            {
+                return new List<(Team, Team)>();
+            }
+
+            var nextRoundMatchups = new List<(Team a, Team b)>();
+            int n = winners.Count;
+            for (int i = 0; i < n / 2; i++)
+            {
+                var a = winners[i];
+                var b = winners[n - 1 - i];
+                if (a.Id == b.Id)
+                {
+                    // Defensive guard; in a well-formed bracket this should not happen.
+                    continue;
+                }
+                nextRoundMatchups.Add((a, b));
+            }
+
+            return nextRoundMatchups;
         }
 
         private async Task<List<(Team a, Team b)>> GetFirstPlayoffWeekMatchupsAsync(Season season, IReadOnlyList<Team> teams)
@@ -265,8 +334,11 @@ namespace WarLeague.Core.Services
             return round;
         }
 
-        public async Task<BaseResult> SaveTeamMatchupsAsync(Week week, IReadOnlyList<Team> teams, IReadOnlyList<(Team a, Team b)> teamMatchups)
+        public async Task<BaseResult> SaveTeamMatchupsAsync(int weekId, IReadOnlyList<(Team a, Team b)> teamMatchups)
         {
+            var week = await _weekRepository.GetByIdAsync(weekId)
+                ?? throw new InvalidOperationException($"Week with id {weekId} not found.");
+
             var existingPlayoffMatchups = await _playoffMatchupRepository.GetByWeekIdAsync(week.Id);
             if (existingPlayoffMatchups.Count > 0)
             {
@@ -311,8 +383,11 @@ namespace WarLeague.Core.Services
             return new BaseResult(true, "Playoff matchups saved.");
         }
 
-        public async Task<BaseResult> UpdateMatchupWinnersForWeekAsync(Week week, IReadOnlyList<Match> matches)
+        public async Task<BaseResult> UpdateMatchupWinnersForWeekAsync(int weekId, IReadOnlyList<Match> matches)
         {
+            var week = await _weekRepository.GetByIdAsync(weekId)
+                ?? throw new InvalidOperationException($"Week with id {weekId} not found.");
+
             var playoffMatchups = await _playoffMatchupRepository.GetByWeekIdAsync(week.Id);
             if (playoffMatchups.Count == 0)
             {
@@ -350,28 +425,33 @@ namespace WarLeague.Core.Services
             return new BaseResult(true, "Playoff winners updated.");
         }
 
-        public Task<List<Team>> GetByeTeamsForPairingsDisplayAsync(IReadOnlyList<(Team a, Team b)> teamMatchups, IReadOnlyList<Team> allTeams)
+        public async Task<List<Team>> GetByeTeamsForPairingsDisplayAsync(int weekId)
         {
-            // BYE matchup = same team on both sides (equivalent to MatchupType.Bye after save)
-            var byeTeams = teamMatchups
+            var matchups = await GetExistingTeamMatchupsAsync(weekId) ?? new List<(Team a, Team b)>();
+
+            var byeTeams = matchups
                 .Where(m => m.a.Id == m.b.Id)
                 .Select(m => m.a)
                 .Distinct()
                 .ToList();
-            return Task.FromResult(byeTeams);
+            return byeTeams;
         }
 
-        public async Task<IReadOnlySet<int>> GetTeamIdsRequiredForSubmissionsAsync(IReadOnlyList<Team> teams, int weekNumber)
+        public async Task<IReadOnlySet<int>> GetTeamIdsRequiredForSubmissionsAsync(int weekId)
         {
-            var matchups = await GetTeamMatchups(teams, weekNumber);
+            var matchups = await GetExistingTeamMatchupsAsync(weekId) ?? new List<(Team a, Team b)>();
             var ids = matchups.SelectMany(m => new[] { m.a.Id, m.b.Id }).ToHashSet();
             return ids;
         }
 
         public Task<RoundRobinSuggestionResult?> GetSuggestedRoundsAsync(int seasonId) => Task.FromResult<RoundRobinSuggestionResult?>(null);
 
-        public async Task<List<(Team a, Team b)>?> GetExistingTeamMatchupsAsync(Week week, IReadOnlyList<Team> teams)
+        public async Task<List<(Team a, Team b)>?> GetExistingTeamMatchupsAsync(int weekId)
         {
+            var week = await _weekRepository.GetByIdAsync(weekId)
+                ?? throw new InvalidOperationException($"Week with id {weekId} not found.");
+            var teams = await _teamRepository.GetBySeasonAsync(week.SeasonId);
+
             var existingMatchups = await _playoffMatchupRepository.GetByWeekIdAsync(week.Id);
             if (existingMatchups.Count == 0)
                 return null;
@@ -395,8 +475,12 @@ namespace WarLeague.Core.Services
             return list.Count == 0 ? null : list;
         }
 
-        public async Task<BaseResult> ValidateTeamCanSubmitForWeekAsync(Season season, Week week, int teamId)
+        public async Task<BaseResult> ValidateTeamCanSubmitForWeekAsync(int weekId, int teamId)
         {
+            var week = await _weekRepository.GetByIdAsync(weekId)
+                ?? throw new InvalidOperationException($"Week with id {weekId} not found.");
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(week.SeasonId);
+
             var teams = await _teamRepository.GetBySeasonAsync(season.Id);
             var teamById = teams.ToDictionary(t => t.Id);
             if (!teamById.ContainsKey(teamId))
@@ -404,7 +488,7 @@ namespace WarLeague.Core.Services
                 return new BaseResult(false, "Team is not in this season.");
             }
 
-            var existingMatchups = await GetExistingTeamMatchupsAsync(week, teams);
+            var existingMatchups = await GetExistingTeamMatchupsAsync(weekId);
             if (existingMatchups == null || existingMatchups.Count == 0)
             {
                 throw new InvalidOperationException($"No playoff matchups exist for week {week.WeekNumber}. Matchups must be generated before teams can submit.");
@@ -416,6 +500,31 @@ namespace WarLeague.Core.Services
             if (eligibleIds.Contains(teamId))
                 return new BaseResult(true, "Team may submit.");
             return new BaseResult(false, "Only teams that are in this week's playoff matchups may submit decks.");
+        }
+
+        private async Task<(Week week, Season season, List<Team> teams)> LoadWeekSeasonAndTeamsAsync(int weekId)
+        {
+            var week = await _weekRepository.GetByIdWithSubmissionsAsync(weekId)
+                ?? throw new InvalidOperationException($"Week with id {weekId} not found.");
+
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(week.SeasonId);
+            var teams = await _teamRepository.GetBySeasonAsync(season.Id);
+            return (week, season, teams);
+        }
+
+        private async Task<Dictionary<int, List<DeckSubmission>>> BuildSubmissionsByTeamAsync(Week week, int seasonId)
+        {
+            var memberships = await _playerSeasonTeamRepository.GetBySeasonAsync(seasonId);
+            var membershipByPlayerId = memberships
+                .GroupBy(m => m.PlayerId)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            var submissionsByTeamId = week.DeckSubmissions
+                .Where(ds => membershipByPlayerId.ContainsKey(ds.PlayerId))
+                .GroupBy(ds => membershipByPlayerId[ds.PlayerId].TeamId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            return submissionsByTeamId;
         }
     }
 }
