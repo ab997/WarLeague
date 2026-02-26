@@ -1,0 +1,25 @@
+﻿{
+  "$schema": "http://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "DownloadCardSetJsonDefaults": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "CardSet__Download": "true",
+        "CardSet__RelativeJsonPath": "C:\\Users\\xd\\Documents\\cardset.json",
+        "Banlist__Download": "true",
+        "Banlist__RelativeJsonPath": "C:\\Users\\xd\\Documents\\banlist.json"
+      }
+    },
+    "DownloadCardSetExplicit": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "CardSet__Download": "true",
+        "CardSet__EndDate": "2004-01-01",
+        "CardSet__RelativeJsonPath": "C:\\Users\\xd\\Documents\\cardset.json",
+        "Banlist__Download": "true",
+        "Banlist__RelativeJsonPath": "C:\\Users\\xd\\Documents\\banlist.json",
+        "Banlist__Date": "2003-01-01"
+      }
+    }
+  }
+}
