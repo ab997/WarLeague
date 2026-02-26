@@ -1,6 +1,0 @@
-- Conferences divide teams within a season into separate groups.
-- Teams play round-robin only within their conference (reduces required rounds).
-- Conference is optional - seasons can run without conferences (ConferenceId nullable on Team).
-- Week remains season-level - both conferences play during same weeks with different pairings.
-- Round robin pairing filters teams by ConferenceId during generation.
-- Playoffs typically draw top teams from each conference (cross-conference play).

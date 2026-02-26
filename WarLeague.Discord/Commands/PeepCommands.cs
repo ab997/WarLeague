@@ -113,7 +113,12 @@ namespace WarLeague.Discord.Commands
                 sb.AppendLine($"[Admin] FormatId: {format.Id}");
             }
 
-            await FollowupAsync(sb.ToString());
+            var eb = new EmbedBuilder()
+                .WithTitle("Format information")
+                .WithDescription(sb.ToString().TrimEnd())
+                .WithColor(new Color(88, 101, 242));
+
+            await FollowupAsync(embeds: new[] { eb.Build() });
         }
 
         [SlashCommand("admin-help", "Administrator operational guide")]
@@ -196,7 +201,10 @@ namespace WarLeague.Discord.Commands
         
             if (standings.Count == 0)
             {
-                await FollowupAsync("No standings snapshot exists for this season. Complete the round-robin weeks and run `/standings generate` first.");
+                var embed = BuildInfoEmbed(
+                    "No standings snapshot",
+                    "No standings snapshot exists for this season. Complete the round-robin weeks and run `/standings generate` first.");
+                await FollowupAsync(embeds: new[] { embed });
                 return;
             }
         
@@ -225,7 +233,10 @@ namespace WarLeague.Discord.Commands
 
             if (entries.Count == 0)
             {
-                await FollowupAsync("No teams or no completed round-robin weeks yet. Standings will appear after weeks are completed.");
+                var embed = BuildInfoEmbed(
+                    "No round-robin standings",
+                    "No teams or no completed round-robin weeks yet. Standings will appear after weeks are completed.");
+                await FollowupAsync(embeds: new[] { embed });
                 return;
             }
 
@@ -299,7 +310,10 @@ namespace WarLeague.Discord.Commands
 
             if (matchups.Count == 0)
             {
-                await FollowupAsync("No playoff bracket data for this season. Switch to playoffs and generate pairings for at least one playoff week to see the bracket.");
+                var embed = BuildInfoEmbed(
+                    "No playoff bracket data",
+                    "No playoff bracket data for this season. Switch to playoffs and generate pairings for at least one playoff week to see the bracket.");
+                await FollowupAsync(embeds: new[] { embed });
                 return;
             }
 
@@ -374,18 +388,26 @@ namespace WarLeague.Discord.Commands
             Week? week = await GetActiveOrClosedWeekAsync(season.Id);
             if (week is null)
             {
-                await FollowupAsync("No active week found (neither InProgress nor SubmissionsClosed).");
+                var embed = BuildInfoEmbed(
+                    "No active week",
+                    "No active week found (neither InProgress nor SubmissionsClosed).");
+                await FollowupAsync(embeds: new[] { embed });
                 return;
             }
 
-            var output = await BuildWeekResultsAsync(week.Id, week.WeekNumber);
+            var body = await BuildWeekResultsAsync(week.Id, week.WeekNumber);
 
             if (_helperService.IsUserAdmin(Context))
             {
-                output += $"\n[Admin] SeasonId: {season.Id} | WeekId: {week.Id}";
+                body += $"\n[Admin] SeasonId: {season.Id} | WeekId: {week.Id}";
             }
 
-            await FollowupAsync(output);
+            var eb = new EmbedBuilder()
+                .WithTitle($"Week {week.WeekNumber} results")
+                .WithDescription(body.TrimEnd())
+                .WithColor(new Color(88, 101, 242));
+
+            await FollowupAsync(embeds: new[] { eb.Build() });
         }
 
         [SlashCommand("team-pairings", "Shows team-vs-team pairings (and byes) for a week or all weeks")]
@@ -402,7 +424,10 @@ namespace WarLeague.Discord.Commands
             var teams = await _teamRepository.GetBySeasonAsync(season.Id);
             if (teams.Count < 2)
             {
-                await FollowupAsync("Not enough teams in this season to have pairings.");
+                var embed = BuildInfoEmbed(
+                    "Not enough teams",
+                    "Not enough teams in this season to have pairings.");
+                await FollowupAsync(embeds: new[] { embed });
                 return;
             }
 
@@ -414,7 +439,10 @@ namespace WarLeague.Discord.Commands
                 var week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber.Value, season.Id);
                 if (week is null)
                 {
-                    await FollowupAsync($"Week {weekNumber.Value} not found in this season.");
+                    var embed = BuildInfoEmbed(
+                        "Week not found",
+                        $"Week {weekNumber.Value} not found in this season.");
+                    await FollowupAsync(embeds: new[] { embed });
                     return;
                 }
 
@@ -422,11 +450,19 @@ namespace WarLeague.Discord.Commands
 
                 if (sb.Length == 0)
                 {
-                    await FollowupAsync($"No team-vs-team pairings exist for week {week.WeekNumber}. If this is a round-robin week, open the week or generate the round-robin schedule first.");
+                    var embed = BuildInfoEmbed(
+                        "No team pairings",
+                        $"No team-vs-team pairings exist for week {week.WeekNumber}. If this is a round-robin week, open the week or generate the round-robin schedule first.");
+                    await FollowupAsync(embeds: new[] { embed });
                     return;
                 }
 
-                await FollowupAsync(sb.ToString());
+                var eb = new EmbedBuilder()
+                    .WithTitle($"Week {week.WeekNumber} — Team pairings")
+                    .WithDescription(sb.ToString().TrimEnd())
+                    .WithColor(new Color(88, 101, 242));
+
+                await FollowupAsync(embeds: new[] { eb.Build() });
                 return;
             }
 
@@ -443,11 +479,19 @@ namespace WarLeague.Discord.Commands
 
             if (sb.Length == 0)
             {
-                await FollowupAsync("No team-vs-team pairings exist for any week in this season.");
+                var embed = BuildInfoEmbed(
+                    "No team pairings",
+                    "No team-vs-team pairings exist for any week in this season.");
+                await FollowupAsync(embeds: new[] { embed });
                 return;
             }
 
-            await FollowupAsync(sb.ToString());
+            var allEb = new EmbedBuilder()
+                .WithTitle("Team pairings — all weeks")
+                .WithDescription(sb.ToString().TrimEnd())
+                .WithColor(new Color(88, 101, 242));
+
+            await FollowupAsync(embeds: new[] { allEb.Build() });
         }
 
         [SlashCommand("season-current", "Shows the current active season in this format")]
@@ -470,7 +514,12 @@ namespace WarLeague.Discord.Commands
                 sb.AppendLine($"[Admin] SeasonId: {season.Id} | FormatId: {season.Format.Id}");
             }
 
-            await FollowupAsync(sb.ToString());
+            var eb = new EmbedBuilder()
+                .WithTitle("Current season")
+                .WithDescription(sb.ToString().TrimEnd())
+                .WithColor(new Color(88, 101, 242));
+
+            await FollowupAsync(embeds: new[] { eb.Build() });
         }
 
         [SlashCommand("week", "Shows details about a specific week of the active season")]
@@ -486,7 +535,10 @@ namespace WarLeague.Discord.Commands
             var week = await _weekRepository.GetByWeekNumberAndSeasonAsync(weekNumber, season.Id);
             if (week is null)
             {
-                await FollowupAsync($"Week with number {weekNumber} does not exist.");
+                var embed = BuildInfoEmbed(
+                    "Week not found",
+                    $"Week with number {weekNumber} does not exist.");
+                await FollowupAsync(embeds: new[] { embed });
                 return;
             }
 
@@ -504,7 +556,12 @@ namespace WarLeague.Discord.Commands
                 sb.AppendLine($"[Admin] SeasonId: {season.Id}");
             }
 
-            await FollowupAsync(sb.ToString());
+            var eb = new EmbedBuilder()
+                .WithTitle($"Week {week.WeekNumber}")
+                .WithDescription(sb.ToString().TrimEnd())
+                .WithColor(new Color(88, 101, 242));
+
+            await FollowupAsync(embeds: new[] { eb.Build() });
         }
 
         [SlashCommand("my-team", "Shows your team (if any) in the active season")]
@@ -520,11 +577,20 @@ namespace WarLeague.Discord.Commands
             var pst = await _playerSeasonTeamRepository.GetByPlayerAndSeasonAsync(you.Id, season.Id);
             if (pst is null || pst.Team is null)
             {
-                await FollowupAsync("You are not a member of any team this season.");
+                var embed = BuildInfoEmbed(
+                    "No team found",
+                    "You are not a member of any team this season.");
+                await FollowupAsync(embeds: new[] { embed });
                 return;
             }
 
-            await FollowupAsync(await BuildTeamDetailsAsync(season, pst.Team));
+            var body = await BuildTeamDetailsAsync(season, pst.Team);
+            var eb = new EmbedBuilder()
+                .WithTitle($"Team: {pst.Team.Name}")
+                .WithDescription(body.TrimEnd())
+                .WithColor(new Color(88, 101, 242));
+
+            await FollowupAsync(embeds: new[] { eb.Build() });
         }
 
         [SlashCommand("team", "Shows a team's details in the active season")]
@@ -540,11 +606,20 @@ namespace WarLeague.Discord.Commands
             Team? team = await _teamRepository.GetByNameAndSeasonAsync(teamName, season.Id);
             if (team is null)
             {
-                await FollowupAsync($"Team with name '{teamName}' not found.");
+                var embed = BuildInfoEmbed(
+                    "Team not found",
+                    $"Team with name '{teamName}' not found.");
+                await FollowupAsync(embeds: new[] { embed });
                 return;
             }
 
-            await FollowupAsync(await BuildTeamDetailsAsync(season, team));
+            var body = await BuildTeamDetailsAsync(season, team);
+            var eb = new EmbedBuilder()
+                .WithTitle($"Team: {team.Name}")
+                .WithDescription(body.TrimEnd())
+                .WithColor(new Color(88, 101, 242));
+
+            await FollowupAsync(embeds: new[] { eb.Build() });
         }
 
         [SlashCommand("rules", "Shows a snippet of the format rules JSON")]
@@ -560,7 +635,10 @@ namespace WarLeague.Discord.Commands
             Format format = await _helperService.GetFormatByCategoryNameAsync(Context);
             if (string.IsNullOrWhiteSpace(format.Rules))
             {
-                await FollowupAsync("No rules set for this format.");
+                var embed = BuildInfoEmbed(
+                    "No rules set",
+                    "No rules set for this format.");
+                await FollowupAsync(embeds: new[] { embed });
                 return;
             }
 
@@ -578,7 +656,12 @@ namespace WarLeague.Discord.Commands
                 sb.AppendLine($"[Admin] FormatId: {format.Id}");
             }
 
-            await FollowupAsync(sb.ToString());
+            var eb = new EmbedBuilder()
+                .WithTitle("Format rules")
+                .WithDescription(sb.ToString().TrimEnd())
+                .WithColor(new Color(88, 101, 242));
+
+            await FollowupAsync(embeds: new[] { eb.Build() });
         }
 
         [SlashCommand("overview", "Shows all formats, seasons, teams and the players in each team")]
@@ -591,7 +674,10 @@ namespace WarLeague.Discord.Commands
 
             if (formats.Count == 0)
             {
-                await FollowupAsync("No formats found.");
+                var embed = BuildInfoEmbed(
+                    "No formats found",
+                    "No formats found. Use the appropriate admin command to create a format first.");
+                await FollowupAsync(embeds: new[] { embed });
                 return;
             }
 
@@ -741,26 +827,38 @@ namespace WarLeague.Discord.Commands
 
             if (weeks.Count == 0)
             {
-                await FollowupAsync("No weeks found for the active season.");
+                var embed = BuildInfoEmbed(
+                    "No weeks found",
+                    "No weeks found for the active season.");
+                await FollowupAsync(embeds: new[] { embed });
                 return;
             }
 
             var orderedWeeks = weeks.OrderBy(w => w.WeekNumber).ToList();
-            var sbAll = new StringBuilder();
+            var embeds = new List<Embed>();
 
-            foreach (var w in orderedWeeks)
+            for (int i = 0; i < orderedWeeks.Count; i++)
             {
-                var section = await BuildWeekResultsAsync(w.Id, w.WeekNumber);
-                sbAll.AppendLine(section);
-                sbAll.AppendLine();
+                var w = orderedWeeks[i];
+                var body = await BuildWeekResultsAsync(w.Id, w.WeekNumber);
+
+                if (i == orderedWeeks.Count - 1 && _helperService.IsUserAdmin(Context))
+                {
+                    body += $"\n[Admin] SeasonId: {season.Id}";
+                }
+
+                var eb = new EmbedBuilder()
+                    .WithTitle($"Week {w.WeekNumber} results")
+                    .WithDescription(body.TrimEnd())
+                    .WithColor(new Color(88, 101, 242));
+
+                embeds.Add(eb.Build());
             }
 
-            if (_helperService.IsUserAdmin(Context))
+            foreach (var embed in embeds)
             {
-                sbAll.AppendLine($"[Admin] SeasonId: {season.Id}");
+                await FollowupAsync(embeds: new[] { embed }, flags: MessageFlags.SuppressEmbeds);
             }
-
-            await FollowupAsync(sbAll.ToString().TrimEnd(), flags: MessageFlags.SuppressEmbeds);
         }
 
         private static async Task AppendPairingsForWeekAsync(
@@ -805,15 +903,13 @@ namespace WarLeague.Discord.Commands
 
             if (matches.Count == 0)
             {
-                return $"Week {weekNumber} results:\n\nNo matches scheduled for week {weekNumber}.";
+                return "No matches scheduled for this week.";
             }
 
             var played = matches.Where(m => m.Status == MatchStatus.Reported).ToList();
             var pending = matches.Where(m => m.Status != MatchStatus.Reported).ToList();
 
             var sb = new StringBuilder();
-            sb.AppendLine($"Week {weekNumber} results:");
-            sb.AppendLine();
 
             sb.AppendLine($"Played ({played.Count}):");
             if (played.Count == 0)
@@ -849,7 +945,7 @@ namespace WarLeague.Discord.Commands
                 }
             }
 
-            return sb.ToString();
+            return sb.ToString().TrimEnd();
         }
 
         private async Task<Week?> GetActiveOrClosedWeekAsync(int seasonId)
@@ -949,6 +1045,24 @@ namespace WarLeague.Discord.Commands
             return chunks;
         }
 
+        private static Embed BuildInfoEmbed(string title, string description)
+        {
+            return new EmbedBuilder()
+                .WithTitle(title)
+                .WithDescription(description)
+                .WithColor(new Color(88, 101, 242))
+                .Build();
+        }
+
+        private static Embed BuildErrorEmbed(string title, string description)
+        {
+            return new EmbedBuilder()
+                .WithTitle(title)
+                .WithDescription(description)
+                .WithColor(new Color(240, 71, 71))
+                .Build();
+        }
+
         private async Task SendEmbedsInBatchesAsync(IReadOnlyList<Embed> embeds)
         {
             await _helperService.SendEmbedsInBatchesAsync(Context, embeds);
@@ -964,7 +1078,6 @@ namespace WarLeague.Discord.Commands
                 .ToList();
 
             var sb = new StringBuilder();
-            sb.AppendLine($"Team: {team.Name}");
             sb.AppendLine($"Captain: <@{team.Captain.DiscordUserId}>");
             sb.AppendLine($"Created: {team.CreatedDate:yyyy-MM-dd}");
             sb.AppendLine();
@@ -990,7 +1103,7 @@ namespace WarLeague.Discord.Commands
                 sb.AppendLine($"[Admin] TeamId: {team.Id} | CaptainId: {team.CaptainId} | SeasonId: {season.Id}");
             }
 
-            return sb.ToString();
+            return sb.ToString().TrimEnd();
         }
     }
 }
