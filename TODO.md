@@ -41,8 +41,7 @@
 - [ ] Decide which commands should be ephemeral (private)
 - [ ] Add a system for reporting messages in a separate channel
 - [x] fix match reporting (winners report, add wins and losses per replay)
-    - [ ]  when this is implemented, add a better tiebreaker logic that can use this match win/loss for tb calc
-- [ ] 
+    - [x]  when this is implemented, add a better tiebreaker logic that can use this match win/loss for tb calc
 
 ## TECHNICAL
 

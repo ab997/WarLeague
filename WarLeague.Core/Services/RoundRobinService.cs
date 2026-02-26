@@ -1,5 +1,5 @@
-using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
+using WarLeague.Core.Model;
 using WarLeague.Data.Data.Entities;
 using WarLeague.Data.Data.Enums;
 using WarLeague.Data.Entities;
@@ -12,15 +12,21 @@ namespace WarLeague.Core.Services
         private readonly RoundRobinMatchupRepository _roundRobinMatchupRepository;
         private readonly TeamRepository _teamRepository;
         private readonly ConferenceRepository _conferenceRepository;
+        private readonly WeekRepository _weekRepository;
+        private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
 
         public RoundRobinService(
             RoundRobinMatchupRepository roundRobinMatchupRepository,
             TeamRepository teamRepository,
-            ConferenceRepository conferenceRepository)
+            ConferenceRepository conferenceRepository,
+            WeekRepository weekRepository,
+            PlayerSeasonTeamRepository playerSeasonTeamRepository)
         {
             _roundRobinMatchupRepository = roundRobinMatchupRepository;
             _teamRepository = teamRepository;
             _conferenceRepository = conferenceRepository;
+            _weekRepository = weekRepository;
+            _playerSeasonTeamRepository = playerSeasonTeamRepository;
         }
 
         /// <summary>
@@ -32,18 +38,36 @@ namespace WarLeague.Core.Services
             return teamCount % 2 == 0 ? teamCount - 1 : teamCount;
         }
 
-        public (List<Match> createdMatches, List<WeeklyMatchup> matchupOutputs) GetIndividualMatchups(Week week, List<(Team a, Team b)> teamMatchups, Dictionary<int, List<DeckSubmission>> submissionsByTeamId)
+        public async Task<(List<Match> createdMatches, List<WeeklyMatchup> matchupOutputs)> GetIndividualMatchupsAsync(int weekId)
         {
-            var createdMatches = new List<Match>();
+            var (week, teams) = await LoadWeekAndTeamsAsync(weekId);
+            var teamMatchups = await GetExistingTeamMatchupsAsync(weekId);
+            if (teamMatchups is null || teamMatchups.Count == 0)
+            {
+                return (new List<Match>(), new List<WeeklyMatchup>());
+            }
 
-            // We will also build output per matchup.
+            var submissionsByTeamId = await BuildSubmissionsByTeamAsync(week, week.SeasonId);
+
+            var createdMatches = new List<Match>();
             var matchupOutputs = new List<WeeklyMatchup>();
+
             foreach (var (teamA, teamB) in teamMatchups)
             {
-                var submissionsA = submissionsByTeamId.TryGetValue(teamA.Id, out var aSubmissions) ? aSubmissions : new List<DeckSubmission>();
-                var submissionsB = submissionsByTeamId.TryGetValue(teamB.Id, out var bSubmissions) ? bSubmissions : new List<DeckSubmission>();
+                if (teamA.Id == teamB.Id)
+                {
+                    // Round-robin does not currently use explicit BYE matchups in pairings generation,
+                    // but guard here for consistency.
+                    continue;
+                }
 
-                // Sort by SeatNumber instead of randomizing
+                var submissionsA = submissionsByTeamId.TryGetValue(teamA.Id, out var aSubmissions)
+                    ? aSubmissions
+                    : new List<DeckSubmission>();
+                var submissionsB = submissionsByTeamId.TryGetValue(teamB.Id, out var bSubmissions)
+                    ? bSubmissions
+                    : new List<DeckSubmission>();
+
                 var sortedA = submissionsA.OrderBy(ds => ds.SeatNumber).Select(ds => ds.Player).ToList();
                 var sortedB = submissionsB.OrderBy(ds => ds.SeatNumber).Select(ds => ds.Player).ToList();
 
@@ -56,7 +80,6 @@ namespace WarLeague.Core.Services
                     var p2 = sortedB[i];
                     pairs.Add((p1, p2));
 
-                    // Canonical order (Player1Id < Player2Id) for DB unique constraint
                     var player1Id = Math.Min(p1.Id, p2.Id);
                     var player2Id = Math.Max(p1.Id, p2.Id);
                     createdMatches.Add(new Match
@@ -79,8 +102,10 @@ namespace WarLeague.Core.Services
             return (createdMatches, matchupOutputs);
         }
 
-        public Task<List<(Team a, Team b)>> GetTeamMatchups(IReadOnlyList<Team> teams, int weekNumber)
+        public async Task<List<(Team a, Team b)>> GetTeamMatchupsAsync(int weekId)
         {
+            var (week, teams) = await LoadWeekAndTeamsAsync(weekId);
+
             var conferenceGroups = teams
                 .GroupBy(t => t.ConferenceId)
                 .OrderBy(g => g.Key)
@@ -90,11 +115,11 @@ namespace WarLeague.Core.Services
 
             foreach (var conferenceGroup in conferenceGroups)
             {
-                var conferenceMatchups = GetConferenceTeamMatchups(conferenceGroup, weekNumber);
+                var conferenceMatchups = GetConferenceTeamMatchups(conferenceGroup, week.WeekNumber);
                 allMatchups.AddRange(conferenceMatchups);
             }
 
-            return Task.FromResult(allMatchups);
+            return allMatchups;
         }
 
         private static List<(Team a, Team b)> GetConferenceTeamMatchups(IEnumerable<Team> conferenceTeams, int weekNumber)
@@ -141,8 +166,12 @@ namespace WarLeague.Core.Services
             return matchups;
         }
 
-        public async Task<BaseResult> SaveTeamMatchupsAsync(Week week, IReadOnlyList<Team> teams, IReadOnlyList<(Team a, Team b)> teamMatchups)
+        public async Task<BaseResult> SaveTeamMatchupsAsync(int weekId, IReadOnlyList<(Team a, Team b)> teamMatchups)
         {
+            var week = await _weekRepository.GetByIdAsync(weekId)
+                ?? throw new InvalidOperationException($"Week with id {weekId} not found.");
+            var teams = await _teamRepository.GetBySeasonAsync(week.SeasonId);
+
             var existingRoundRobinMatchups = await _roundRobinMatchupRepository.GetByWeekIdAsync(week.Id);
             if (existingRoundRobinMatchups.Count > 0)
             {
@@ -186,8 +215,11 @@ namespace WarLeague.Core.Services
             return new BaseResult(true, "Round-robin matchups saved.");
         }
 
-        public async Task<BaseResult> UpdateMatchupWinnersForWeekAsync(Week week, IReadOnlyList<Match> matches)
+        public async Task<BaseResult> UpdateMatchupWinnersForWeekAsync(int weekId, IReadOnlyList<Match> matches)
         {
+            var week = await _weekRepository.GetByIdAsync(weekId)
+                ?? throw new InvalidOperationException($"Week with id {weekId} not found.");
+
             var roundRobinMatchups = await _roundRobinMatchupRepository.GetByWeekIdAsync(week.Id);
             if (roundRobinMatchups.Count == 0)
             {
@@ -224,17 +256,24 @@ namespace WarLeague.Core.Services
             return new BaseResult(true, "Round-robin winners updated.");
         }
 
-        public Task<List<Team>> GetByeTeamsForPairingsDisplayAsync(IReadOnlyList<(Team a, Team b)> teamMatchups, IReadOnlyList<Team> allTeams)
+        public async Task<List<Team>> GetByeTeamsForPairingsDisplayAsync(int weekId)
         {
+            var (week, teams) = await LoadWeekAndTeamsAsync(weekId);
+            var teamMatchups = await GetExistingTeamMatchupsAsync(weekId) ?? new List<(Team a, Team b)>();
+
             var participatingIds = teamMatchups.SelectMany(m => new[] { m.a.Id, m.b.Id }).ToHashSet();
-            var byeTeams = allTeams.Where(t => !participatingIds.Contains(t.Id)).ToList();
-            return Task.FromResult(byeTeams);
+            var byeTeams = teams.Where(t => !participatingIds.Contains(t.Id)).ToList();
+            return byeTeams;
         }
 
-        public Task<IReadOnlySet<int>> GetTeamIdsRequiredForSubmissionsAsync(IReadOnlyList<Team> teams, int weekNumber)
+        public async Task<IReadOnlySet<int>> GetTeamIdsRequiredForSubmissionsAsync(int weekId)
         {
+            var week = await _weekRepository.GetByIdAsync(weekId)
+                ?? throw new InvalidOperationException($"Week with id {weekId} not found.");
+            var teams = await _teamRepository.GetBySeasonAsync(week.SeasonId);
+
             var ids = teams.Select(t => t.Id).ToHashSet();
-            return Task.FromResult<IReadOnlySet<int>>(ids);
+            return ids;
         }
 
         public async Task<RoundRobinSuggestionResult?> GetSuggestedRoundsAsync(int seasonId)
@@ -269,8 +308,10 @@ namespace WarLeague.Core.Services
             return result;
         }
 
-        public async Task<List<(Team a, Team b)>?> GetExistingTeamMatchupsAsync(Week week, IReadOnlyList<Team> teams)
+        public async Task<List<(Team a, Team b)>?> GetExistingTeamMatchupsAsync(int weekId)
         {
+            var (week, teams) = await LoadWeekAndTeamsAsync(weekId);
+
             var matchups = await _roundRobinMatchupRepository.GetByWeekIdAsync(week.Id);
             if (matchups.Count == 0) return null;
 
@@ -287,10 +328,34 @@ namespace WarLeague.Core.Services
             return list.Count == 0 ? null : list;
         }
 
-        public Task<BaseResult> ValidateTeamCanSubmitForWeekAsync(Season season, Week week, int teamId)
+        public Task<BaseResult> ValidateTeamCanSubmitForWeekAsync(int weekId, int teamId)
         {
             // Round-robin: any team in the season may submit.
             return Task.FromResult(new BaseResult(true, "Team may submit."));
+        }
+
+        private async Task<(Week week, List<Team> teams)> LoadWeekAndTeamsAsync(int weekId)
+        {
+            var week = await _weekRepository.GetByIdAsync(weekId)
+                ?? throw new InvalidOperationException($"Week with id {weekId} not found.");
+
+            var teams = await _teamRepository.GetBySeasonAsync(week.SeasonId);
+            return (week, teams);
+        }
+
+        private async Task<Dictionary<int, List<DeckSubmission>>> BuildSubmissionsByTeamAsync(Week week, int seasonId)
+        {
+            var memberships = await _playerSeasonTeamRepository.GetBySeasonAsync(seasonId);
+            var membershipByPlayerId = memberships
+                .GroupBy(m => m.PlayerId)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            var submissionsByTeamId = week.DeckSubmissions
+                .Where(ds => membershipByPlayerId.ContainsKey(ds.PlayerId))
+                .GroupBy(ds => membershipByPlayerId[ds.PlayerId].TeamId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            return submissionsByTeamId;
         }
 
         // Circle method rotation: keep index 0 fixed, rotate the rest.

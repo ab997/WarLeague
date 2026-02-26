@@ -182,44 +182,6 @@ namespace WarLeague.Discord.Commands
             await FollowupAsync(embeds: new[] { eb.Build() });
         }
 
-        [SlashCommand("standings-playoffs", "Show playoff standings for the active season (W–L only)")]
-        [RequireAppPermission(PermissionType.Admin)]
-        [EnsureChannelIsInFormatCategory]
-        [EnsureSingleActiveSeason]
-        public async Task StandingsPlayoffsAsync()
-        {
-            await DeferAsync(ephemeral: false);
-
-            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-            var standings = await _teamStandingsService.GetStandingsForSeasonAsync(season.Id);
-
-            if (standings.Count == 0)
-            {
-                await FollowupAsync("No playoff standings for this season. Use `/season switch-to-playoffs` first, or `/standings generate` to populate from round-robin results.");
-                return;
-            }
-
-            var statsByTeamId = await _teamStandingsService.GetDisplayStatsForSeasonAsync(season.Id);
-
-            var ordered = standings
-                .OrderBy(s => s.Seed)
-                .ThenBy(s => s.TeamId)
-                .ToList();
-
-            var lines = ordered.Select((s, i) =>
-            {
-                var stats = statsByTeamId.GetValueOrDefault(s.TeamId);
-                var wins = s.Wins ?? stats.Wins;
-                var losses = stats.Losses;
-                return $"**{i + 1}.** {s.Team.Name} — {wins}–{losses}";
-            });
-
-            var message = "**Playoff standings**\n" + string.Join("\n", lines);
-            if (message.Length > 1900)
-                message = message[..1900] + "...";
-            await FollowupAsync(message);
-        }
-
         [SlashCommand("standings-round-robin", "Show current round-robin standings (W–L per team)")]
         [RequireAppPermission(PermissionType.Admin)]
         [EnsureChannelIsInFormatCategory]
@@ -230,7 +192,36 @@ namespace WarLeague.Discord.Commands
             await DeferAsync(ephemeral: false);
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-            var entries = await _teamStandingsService.GetRoundRobinStandingsForDisplayAsync(season.Id);
+            var standings = await _teamStandingsService.GetStandingsForSeasonAsync(season.Id);
+        
+            if (standings.Count == 0)
+            {
+                await FollowupAsync("No standings snapshot exists for this season. Complete the round-robin weeks and run `/standings generate` first.");
+                return;
+            }
+        
+            var statsByTeamId = await _teamStandingsService.GetDisplayStatsForSeasonAsync(season.Id);
+            var liveEntries = await _teamStandingsService.GetRoundRobinStandingsForDisplayAsync(season.Id);
+            var liveByTeamId = liveEntries.ToDictionary(e => e.TeamId);
+        
+            var combinedEntries = standings.Select(s =>
+            {
+                liveByTeamId.TryGetValue(s.TeamId, out var live);
+                var stats = statsByTeamId.GetValueOrDefault(s.TeamId);
+                return new RoundRobinStandingsEntry
+                {
+                    TeamId = s.TeamId,
+                    TeamName = s.Team?.Name ?? live?.TeamName ?? $"Team #{s.TeamId}",
+                    ConferenceName = live?.ConferenceName ?? string.Empty,
+                    Tiebreaker = s.Tiebreaker,
+                    Wins = stats.Wins,
+                    Losses = stats.Losses
+                };
+            }).ToList();
+        
+            var entries = combinedEntries
+                .OrderByDescending(e => e.Tiebreaker)
+                .ToList();
 
             if (entries.Count == 0)
             {
@@ -312,12 +303,38 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            var byRound = matchups.GroupBy(m => (m.Round, m.WeekNumber)).OrderBy(g => g.Key.WeekNumber).ThenBy(g => g.Key.Round).ToList();
+            var byRound = matchups
+                .GroupBy(m => (m.Round, m.WeekNumber))
+                .OrderBy(g => g.Key.WeekNumber)
+                .ThenBy(g => g.Key.Round)
+                .ToList();
+
+            // Determine overall bracket size (top cut) from all unique teams,
+            // then step it down per playoff week (Top 8 -> Top 4 -> Finals).
+            var uniqueTeamsCount = matchups
+                .SelectMany(m => new[] { m.Team1Name, m.Team2Name })
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count();
+
+            int bracketSize = 1;
+            while (bracketSize < uniqueTeamsCount)
+                bracketSize *= 2;
+
             const int maxFieldValueLength = 1024;
             var embeds = new List<Embed>();
+            int remainingBracketSize = bracketSize;
 
             foreach (var group in byRound)
             {
+                string title = remainingBracketSize switch
+                {
+                    >= 8 => $"Top {remainingBracketSize} bracket",
+                    4 => "Top 4 bracket",
+                    2 => "Finals bracket",
+                    _ => "Playoff bracket"
+                };
+
                 var roundLabel = $"Round {group.Key.Round} (Week {group.Key.WeekNumber})";
                 var lines = new List<string>();
                 foreach (var m in group.OrderBy(x => x.BracketPosition))
@@ -329,13 +346,16 @@ namespace WarLeague.Discord.Commands
                 }
                 var body = string.Join("\n", lines);
                 var eb = new EmbedBuilder()
-                    .WithTitle("Playoff bracket")
+                    .WithTitle(title)
                     .WithColor(new Color(88, 101, 242));
                 if (body.Length <= maxFieldValueLength)
                     eb.AddField(roundLabel, body, inline: false);
                 else
                     SplitStandingsField(eb, roundLabel, body, maxFieldValueLength);
                 embeds.Add(eb.Build());
+
+                if (remainingBracketSize > 2)
+                    remainingBracketSize /= 2;
             }
 
             await _helperService.SendEmbedsInBatchesAsync(Context, embeds);
@@ -749,11 +769,11 @@ namespace WarLeague.Discord.Commands
             IReadOnlyList<Team> teams,
             IMatchupService matchupService)
         {
-            var teamMatchups = await matchupService.GetExistingTeamMatchupsAsync(week, teams);
+            var teamMatchups = await matchupService.GetExistingTeamMatchupsAsync(week.Id);
             if (teamMatchups is null || teamMatchups.Count == 0)
                 return;
 
-            var byeTeams = await matchupService.GetByeTeamsForPairingsDisplayAsync(teamMatchups, teams);
+            var byeTeams = await matchupService.GetByeTeamsForPairingsDisplayAsync(week.Id);
 
             sb.AppendLine($"**Week {week.WeekNumber} — Team pairings**");
             sb.AppendLine();

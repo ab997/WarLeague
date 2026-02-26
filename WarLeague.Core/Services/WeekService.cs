@@ -218,7 +218,7 @@ namespace WarLeague.Core.Services
             var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             var matchupService = _matchupServiceFactory.GetMatchupService(season);
-            var requiredTeamIds = await matchupService.GetTeamIdsRequiredForSubmissionsAsync(teams, openWeek.WeekNumber);
+            var requiredTeamIds = await matchupService.GetTeamIdsRequiredForSubmissionsAsync(openWeek.Id);
             var teamsRequired = teams.Where(t => requiredTeamIds.Contains(t.Id)).ToList();
 
             var psts = await _playerSeasonTeamRepository.GetBySeasonAsync(seasonId);
@@ -294,7 +294,7 @@ namespace WarLeague.Core.Services
             var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
 
             var matchupService = _matchupServiceFactory.GetMatchupService(season);
-            BaseResult updateWinnersResult = await matchupService.UpdateMatchupWinnersForWeekAsync(activeWeek, matches);
+            BaseResult updateWinnersResult = await matchupService.UpdateMatchupWinnersForWeekAsync(activeWeek.Id, matches);
             if (!updateWinnersResult.Success)
             {
                 return updateWinnersResult;
@@ -445,11 +445,11 @@ namespace WarLeague.Core.Services
                     weeksCreated++;
                 }
 
-                var teamMatchups = await matchupService.GetTeamMatchups(teams, weekNumber);
+                var teamMatchups = await matchupService.GetTeamMatchupsAsync(week.Id);
                 if (teamMatchups.Count == 0)
                     continue;
 
-                var saveResult = await matchupService.SaveTeamMatchupsAsync(week, teams, teamMatchups);
+                var saveResult = await matchupService.SaveTeamMatchupsAsync(week.Id, teamMatchups);
                 if (saveResult.Success)
                     pairingsSaved++;
             }
