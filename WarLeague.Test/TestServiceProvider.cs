@@ -48,6 +48,7 @@ public static class TestServiceProvider
         services.AddScoped<SubstitutionService>();
         services.AddScoped<ConferenceService>();
         services.AddScoped<TeamStandingsService>();
+        services.AddScoped<PlayoffBracketService>();
 
         services.AddScoped<GuildContextService>();
 

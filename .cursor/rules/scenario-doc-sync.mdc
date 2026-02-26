@@ -1,0 +1,24 @@
+---
+description: Keep scenario markdown docs synchronized with scenario work
+alwaysApply: true
+---
+
+# Scenario Documentation Sync
+
+When making changes related to scenario testing in `WarLeague.Test`, always update scenario docs in `WarLeague.Test/Scenarios/`.
+
+## Required updates after scenario-related changes
+
+- Update `PROGRESS.md` with completed items and current next steps.
+- Update `ROADMAP.md` checkbox states when roadmap tasks move.
+- Update `BACKLOG.md` checkbox states when items are added, promoted, or completed.
+- Keep checklist format consistent (`- [ ]` and `- [x]`).
+- If architecture/pattern changes (for example test class structure), reflect it in `README.md`.
+
+## Scope trigger
+
+Apply this whenever edits touch:
+
+- `WarLeague.Test/ScenarioSpecifications.cs`
+- `WarLeague.Test/ScenarioBuilder.cs`
+- any new scenario spec/builder files under `WarLeague.Test`

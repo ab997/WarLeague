@@ -41,6 +41,8 @@ namespace WarLeague.Test
         private readonly DeckSubmissionRepository _deckSubmissionRepository;
         private readonly TeamStandingsService _teamStandingsService;
         private readonly PlayoffService _playoffService;
+        private readonly PlayoffBracketService _playoffBracketService;
+        private readonly MatchupServiceFactory _matchupServiceFactory;
         private readonly WarLeagueDbContext _context;
 
         public Specifications()
@@ -77,6 +79,8 @@ namespace WarLeague.Test
             _deckSubmissionRepository = _serviceProvider.GetRequiredService<DeckSubmissionRepository>();
             _teamStandingsService = _serviceProvider.GetRequiredService<TeamStandingsService>();
             _playoffService = _serviceProvider.GetRequiredService<PlayoffService>();
+            _playoffBracketService = _serviceProvider.GetRequiredService<PlayoffBracketService>();
+            _matchupServiceFactory = _serviceProvider.GetRequiredService<MatchupServiceFactory>();
 
             RecreateDatabase();
         }
