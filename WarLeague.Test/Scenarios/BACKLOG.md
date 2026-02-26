@@ -20,7 +20,8 @@
 - [ ] Deck submission requirements per seat.
 - [x] Pairing generation across conferences and playoffs (two-conference playoff qualifiers).
 - [x] Full round-robin season with standings generation (5 teams, 5 rounds).
-- [ ] Tiebreaker edge cases and manual tiebreaker updates.
+- [x] Tiebreaker edge cases and manual tiebreaker updates.
+- [x] Playoff bracket progression (single-conference, multi-conference, BYEs).
 
 ## Builder methods to add
 
@@ -34,6 +35,8 @@
 - [x] `TryOpenWeek()` - non-asserting open week variant.
 - [x] `TryMoveToInProgress()` - non-asserting move-to-in-progress variant.
 - [x] `TrySetPhaseToPlayoffs()` - non-asserting set-phase-to-playoffs variant.
+- [x] `PlayPlayoffRound(int[], int)` - play one playoff week with specified loser teams.
+- [x] `UpdateTiebreaker(int, int)` / `TryUpdateTiebreaker(int, int)` - manual tiebreaker edits.
 
 ## Notes
 

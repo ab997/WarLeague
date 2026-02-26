@@ -67,8 +67,12 @@ Every complex scenario must reuse smaller, already-proven building blocks from `
 ### 9) Standings, tiebreakers, playoffs
 
 - [x] Two-conference playoff qualifiers (top 2 per conference, 4 playoff teams, 2 matchups)
-- [ ] Tiebreaker cases
-- [ ] Playoff bracket progression scenarios
+- [x] Tiebreaker update changes seeding before first playoff week
+- [x] Tiebreaker update fails after playoff matchups exist
+- [x] Tiebreaker update fails before playoffs phase
+- [x] Playoff bracket progression: 4-team single-conference (semis → final)
+- [x] Playoff bracket progression: 5-team with BYEs (round 1 → semis → final)
+- [x] Playoff bracket progression: two-conference (semis → final)
 
 ## Reuse expectations
 

@@ -1,4 +1,5 @@
 using Shouldly;
+using WarLeague.Data.Data.Enums;
 
 namespace WarLeague.Test;
 
@@ -8,8 +9,9 @@ public partial class Specifications
         _formatService, _seasonService, _conferenceService,
         _teamService, _weekService, _deckSubmissionService, _matchService,
         _matchupServiceFactory, _substitutionService,
+        _teamStandingsService, _playoffBracketService,
         _playerRepository, _teamRepository, _playerSeasonTeamRepository,
-        _seasonRepository);
+        _seasonRepository, _weekRepository, _matchRepository);
 
     #region Scenario: Format lifecycle
 
@@ -393,6 +395,175 @@ public partial class Specifications
         var matches = await _matchRepository.GetByWeekIdAsync(week!.Id);
         matches.ShouldContain(m => m.Player1Id == playerIn || m.Player2Id == playerIn);
         matches.ShouldNotContain(m => m.Player1Id == playerOut || m.Player2Id == playerOut);
+    }
+
+    #endregion
+
+    #region Scenario: Playoff bracket progression (4 teams, semis → final)
+
+    [Fact]
+    [Trait("Category", "Scenario")]
+    public async Task Scenario_FourTeams_FullPlayoffBracket_SemifinalsAndFinals_Succeeds()
+    {
+        var s = await NewScenario()
+            .CreateFormat()
+            .WithSeason()
+            .WithConference("Alpha", playoffTeams: 4)
+            .WithTeams(4)
+            .WithPlayersPerTeam(3)
+            .PlayFullRoundRobin(submissionsPerTeam: 3)
+            .SetPhaseToPlayoffs()
+            .PlayPlayoffRound([2, 3], submissionsPerTeam: 3)
+            .PlayPlayoffRound([1], submissionsPerTeam: 3);
+
+        s.LastResult.ShouldNotBeNull();
+        s.LastResult!.Success.ShouldBeTrue(s.LastResult.Message);
+
+        var bracket = await _playoffBracketService.GetBracketAsync(s.SeasonId);
+        bracket.Count.ShouldBe(3); // 2 semifinals + 1 final
+        bracket.Count(m => m.IsBye).ShouldBe(0);
+        bracket.Select(m => m.WeekNumber).Distinct().Count().ShouldBe(2);
+    }
+
+    #endregion
+
+    #region Scenario: Playoff bracket with BYEs (5 teams → 3 rounds)
+
+    [Fact]
+    [Trait("Category", "Scenario")]
+    public async Task Scenario_FiveTeams_PlayoffBracketWithByes_ToFinals_Succeeds()
+    {
+        var s = await NewScenario()
+            .CreateFormat()
+            .WithSeason()
+            .WithConference("Alpha", playoffTeams: 5)
+            .WithTeams(5)
+            .WithPlayersPerTeam(3)
+            .PlayFullRoundRobin(submissionsPerTeam: 3)
+            .SetPhaseToPlayoffs()
+            .PlayPlayoffRound([4], submissionsPerTeam: 3)
+            .PlayPlayoffRound([2, 3], submissionsPerTeam: 3)
+            .PlayPlayoffRound([1], submissionsPerTeam: 3);
+
+        s.LastResult.ShouldNotBeNull();
+        s.LastResult!.Success.ShouldBeTrue(s.LastResult.Message);
+
+        var bracket = await _playoffBracketService.GetBracketAsync(s.SeasonId);
+        bracket.Count.ShouldBe(7); // week 1: 3 byes + 1 normal = 4, week 2: 2 semis, week 3: 1 final
+        bracket.Count(m => m.IsBye).ShouldBe(3);
+        bracket.Select(m => m.WeekNumber).Distinct().Count().ShouldBe(3);
+
+        var lastWeek = bracket.Max(b => b.WeekNumber);
+        var finalMatchup = bracket.Single(m => m.WeekNumber == lastWeek && !m.IsBye);
+        finalMatchup.WinnerName.ShouldNotBeNull();
+    }
+
+    #endregion
+
+    #region Scenario: Two-conference playoff bracket progression
+
+    [Fact]
+    [Trait("Category", "Scenario")]
+    public async Task Scenario_TwoConferences_PlayoffBracketProgression_Succeeds()
+    {
+        var s = await NewScenario()
+            .CreateFormat()
+            .WithSeason()
+            .WithConference("Alpha", playoffTeams: 2)
+            .WithTeams(3, "Alpha")
+            .WithConference("Beta", playoffTeams: 2)
+            .WithTeams(3, "Beta")
+            .WithPlayersPerTeam(3)
+            .PlayFullRoundRobin(submissionsPerTeam: 3)
+            .SetPhaseToPlayoffs()
+            .PlayPlayoffRound([1, 3], submissionsPerTeam: 3)
+            .PlayPlayoffRound([2], submissionsPerTeam: 3);
+
+        s.LastResult.ShouldNotBeNull();
+        s.LastResult!.Success.ShouldBeTrue(s.LastResult.Message);
+
+        var bracket = await _playoffBracketService.GetBracketAsync(s.SeasonId);
+        bracket.Count.ShouldBe(3); // 2 semifinals + 1 final
+        bracket.Select(m => m.WeekNumber).Distinct().Count().ShouldBe(2);
+
+        var lastWeek = bracket.Max(b => b.WeekNumber);
+        var finalMatchup = bracket.Single(m => m.WeekNumber == lastWeek);
+        finalMatchup.WinnerName.ShouldNotBeNull();
+    }
+
+    #endregion
+
+    #region Scenario: Tiebreaker update changes seeding
+
+    [Fact]
+    [Trait("Category", "Scenario")]
+    public async Task Scenario_UpdateTiebreaker_BeforeFirstPlayoffWeek_ChangesSeeding()
+    {
+        var s = await NewScenario()
+            .CreateFormat()
+            .WithSeason()
+            .WithConference("Alpha", playoffTeams: 4)
+            .WithTeams(4)
+            .WithPlayersPerTeam(3)
+            .PlayFullRoundRobin(submissionsPerTeam: 3)
+            .SetPhaseToPlayoffs();
+
+        var standingsBefore = await _teamStandingsService.GetStandingsForSeasonAsync(s.SeasonId);
+        var seed1TeamId = standingsBefore[0].TeamId;
+        var seed2TeamId = standingsBefore[1].TeamId;
+
+        var seed1Index = s.TeamIds.IndexOf(seed1TeamId);
+        var seed2Index = s.TeamIds.IndexOf(seed2TeamId);
+
+        s = await s
+            .UpdateTiebreaker(seed2Index, 999_999_999)
+            .UpdateTiebreaker(seed1Index, 0);
+
+        var standingsAfter = await _teamStandingsService.GetStandingsForSeasonAsync(s.SeasonId);
+        standingsAfter[0].TeamId.ShouldBe(seed2TeamId);
+        standingsAfter.Last().TeamId.ShouldBe(seed1TeamId);
+    }
+
+    #endregion
+
+    #region Scenario: Tiebreaker update guards
+
+    [Fact]
+    [Trait("Category", "Scenario")]
+    public async Task Scenario_UpdateTiebreaker_AfterPlayoffMatchupsExist_Fails()
+    {
+        var s = await NewScenario()
+            .CreateFormat()
+            .WithSeason()
+            .WithConference("Alpha", playoffTeams: 4)
+            .WithTeams(4)
+            .WithPlayersPerTeam(3)
+            .PlayFullRoundRobin(submissionsPerTeam: 3)
+            .SetPhaseToPlayoffs()
+            .PlayPlayoffRound([2, 3], submissionsPerTeam: 3)
+            .TryUpdateTiebreaker(0, 999_999_999);
+
+        s.LastResult.ShouldNotBeNull();
+        s.LastResult!.Success.ShouldBeFalse();
+        s.LastResult.Message.ShouldContain("cannot be edited", Case.Insensitive);
+    }
+
+    [Fact]
+    [Trait("Category", "Scenario")]
+    public async Task Scenario_UpdateTiebreaker_BeforePlayoffsPhase_Fails()
+    {
+        var s = await NewScenario()
+            .CreateFormat()
+            .WithSeason()
+            .WithConference("Alpha", playoffTeams: 4)
+            .WithTeams(4)
+            .WithPlayersPerTeam(3)
+            .PlayFullRoundRobin(submissionsPerTeam: 3)
+            .TryUpdateTiebreaker(0, 999_999_999);
+
+        s.LastResult.ShouldNotBeNull();
+        s.LastResult!.Success.ShouldBeFalse();
+        s.LastResult.Message.ShouldContain("cannot be edited", Case.Insensitive);
     }
 
     #endregion

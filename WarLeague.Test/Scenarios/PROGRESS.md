@@ -39,6 +39,16 @@
 - [x] Scenario 14: `Scenario_SetPhaseToPlayoffs_WhenPlayoffTeamsCountIsZero_Fails`
 - [x] Scenario 15: `Scenario_TwoConferences_FullRoundRobin_SetPhaseToPlayoffs_Succeeds`
 - [x] Scenario 16: `Scenario_TwoConferences_Top2PerConference_PlayoffQualifiers_Succeeds`
+- [x] Builder wired to `WeekRepository`, `MatchRepository`, `TeamStandingsService`, `PlayoffBracketService`
+- [x] Builder: `PlayPlayoffRound(int[], int)` — plays one complete playoff week with specified losers
+- [x] Builder: `UpdateTiebreaker(int, int)` / `TryUpdateTiebreaker(int, int)` — manual tiebreaker edits
+- [x] Registered `PlayoffBracketService` in `TestServiceProvider`
+- [x] Scenario 17: `Scenario_FourTeams_FullPlayoffBracket_SemifinalsAndFinals_Succeeds`
+- [x] Scenario 18: `Scenario_FiveTeams_PlayoffBracketWithByes_ToFinals_Succeeds`
+- [x] Scenario 19: `Scenario_TwoConferences_PlayoffBracketProgression_Succeeds`
+- [x] Scenario 20: `Scenario_UpdateTiebreaker_BeforeFirstPlayoffWeek_ChangesSeeding`
+- [x] Scenario 21: `Scenario_UpdateTiebreaker_AfterPlayoffMatchupsExist_Fails`
+- [x] Scenario 22: `Scenario_UpdateTiebreaker_BeforePlayoffsPhase_Fails`
 
 ## Invariants confirmed
 
@@ -48,8 +58,11 @@
 - [x] Scenario tests follow the same partial-class style as the rest of `WarLeague.Test`.
 - [x] Builder is a standalone class; no DI/context lifecycle inside it.
 - [x] Failure scenarios use `TryX` builder methods that don't assert, letting specs check `LastResult`.
+- [x] Playoff bracket progression verified end-to-end (round-robin → playoffs → semifinals → final → champion).
+- [x] BYE handling confirmed: teams with BYEs auto-advance, only non-BYE matchups generate player matches.
 
 ## Next session recommended start
 
-- [ ] Add playoff bracket progression scenarios (continuing from round-robin → playoffs).
-- [ ] Add tiebreaker scenarios (manual tiebreaker updates, edge cases).
+- [ ] Add format lifecycle guard scenarios (duplicate create fails, delete, update rules).
+- [ ] Add season duplicate number guard scenario.
+- [ ] Add roster management scenarios (add extra players, team modification toggle).

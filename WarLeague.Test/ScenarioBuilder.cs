@@ -2,6 +2,7 @@ using Shouldly;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
+using WarLeague.Data.Data.Enums;
 using WarLeague.Data.Entities;
 
 namespace WarLeague.Test;
@@ -21,10 +22,14 @@ public class ScenarioBuilder
     private readonly MatchService _matchService;
     private readonly MatchupServiceFactory _matchupServiceFactory;
     private readonly SubstitutionService _substitutionService;
+    private readonly TeamStandingsService _teamStandingsService;
+    private readonly PlayoffBracketService _playoffBracketService;
     private readonly PlayerRepository _playerRepository;
     private readonly TeamRepository _teamRepository;
     private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
     private readonly SeasonRepository _seasonRepository;
+    private readonly WeekRepository _weekRepository;
+    private readonly MatchRepository _matchRepository;
 
     private ulong _nextDiscordId = 1;
 
@@ -51,10 +56,14 @@ public class ScenarioBuilder
         MatchService matchService,
         MatchupServiceFactory matchupServiceFactory,
         SubstitutionService substitutionService,
+        TeamStandingsService teamStandingsService,
+        PlayoffBracketService playoffBracketService,
         PlayerRepository playerRepository,
         TeamRepository teamRepository,
         PlayerSeasonTeamRepository playerSeasonTeamRepository,
-        SeasonRepository seasonRepository)
+        SeasonRepository seasonRepository,
+        WeekRepository weekRepository,
+        MatchRepository matchRepository)
     {
         _formatService = formatService;
         _seasonService = seasonService;
@@ -65,10 +74,14 @@ public class ScenarioBuilder
         _matchService = matchService;
         _matchupServiceFactory = matchupServiceFactory;
         _substitutionService = substitutionService;
+        _teamStandingsService = teamStandingsService;
+        _playoffBracketService = playoffBracketService;
         _playerRepository = playerRepository;
         _teamRepository = teamRepository;
         _playerSeasonTeamRepository = playerSeasonTeamRepository;
         _seasonRepository = seasonRepository;
+        _weekRepository = weekRepository;
+        _matchRepository = matchRepository;
     }
 
     #region Format
@@ -391,6 +404,76 @@ public class ScenarioBuilder
     }
 
     #endregion
+
+    #region Playoff bracket progression
+
+    /// <summary>
+    /// Plays one complete playoff round: creates and opens a week (generating bracket matchups),
+    /// submits decks for teams in non-BYE matchups, closes submissions, moves to InProgress,
+    /// reports results so that the specified teams lose, and completes the week.
+    /// </summary>
+    public async Task<ScenarioBuilder> PlayPlayoffRound(int[] loserTeamIndices, int submissionsPerTeam = 1)
+    {
+        var loserTeamIds = loserTeamIndices.Select(i => TeamIds[i]).ToHashSet();
+
+        CurrentWeekNumber++;
+        await WithWeek(CurrentWeekNumber, submissionsPerTeam);
+        await OpenWeek();
+
+        var week = await _weekRepository.GetByWeekNumberAndSeasonAsync(CurrentWeekNumber, SeasonId);
+        var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(SeasonId);
+        var matchupService = _matchupServiceFactory.GetMatchupService(season);
+        var requiredTeamIds = await matchupService.GetTeamIdsRequiredForSubmissionsAsync(week!.Id);
+
+        foreach (var teamId in TeamIds.Where(id => requiredTeamIds.Contains(id)))
+        {
+            var playerIds = await _playerSeasonTeamRepository.GetPlayerIdsByTeamAndSeasonAsync(teamId, SeasonId);
+            for (int seat = 1; seat <= submissionsPerTeam; seat++)
+            {
+                var playerId = playerIds[seat - 1];
+                var result = await _deckSubmissionService.SubmitAsync(SeasonId, playerId, $"deck_{playerId}_seat{seat}", seat);
+                result.Success.ShouldBeTrue(result.Message);
+            }
+        }
+
+        await CloseSubmissions();
+        await MoveToInProgress();
+
+        foreach (var match in Matches)
+        {
+            bool team1Loses = loserTeamIds.Contains(match.Team1Id);
+            var loserTeamId = team1Loses ? match.Team1Id : match.Team2Id;
+            var loserPlayerIds = await _playerSeasonTeamRepository.GetPlayerIdsByTeamAndSeasonAsync(loserTeamId, SeasonId);
+
+            var loserId = loserPlayerIds.Contains(match.Player1Id) ? match.Player1Id : match.Player2Id;
+            var winnerId = match.Player1Id == loserId ? match.Player2Id : match.Player1Id;
+
+            var result = await _matchService.ReportWinAsync(SeasonId, winnerId, $"https://example.com/playoff/{match.Id}");
+            result.Success.ShouldBeTrue(result.Message);
+        }
+
+        await CompleteWeek();
+        return this;
+    }
+
+    #endregion
+
+    #region Tiebreaker
+
+    public async Task<ScenarioBuilder> UpdateTiebreaker(int teamIndex, int newTiebreaker)
+    {
+        LastResult = await _teamStandingsService.UpdateTiebreakerAsync(SeasonId, TeamIds[teamIndex], newTiebreaker);
+        LastResult.Success.ShouldBeTrue(LastResult.Message);
+        return this;
+    }
+
+    public async Task<ScenarioBuilder> TryUpdateTiebreaker(int teamIndex, int newTiebreaker)
+    {
+        LastResult = await _teamStandingsService.UpdateTiebreakerAsync(SeasonId, TeamIds[teamIndex], newTiebreaker);
+        return this;
+    }
+
+    #endregion
 }
 
 /// <summary>
@@ -463,4 +546,13 @@ public static class ScenarioBuilderExtensions
 
     public static async Task<ScenarioBuilder> SubmitDecksForTeams(this Task<ScenarioBuilder> task, int[] teamIndices, int submissionsPerTeam = 1)
         => await (await task).SubmitDecksForTeams(teamIndices, submissionsPerTeam);
+
+    public static async Task<ScenarioBuilder> PlayPlayoffRound(this Task<ScenarioBuilder> task, int[] loserTeamIndices, int submissionsPerTeam = 1)
+        => await (await task).PlayPlayoffRound(loserTeamIndices, submissionsPerTeam);
+
+    public static async Task<ScenarioBuilder> UpdateTiebreaker(this Task<ScenarioBuilder> task, int teamIndex, int newTiebreaker)
+        => await (await task).UpdateTiebreaker(teamIndex, newTiebreaker);
+
+    public static async Task<ScenarioBuilder> TryUpdateTiebreaker(this Task<ScenarioBuilder> task, int teamIndex, int newTiebreaker)
+        => await (await task).TryUpdateTiebreaker(teamIndex, newTiebreaker);
 }
