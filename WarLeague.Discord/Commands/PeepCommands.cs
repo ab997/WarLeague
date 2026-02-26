@@ -182,44 +182,6 @@ namespace WarLeague.Discord.Commands
             await FollowupAsync(embeds: new[] { eb.Build() });
         }
 
-        [SlashCommand("standings-playoffs", "Show playoff standings for the active season (W–L only)")]
-        [RequireAppPermission(PermissionType.Admin)]
-        [EnsureChannelIsInFormatCategory]
-        [EnsureSingleActiveSeason]
-        public async Task StandingsPlayoffsAsync()
-        {
-            await DeferAsync(ephemeral: false);
-
-            Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-            var standings = await _teamStandingsService.GetStandingsForSeasonAsync(season.Id);
-
-            if (standings.Count == 0)
-            {
-                await FollowupAsync("No playoff standings for this season. Use `/season switch-to-playoffs` first, or `/standings generate` to populate from round-robin results.");
-                return;
-            }
-
-            var statsByTeamId = await _teamStandingsService.GetDisplayStatsForSeasonAsync(season.Id);
-
-            var ordered = standings
-                .OrderBy(s => s.Seed)
-                .ThenBy(s => s.TeamId)
-                .ToList();
-
-            var lines = ordered.Select((s, i) =>
-            {
-                var stats = statsByTeamId.GetValueOrDefault(s.TeamId);
-                var wins = s.Wins ?? stats.Wins;
-                var losses = stats.Losses;
-                return $"**{i + 1}.** {s.Team.Name} — {wins}–{losses}";
-            });
-
-            var message = "**Playoff standings**\n" + string.Join("\n", lines);
-            if (message.Length > 1900)
-                message = message[..1900] + "...";
-            await FollowupAsync(message);
-        }
-
         [SlashCommand("standings-round-robin", "Show current round-robin standings (W–L per team)")]
         [RequireAppPermission(PermissionType.Admin)]
         [EnsureChannelIsInFormatCategory]
@@ -230,7 +192,36 @@ namespace WarLeague.Discord.Commands
             await DeferAsync(ephemeral: false);
 
             Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
-            var entries = await _teamStandingsService.GetRoundRobinStandingsForDisplayAsync(season.Id);
+            var standings = await _teamStandingsService.GetStandingsForSeasonAsync(season.Id);
+        
+            if (standings.Count == 0)
+            {
+                await FollowupAsync("No standings snapshot exists for this season. Complete the round-robin weeks and run `/standings generate` first.");
+                return;
+            }
+        
+            var statsByTeamId = await _teamStandingsService.GetDisplayStatsForSeasonAsync(season.Id);
+            var liveEntries = await _teamStandingsService.GetRoundRobinStandingsForDisplayAsync(season.Id);
+            var liveByTeamId = liveEntries.ToDictionary(e => e.TeamId);
+        
+            var combinedEntries = standings.Select(s =>
+            {
+                liveByTeamId.TryGetValue(s.TeamId, out var live);
+                var stats = statsByTeamId.GetValueOrDefault(s.TeamId);
+                return new RoundRobinStandingsEntry
+                {
+                    TeamId = s.TeamId,
+                    TeamName = s.Team?.Name ?? live?.TeamName ?? $"Team #{s.TeamId}",
+                    ConferenceName = live?.ConferenceName ?? string.Empty,
+                    Tiebreaker = s.Tiebreaker,
+                    Wins = stats.Wins,
+                    Losses = stats.Losses
+                };
+            }).ToList();
+        
+            var entries = combinedEntries
+                .OrderByDescending(e => e.Tiebreaker)
+                .ToList();
 
             if (entries.Count == 0)
             {

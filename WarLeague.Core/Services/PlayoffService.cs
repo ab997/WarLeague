@@ -504,7 +504,7 @@ namespace WarLeague.Core.Services
 
         private async Task<(Week week, Season season, List<Team> teams)> LoadWeekSeasonAndTeamsAsync(int weekId)
         {
-            var week = await _weekRepository.GetByIdWithSubmissionsAsync(weekId)
+            var week = await _weekRepository.GetByIdAsync(weekId)
                 ?? throw new InvalidOperationException($"Week with id {weekId} not found.");
 
             var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(week.SeasonId);
