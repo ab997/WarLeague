@@ -303,12 +303,38 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            var byRound = matchups.GroupBy(m => (m.Round, m.WeekNumber)).OrderBy(g => g.Key.WeekNumber).ThenBy(g => g.Key.Round).ToList();
+            var byRound = matchups
+                .GroupBy(m => (m.Round, m.WeekNumber))
+                .OrderBy(g => g.Key.WeekNumber)
+                .ThenBy(g => g.Key.Round)
+                .ToList();
+
+            // Determine overall bracket size (top cut) from all unique teams,
+            // then step it down per playoff week (Top 8 -> Top 4 -> Finals).
+            var uniqueTeamsCount = matchups
+                .SelectMany(m => new[] { m.Team1Name, m.Team2Name })
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count();
+
+            int bracketSize = 1;
+            while (bracketSize < uniqueTeamsCount)
+                bracketSize *= 2;
+
             const int maxFieldValueLength = 1024;
             var embeds = new List<Embed>();
+            int remainingBracketSize = bracketSize;
 
             foreach (var group in byRound)
             {
+                string title = remainingBracketSize switch
+                {
+                    >= 8 => $"Top {remainingBracketSize} bracket",
+                    4 => "Top 4 bracket",
+                    2 => "Finals bracket",
+                    _ => "Playoff bracket"
+                };
+
                 var roundLabel = $"Round {group.Key.Round} (Week {group.Key.WeekNumber})";
                 var lines = new List<string>();
                 foreach (var m in group.OrderBy(x => x.BracketPosition))
@@ -320,13 +346,16 @@ namespace WarLeague.Discord.Commands
                 }
                 var body = string.Join("\n", lines);
                 var eb = new EmbedBuilder()
-                    .WithTitle("Playoff bracket")
+                    .WithTitle(title)
                     .WithColor(new Color(88, 101, 242));
                 if (body.Length <= maxFieldValueLength)
                     eb.AddField(roundLabel, body, inline: false);
                 else
                     SplitStandingsField(eb, roundLabel, body, maxFieldValueLength);
                 embeds.Add(eb.Build());
+
+                if (remainingBracketSize > 2)
+                    remainingBracketSize /= 2;
             }
 
             await _helperService.SendEmbedsInBatchesAsync(Context, embeds);

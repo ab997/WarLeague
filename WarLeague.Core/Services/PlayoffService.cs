@@ -105,11 +105,6 @@ namespace WarLeague.Core.Services
                 return new List<(Team, Team)>();
             }
 
-            // Check if this is the first playoff week by looking for existing playoff matchups
-            var allWeeks = await _weekRepository.GetBySeasonAsync(season.Id);
-            var playoffWeeks = allWeeks.Where(w => w.Status == WeekStatus.Completed || w.Status == WeekStatus.InProgress || w.Status == WeekStatus.SubmissionsClosed)
-                .OrderBy(w => w.WeekNumber)
-                .ToList();
 
             List<PlayoffMatchup> existingPlayoffMatchups = await _playoffMatchupRepository.GetBySeasonIdAsync(season.Id);
             
@@ -190,7 +185,7 @@ namespace WarLeague.Core.Services
                 if (a.Id == b.Id)
                 {
                     // Defensive guard; in a well-formed bracket this should not happen.
-                    continue;
+                    throw new InvalidOperationException($"bracket determined self-play, this is probably a bug");
                 }
                 nextRoundMatchups.Add((a, b));
             }
