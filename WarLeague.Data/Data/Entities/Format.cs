@@ -10,4 +10,6 @@ public class Format
     public IEnumerable<Season> Seasons { get; set; } = null!;
     public bool SingleFormatMode { get; set; }
     public ulong GuildId { get; set; }
+    public DateTime LastLegalReleaseDate { get; set; } = DateTime.Now.Date;
+    public IEnumerable<BanlistEntry> BanlistEntries { get; set; } = null!;
 }

@@ -24,6 +24,8 @@ public class WarLeagueDbContext : DbContext
     public DbSet<RoundRobinMatchup> RoundRobinMatchups { get; set; }
     public DbSet<PlayoffMatchup> PlayoffMatchups { get; set; }
     public DbSet<TeamStandings> TeamStandings { get; set; }
+    public DbSet<Card> Cards { get; set; }
+    public DbSet<BanlistEntry> BanlistEntries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -234,6 +236,14 @@ public class WarLeagueDbContext : DbContext
         // TeamStandings: one row per team per season
         modelBuilder.Entity<TeamStandings>()
             .HasIndex(ts => new { ts.SeasonId, ts.TeamId })
+            .IsUnique();
+        
+        modelBuilder.Entity<Card>()
+            .HasIndex(card => card.YgoproId)
+            .IsUnique();
+
+        modelBuilder.Entity<BanlistEntry>()
+            .HasIndex(be => new { be.FormatId, be.CardId })
             .IsUnique();
 
         //--------------------------------------
