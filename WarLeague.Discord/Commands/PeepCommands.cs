@@ -855,10 +855,8 @@ namespace WarLeague.Discord.Commands
                 embeds.Add(eb.Build());
             }
 
-            foreach (var embed in embeds)
-            {
-                await FollowupAsync(embeds: new[] { embed }, flags: MessageFlags.SuppressEmbeds);
-            }
+            await SendEmbedsInBatchesAsync(embeds);
+
         }
 
         private static async Task AppendPairingsForWeekAsync(

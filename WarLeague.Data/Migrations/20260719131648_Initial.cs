@@ -12,6 +12,21 @@ namespace WarLeague.Data.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "Cards",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    YgoproId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    FirstReleaseDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Utf8Name = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Cards", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Formats",
                 columns: table => new
                 {
@@ -20,7 +35,8 @@ namespace WarLeague.Data.Migrations
                     Name = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Rules = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     SingleFormatMode = table.Column<bool>(type: "bit", nullable: false),
-                    GuildId = table.Column<decimal>(type: "decimal(20,0)", nullable: false)
+                    GuildId = table.Column<decimal>(type: "decimal(20,0)", nullable: false),
+                    LastLegalReleaseDate = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -54,6 +70,33 @@ namespace WarLeague.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_RolePermissionMappings", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "BanlistEntries",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FormatId = table.Column<int>(type: "int", nullable: false),
+                    CardId = table.Column<int>(type: "int", nullable: false),
+                    BanlistEntryCategory = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BanlistEntries", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_BanlistEntries_Cards_CardId",
+                        column: x => x.CardId,
+                        principalTable: "Cards",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_BanlistEntries_Formats_FormatId",
+                        column: x => x.FormatId,
+                        principalTable: "Formats",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -406,6 +449,23 @@ namespace WarLeague.Data.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_BanlistEntries_CardId",
+                table: "BanlistEntries",
+                column: "CardId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BanlistEntries_FormatId_CardId",
+                table: "BanlistEntries",
+                columns: new[] { "FormatId", "CardId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Cards_YgoproId",
+                table: "Cards",
+                column: "YgoproId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Conferences_SeasonId_Name",
                 table: "Conferences",
                 columns: new[] { "SeasonId", "Name" },
@@ -618,6 +678,9 @@ namespace WarLeague.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "BanlistEntries");
+
+            migrationBuilder.DropTable(
                 name: "DeckSubmissions");
 
             migrationBuilder.DropTable(
@@ -637,6 +700,9 @@ namespace WarLeague.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "TeamStandings");
+
+            migrationBuilder.DropTable(
+                name: "Cards");
 
             migrationBuilder.DropTable(
                 name: "Weeks");
