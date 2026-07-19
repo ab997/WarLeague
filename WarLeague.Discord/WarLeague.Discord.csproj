@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <None Remove="appsettings.Development.json" />
+    <Content Remove="appsettings.Development.json" />
     <None Remove="appsettings.json" />
   </ItemGroup>
 
