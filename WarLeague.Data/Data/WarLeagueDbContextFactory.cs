@@ -20,16 +20,10 @@ public class WarLeagueDbContextFactory
 {
     public WarLeagueDbContext CreateDbContext(string[] args)
     {
-        var connectionString =
-            Environment.GetEnvironmentVariable(
-                "ConnectionStrings__DefaultConnection")
-            ?? throw new InvalidOperationException(
-                "ConnectionStrings__DefaultConnection is missing.");
-
         var optionsBuilder =
             new DbContextOptionsBuilder<WarLeagueDbContext>();
 
-        optionsBuilder.UseNpgsql(connectionString);
+        optionsBuilder.UseNpgsql();
 
         return new WarLeagueDbContext(optionsBuilder.Options);
     }
