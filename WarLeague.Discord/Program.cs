@@ -12,6 +12,7 @@ using WarLeague.Core.Services;
 using WarLeague.Data;
 using WarLeague.Data.Data;
 using WarLeague.Data.Repositories;
+using WarLeague.Data.Services;
 using WarLeague.Discord.HostedService;
 using WarLeague.Discord.Services;
 
@@ -56,6 +57,8 @@ builder.Services.AddScoped<SeasonRepository>();
 builder.Services.AddScoped<PlayerRepository>();
 builder.Services.AddScoped<PlayerSeasonTeamRepository>();
 builder.Services.AddScoped<PermissionRepository>();
+
+builder.Services.AddScoped<LogsCleanupService>();
 
 // multi server support
 builder.Services.AddScoped<GuildContextService>();
