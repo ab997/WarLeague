@@ -1,13 +1,11 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY ["WarLeague.Discord/WarLeague.Discord.csproj", "WarLeague.Discord/"]
-RUN dotnet restore "WarLeague.Discord/WarLeague.Discord.csproj"
-
 COPY . .
 
-WORKDIR "/src/WarLeague.Discord"
-RUN dotnet publish "WarLeague.Discord.csproj" \
+RUN dotnet restore "WarLeague.Discord/WarLeague.Discord.csproj"
+
+RUN dotnet publish "WarLeague.Discord/WarLeague.Discord.csproj" \
     -c Release \
     -o /app/publish \
     --no-restore
