@@ -419,6 +419,14 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     {
         await DeferAsync(ephemeral: false);
 
+        ulong? captainRoleId = (await _permissionRepository.GetRoleIdsAsync(Context.Guild.Id, PermissionType.Captain)).FirstOrDefault();
+        SocketRole? captainRole = Context.Guild.Roles.FirstOrDefault(r => r.Id == captainRoleId);
+        if (captainRole == null)
+        {
+            await FollowupAsync(Stringify("Warning: Captain role not found in guild. Use one-time-setup command to configure it."));
+            return;
+        }
+
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
         Team? team = await _teamRepository.GetByNameAndSeasonAsync(teamName, season.Id);
 
@@ -439,13 +447,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        ulong? captainRoleId = (await _permissionRepository.GetRoleIdsAsync(Context.Guild.Id, PermissionType.Captain)).FirstOrDefault();
-        SocketRole? captainRole = Context.Guild.Roles.FirstOrDefault(r => r.Id == captainRoleId);
-        if (captainRole == null)
-        {
-            await FollowupAsync(Stringify(result.Message, "Warning: Captain role not found in guild."));
-            return;
-        }
+        
 
         bool oldRoleRemoved = await _roleService.RemoveRoleFromPlayerAsync(Context.Guild, oldCaptainPlayer, captainRole);
         bool newRoleAssigned = await _roleService.AssignRoleToPlayerAsync(Context.Guild, newCaptainPlayer, captainRole);
