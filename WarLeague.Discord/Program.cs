@@ -102,4 +102,11 @@ builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
+// Apply migrations automatically
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<WarLeagueDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 await app.RunAsync();
