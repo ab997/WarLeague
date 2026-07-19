@@ -258,7 +258,7 @@ namespace WarLeague.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Matches", x => x.Id);
-                    table.CheckConstraint("CK_Match_CanonicalOrder", "[Player1Id] < [Player2Id]");
+                    table.CheckConstraint("CK_Match_CanonicalOrder", "\"Player1Id\" < \"Player2Id\"");
                     table.ForeignKey(
                         name: "FK_Matches_Players_Player1Id",
                         column: x => x.Player1Id,
@@ -494,7 +494,7 @@ namespace WarLeague.Data.Migrations
                 table: "Formats",
                 columns: new[] { "GuildId", "SingleFormatMode" },
                 unique: true,
-                filter: "[SingleFormatMode] = 1");
+                filter: "\"SingleFormatMode\" = TRUE");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Matches_Player1Id",
@@ -613,7 +613,7 @@ namespace WarLeague.Data.Migrations
                 table: "Seasons",
                 columns: new[] { "FormatId", "Active" },
                 unique: true,
-                filter: "[Active] = 1");
+                filter: "\"Active\" = TRUE");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Seasons_FormatId_SeasonNumber",
@@ -642,7 +642,7 @@ namespace WarLeague.Data.Migrations
                 table: "Teams",
                 columns: new[] { "SeasonId", "DiscordRoleId" },
                 unique: true,
-                filter: "[DiscordRoleId] IS NOT NULL");
+                filter: "\"DiscordRoleId\" IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Teams_SeasonId_Name",
@@ -666,7 +666,7 @@ namespace WarLeague.Data.Migrations
                 table: "Weeks",
                 columns: new[] { "SeasonId", "Status" },
                 unique: true,
-                filter: "[Status] <> 'Completed' and [Status] <> 'NotOpenYet'");
+                filter: "\"Status\" <> 'Completed' AND \"Status\" <> 'NotOpenYet'");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Weeks_SeasonId_WeekNumber",

@@ -312,7 +312,7 @@ namespace WarLeague.Data.Migrations
 
                     b.HasIndex("GuildId", "SingleFormatMode")
                         .IsUnique()
-                        .HasFilter("[SingleFormatMode] = 1");
+                        .HasFilter("\"SingleFormatMode\" = TRUE");
 
                     b.ToTable("Formats");
                 });
@@ -384,7 +384,7 @@ namespace WarLeague.Data.Migrations
 
                     b.ToTable("Matches", t =>
                         {
-                            t.HasCheckConstraint("CK_Match_CanonicalOrder", "[Player1Id] < [Player2Id]");
+                            t.HasCheckConstraint("CK_Match_CanonicalOrder", "\"Player1Id\" < \"Player2Id\"");
                         });
                 });
 
@@ -471,7 +471,7 @@ namespace WarLeague.Data.Migrations
 
                     b.HasIndex("FormatId", "Active")
                         .IsUnique()
-                        .HasFilter("[Active] = 1");
+                        .HasFilter("\"Active\" = TRUE");
 
                     b.HasIndex("FormatId", "SeasonNumber")
                         .IsUnique();
@@ -517,7 +517,7 @@ namespace WarLeague.Data.Migrations
 
                     b.HasIndex("SeasonId", "DiscordRoleId")
                         .IsUnique()
-                        .HasFilter("[DiscordRoleId] IS NOT NULL");
+                        .HasFilter("\"DiscordRoleId\" IS NOT NULL");
 
                     b.HasIndex("SeasonId", "Name")
                         .IsUnique();
@@ -559,7 +559,7 @@ namespace WarLeague.Data.Migrations
 
                     b.HasIndex("SeasonId", "Status")
                         .IsUnique()
-                        .HasFilter("[Status] <> 'Completed' and [Status] <> 'NotOpenYet'");
+                        .HasFilter("\"Status\" <> 'Completed' AND \"Status\" <> 'NotOpenYet'");
 
                     b.HasIndex("SeasonId", "WeekNumber")
                         .IsUnique();
