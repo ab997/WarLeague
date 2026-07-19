@@ -12,7 +12,7 @@ using WarLeague.Data;
 namespace WarLeague.Data.Migrations
 {
     [DbContext(typeof(WarLeagueDbContext))]
-    [Migration("20260226110301_Initial")]
+    [Migration("20260719131648_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -24,6 +24,60 @@ namespace WarLeague.Data.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("WarLeague.Data.Data.Entities.BanlistEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BanlistEntryCategory")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CardId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FormatId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CardId");
+
+                    b.HasIndex("FormatId", "CardId")
+                        .IsUnique();
+
+                    b.ToTable("BanlistEntries");
+                });
+
+            modelBuilder.Entity("WarLeague.Data.Data.Entities.Card", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("FirstReleaseDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Utf8Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("YgoproId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("YgoproId")
+                        .IsUnique();
+
+                    b.ToTable("Cards");
+                });
 
             modelBuilder.Entity("WarLeague.Data.Data.Entities.PlayoffMatchup", b =>
                 {
@@ -239,6 +293,9 @@ namespace WarLeague.Data.Migrations
 
                     b.Property<decimal>("GuildId")
                         .HasColumnType("decimal(20,0)");
+
+                    b.Property<DateTime>("LastLegalReleaseDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -513,6 +570,25 @@ namespace WarLeague.Data.Migrations
                     b.ToTable("Weeks");
                 });
 
+            modelBuilder.Entity("WarLeague.Data.Data.Entities.BanlistEntry", b =>
+                {
+                    b.HasOne("WarLeague.Data.Data.Entities.Card", "Card")
+                        .WithMany()
+                        .HasForeignKey("CardId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarLeague.Data.Entities.Format", "Format")
+                        .WithMany("BanlistEntries")
+                        .HasForeignKey("FormatId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Card");
+
+                    b.Navigation("Format");
+                });
+
             modelBuilder.Entity("WarLeague.Data.Data.Entities.PlayoffMatchup", b =>
                 {
                     b.HasOne("WarLeague.Data.Entities.Team", "Team1")
@@ -770,6 +846,8 @@ namespace WarLeague.Data.Migrations
 
             modelBuilder.Entity("WarLeague.Data.Entities.Format", b =>
                 {
+                    b.Navigation("BanlistEntries");
+
                     b.Navigation("Seasons");
                 });
 
