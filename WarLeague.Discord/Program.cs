@@ -5,14 +5,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using WarLeague.Data;
+using Microsoft.Extensions.Options;
+using Serilog;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
+using WarLeague.Data;
+using WarLeague.Data.Data;
+using WarLeague.Data.Repositories;
 using WarLeague.Discord.HostedService;
 using WarLeague.Discord.Services;
-using Serilog;
-using WarLeague.Data.Repositories;
-using WarLeague.Data.Data;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -37,7 +38,8 @@ builder.Services.AddSerilog((services, loggerConfig) =>
 // Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<WarLeagueDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseNpgsql(connectionString));
+
 
 // Repositories
 builder.Services.AddScoped<TeamRepository>();

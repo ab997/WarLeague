@@ -5,12 +5,31 @@ namespace WarLeague.Data;
 /// <summary>
 /// Its purpose is design-time DbContext creation for EF Core tools.
 /// </summary>
-public class WarLeagueDbContextFactory : IDesignTimeDbContextFactory<WarLeagueDbContext>
+//public class WarLeagueDbContextFactory : IDesignTimeDbContextFactory<WarLeagueDbContext>
+//{
+//    public WarLeagueDbContext CreateDbContext(string[] args)
+//    {
+//        var optionsBuilder = new DbContextOptionsBuilder<WarLeagueDbContext>();
+//        optionsBuilder.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=WarLeagueDb;Trusted_Connection=True;MultipleActiveResultSets=true");
+
+//        return new WarLeagueDbContext(optionsBuilder.Options);
+//    }
+//}
+public class WarLeagueDbContextFactory
+    : IDesignTimeDbContextFactory<WarLeagueDbContext>
 {
     public WarLeagueDbContext CreateDbContext(string[] args)
     {
-        var optionsBuilder = new DbContextOptionsBuilder<WarLeagueDbContext>();
-        optionsBuilder.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=WarLeagueDb;Trusted_Connection=True;MultipleActiveResultSets=true");
+        var connectionString =
+            Environment.GetEnvironmentVariable(
+                "ConnectionStrings__DefaultConnection")
+            ?? throw new InvalidOperationException(
+                "ConnectionStrings__DefaultConnection is missing.");
+
+        var optionsBuilder =
+            new DbContextOptionsBuilder<WarLeagueDbContext>();
+
+        optionsBuilder.UseNpgsql(connectionString);
 
         return new WarLeagueDbContext(optionsBuilder.Options);
     }
