@@ -108,7 +108,7 @@ namespace WarLeague.Discord.HostedService
 
         private async Task HandleInteractionExecutionResult(IDiscordInteraction interaction, IResult result)
         {
-            string message = "An error has occurred. We are already investigating it!";
+            string message = $"An error has occurred: {result.ErrorReason}";
             switch (result.Error)
             {
                 case InteractionCommandError.UnmetPrecondition:
