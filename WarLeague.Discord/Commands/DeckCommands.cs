@@ -109,7 +109,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
     public async Task DeleteDeckSubmissionAsync(
         [Summary("player", "The team member whose deck submission should be deleted")] IUser player)
     {
-        await DeferAsync(ephemeral: false);
+        await DeferAsync(ephemeral: true);
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
         Player callerPlayer = await _playerService.EnsurePlayerExistsAsync(Context.User);
@@ -130,7 +130,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
     [SlashCommand("list", "Lists submitted decks for each team (current open week)")]
     public async Task ListAsync()
     {
-        await DeferAsync(ephemeral: false);
+        await DeferAsync(ephemeral: true);
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
         Week? openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(season.Id, WeekStatus.Open);
