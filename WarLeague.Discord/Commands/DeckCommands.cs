@@ -58,7 +58,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         [Summary("deck-file", "The .ydk file to submit")] IAttachment deckFile,
         [Summary("seat-number", "The seat number for this deck submission")] int seatNumber)
     {
-        await DeferAsync(ephemeral: false);
+        await DeferAsync(ephemeral: true);
 
         string? attachmentError = ValidateDeckAttachment(deckFile);
         if (attachmentError is not null)
