@@ -167,7 +167,8 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         }
 
         Player callerPlayer = await _playerService.EnsurePlayerExistsAsync(Context.User);
-        var submissions = await _deckSubmissionRepository.GetByWeekAndTeamAndSeasonAsync(openWeek.Id, callerPlayer.Id, season.Id);
+        var pst = await _playerSeasonTeamRepository.GetByPlayerAndSeasonAsync(callerPlayer.Id, season.Id);
+        var submissions = await _deckSubmissionRepository.GetByWeekAndTeamAsync(openWeek.Id, pst.TeamId);
         if (submissions.Count == 0)
         {
             await FollowupAsync($"Week {openWeek.WeekNumber}: no deck submissions yet.");

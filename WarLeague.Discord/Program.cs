@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Serilog;
+using System.Diagnostics;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
 using WarLeague.Data;
@@ -106,11 +107,15 @@ builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
-// Apply migrations automatically
-await using (var scope = app.Services.CreateAsyncScope())
+if (!Debugger.IsAttached)
 {
-    var db = scope.ServiceProvider.GetRequiredService<WarLeagueDbContext>();
-    await db.Database.MigrateAsync();
+    // Apply migrations automatically
+    await using (var scope = app.Services.CreateAsyncScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<WarLeagueDbContext>();
+        await db.Database.MigrateAsync();
+    }
 }
+
 
 await app.RunAsync();
