@@ -107,14 +107,11 @@ builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
-if (!Debugger.IsAttached)
+// Apply migrations automatically
+await using (var scope = app.Services.CreateAsyncScope())
 {
-    // Apply migrations automatically
-    await using (var scope = app.Services.CreateAsyncScope())
-    {
-        var db = scope.ServiceProvider.GetRequiredService<WarLeagueDbContext>();
-        await db.Database.MigrateAsync();
-    }
+    var db = scope.ServiceProvider.GetRequiredService<WarLeagueDbContext>();
+    await db.Database.MigrateAsync();
 }
 
 
