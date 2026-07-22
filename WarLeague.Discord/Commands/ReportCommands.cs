@@ -8,6 +8,7 @@ using WarLeague.Discord.Services;
 using WarLeague.Core.Services;
 using WarLeague.Core.Model;
 using WarLeague.Data.Data.Enums;
+using WarLeague.Discord.Commands.ResponseEmbeds;
 
 namespace WarLeague.Discord.Commands;
 
@@ -42,9 +43,16 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
         Player callerPlayer = await _playerService.EnsurePlayerExistsAsync(Context.User);
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-        BaseResult result = await _matchService.ReportWinAsync(season.Id, callerPlayer.Id, replayUrl, yourWins, opponentWins);
+        ReportWinResult result = await _matchService.ReportWinAsync(season.Id, callerPlayer.Id, replayUrl, yourWins, opponentWins);
 
-        await FollowupAsync(ResultHelper.Stringify(result));
+        if (result.Success)
+        {
+            await _helperService.SendEmbedInBatchesAsync(Context, ReportWinEmbed.Build(result));
+        }
+        else
+        {
+            await FollowupAsync(ResultHelper.Stringify(result));
+        }
     }
 
     [SlashCommand("undo", "Undo a previously reported match result between two players")]

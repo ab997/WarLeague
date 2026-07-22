@@ -29,18 +29,18 @@ namespace WarLeague.Core.Services
 
 
 
-        public async Task<BaseResult> ReportWinAsync(int seasonId, int winnerId, string replayUrl, int? winnerWins = null, int? loserWins = null)
+        public async Task<ReportWinResult> ReportWinAsync(int seasonId, int winnerId, string replayUrl, int? winnerWins = null, int? loserWins = null)
         {
             if (!IsValidReplayUrl(replayUrl))
             {
-                return new BaseResult { Success = false, Message = "Please provide a valid HTTP/HTTPS replay URL." };
+                return new ReportWinResult { Success = false, Message = "Please provide a valid HTTP/HTTPS replay URL." };
             }
 
             Week? week = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.InProgress);
 
             if (week is null)
             {
-                return new BaseResult { Success = false, Message = $"There is no week with status '{WeekStatus.InProgress}' for the active season." };
+                return new ReportWinResult { Success = false, Message = $"There is no week with status '{WeekStatus.InProgress}' for the active season." };
             }
 
             var callerMatches = await _matchRepository.GetByPlayerAndWeekAsync(winnerId, week.Id);
@@ -51,7 +51,7 @@ namespace WarLeague.Core.Services
 
             if (scheduledMatches.Count == 0)
             {
-                return new BaseResult { Success = false, Message = "You do not have any scheduled matches that can be reported as a win." };
+                return new ReportWinResult { Success = false, Message = "You do not have any scheduled matches that can be reported as a win." };
             }
 
             if (scheduledMatches.Count > 1)
@@ -62,14 +62,18 @@ namespace WarLeague.Core.Services
                     .Select(p => $"<@{p.DiscordUserId}>")
                     .ToList();
 
-                return new BaseResult { Success = false, Message = "You have multiple scheduled matches pending; I can't determine which one you are reporting a win for.\n" +
+                return new ReportWinResult
+                { Success = false, Message = "You have multiple scheduled matches pending; I can't determine which one you are reporting a win for.\n" +
                     "Pending opponents: " + string.Join(", ", opponents) };
             }
 
             var match = scheduledMatches.Single();
+
+            Player player = match.Player1Id == winnerId ? match.Player1 : match.Player2;
             Player opponentPlayer = match.Player1Id == winnerId ? match.Player2 : match.Player1;
 
             Team team = (await _teamRepository.GetByPlayerAndSeasonAsync(winnerId, seasonId))!;
+            Team opponentTeam = (await _teamRepository.GetByPlayerAndSeasonAsync(opponentPlayer.Id, seasonId))!;
 
             match.WinnerId = winnerId;
             match.Status = MatchStatus.Reported;
@@ -91,7 +95,16 @@ namespace WarLeague.Core.Services
 
             await _matchRepository.UpdateAsync(match);
 
-            return new BaseResult { Success = true, Message = "Match win reported successfully." };
+            return new ReportWinResult 
+            {
+                Success = true,
+                Message = "Match result reported successfully.",
+                Winner = player.UserName,
+                WinnerTeam = team.Name,
+                Loser = opponentPlayer.UserName,
+                LoserTeam = opponentTeam.Name,
+                ReplayUrl = replayUrl
+            };
         }
 
 
