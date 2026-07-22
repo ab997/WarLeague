@@ -92,5 +92,10 @@ namespace WarLeague.Discord.Services
                 await context.Interaction.FollowupAsync(embeds: batch);
             }
         }
+        public async Task SendEmbedInBatchesAsync(SocketInteractionContext context, Embed embed)
+        {
+            IReadOnlyList<Embed> embeds = [embed];
+            await SendEmbedsInBatchesAsync(context, embeds);
+        }
     }
 }

@@ -50,5 +50,6 @@ namespace WarLeague.Discord.Helpers
 
             return sb.ToString().TrimEnd();
         }
+
     }
 }
