@@ -22,6 +22,15 @@ public class DeckSubmissionRepository
             .ToListAsync();
     }
 
+    public async Task<List<DeckSubmission>> GetByWeekAndTeamAsync(int weekId, int teamId)
+    {
+        return await _context.DeckSubmissions
+            .Include(ds => ds.Player)
+            .Where(ds => ds.WeekId == weekId && ds.Player.PlayerSeasonTeams.Any(pst => pst.TeamId == teamId))
+            .OrderBy(ds => ds.SeatNumber)
+            .ToListAsync();
+    }
+
     public async Task<DeckSubmission?> GetByPlayerAndWeekAsync(int playerId, int weekId)
     {
         return await _context.DeckSubmissions

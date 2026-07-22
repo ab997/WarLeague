@@ -56,7 +56,7 @@ namespace WarLeague.Test
                 ?? throw new InvalidOperationException("Test connection string not found in appsettings.Test.json");
 
             var optionsBuilder = new DbContextOptionsBuilder<WarLeagueDbContext>();
-            optionsBuilder.UseSqlServer(connectionString);
+            optionsBuilder.UseNpgsql(connectionString);
 
             _context = new WarLeagueDbContext(optionsBuilder.Options);
             _serviceProvider = TestServiceProvider.CreateServiceProvider(_context);

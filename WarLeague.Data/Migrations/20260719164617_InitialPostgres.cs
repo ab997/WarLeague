@@ -1,12 +1,13 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
 namespace WarLeague.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class Initial : Migration
+    public partial class InitialPostgres : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -15,11 +16,11 @@ namespace WarLeague.Data.Migrations
                 name: "Cards",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    YgoproId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    FirstReleaseDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Utf8Name = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    YgoproId = table.Column<string>(type: "text", nullable: false),
+                    FirstReleaseDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Utf8Name = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -30,13 +31,13 @@ namespace WarLeague.Data.Migrations
                 name: "Formats",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    Rules = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    SingleFormatMode = table.Column<bool>(type: "bit", nullable: false),
-                    GuildId = table.Column<decimal>(type: "decimal(20,0)", nullable: false),
-                    LastLegalReleaseDate = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Rules = table.Column<string>(type: "text", nullable: false),
+                    SingleFormatMode = table.Column<bool>(type: "boolean", nullable: false),
+                    GuildId = table.Column<decimal>(type: "numeric(20,0)", nullable: false),
+                    LastLegalReleaseDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -47,10 +48,10 @@ namespace WarLeague.Data.Migrations
                 name: "Players",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    DiscordUserId = table.Column<decimal>(type: "decimal(20,0)", nullable: false),
-                    UserName = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    DiscordUserId = table.Column<decimal>(type: "numeric(20,0)", nullable: false),
+                    UserName = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -61,11 +62,11 @@ namespace WarLeague.Data.Migrations
                 name: "RolePermissionMappings",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    GuildId = table.Column<decimal>(type: "decimal(20,0)", nullable: false),
-                    RoleId = table.Column<decimal>(type: "decimal(20,0)", nullable: false),
-                    PermissionType = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    GuildId = table.Column<decimal>(type: "numeric(20,0)", nullable: false),
+                    RoleId = table.Column<decimal>(type: "numeric(20,0)", nullable: false),
+                    PermissionType = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -76,11 +77,11 @@ namespace WarLeague.Data.Migrations
                 name: "BanlistEntries",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    FormatId = table.Column<int>(type: "int", nullable: false),
-                    CardId = table.Column<int>(type: "int", nullable: false),
-                    BanlistEntryCategory = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    FormatId = table.Column<int>(type: "integer", nullable: false),
+                    CardId = table.Column<int>(type: "integer", nullable: false),
+                    BanlistEntryCategory = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -103,14 +104,14 @@ namespace WarLeague.Data.Migrations
                 name: "Seasons",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    SeasonNumber = table.Column<int>(type: "int", nullable: false),
-                    FormatId = table.Column<int>(type: "int", nullable: false),
-                    Active = table.Column<bool>(type: "bit", nullable: false),
-                    DisableTeamModification = table.Column<bool>(type: "bit", nullable: false),
-                    MinimumTeamMembers = table.Column<int>(type: "int", nullable: false),
-                    Phase = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    SeasonNumber = table.Column<int>(type: "integer", nullable: false),
+                    FormatId = table.Column<int>(type: "integer", nullable: false),
+                    Active = table.Column<bool>(type: "boolean", nullable: false),
+                    DisableTeamModification = table.Column<bool>(type: "boolean", nullable: false),
+                    MinimumTeamMembers = table.Column<int>(type: "integer", nullable: false),
+                    Phase = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -127,11 +128,11 @@ namespace WarLeague.Data.Migrations
                 name: "Conferences",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    SeasonId = table.Column<int>(type: "int", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    PlayoffTeamsCount = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    SeasonId = table.Column<int>(type: "integer", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    PlayoffTeamsCount = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -148,15 +149,15 @@ namespace WarLeague.Data.Migrations
                 name: "Weeks",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    WeekNumber = table.Column<int>(type: "int", nullable: false),
-                    SeasonId = table.Column<int>(type: "int", nullable: false),
-                    StartDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    EndDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    Status = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    SubmissionsClosedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    SubmissionsRequired = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    WeekNumber = table.Column<int>(type: "integer", nullable: false),
+                    SeasonId = table.Column<int>(type: "integer", nullable: false),
+                    StartDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    EndDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    Status = table.Column<string>(type: "text", nullable: false),
+                    SubmissionsClosedDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    SubmissionsRequired = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -173,14 +174,14 @@ namespace WarLeague.Data.Migrations
                 name: "Teams",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    CaptainId = table.Column<int>(type: "int", nullable: false),
-                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    SeasonId = table.Column<int>(type: "int", nullable: false),
-                    ConferenceId = table.Column<int>(type: "int", nullable: false),
-                    DiscordRoleId = table.Column<decimal>(type: "decimal(20,0)", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    CaptainId = table.Column<int>(type: "integer", nullable: false),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    SeasonId = table.Column<int>(type: "integer", nullable: false),
+                    ConferenceId = table.Column<int>(type: "integer", nullable: false),
+                    DiscordRoleId = table.Column<decimal>(type: "numeric(20,0)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -209,13 +210,13 @@ namespace WarLeague.Data.Migrations
                 name: "DeckSubmissions",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    WeekId = table.Column<int>(type: "int", nullable: false),
-                    PlayerId = table.Column<int>(type: "int", nullable: false),
-                    DeckFile = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    SubmittedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    SeatNumber = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    WeekId = table.Column<int>(type: "integer", nullable: false),
+                    PlayerId = table.Column<int>(type: "integer", nullable: false),
+                    DeckFile = table.Column<string>(type: "text", nullable: false),
+                    SubmittedDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    SeatNumber = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -238,26 +239,26 @@ namespace WarLeague.Data.Migrations
                 name: "Matches",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    WeekId = table.Column<int>(type: "int", nullable: false),
-                    Player1Id = table.Column<int>(type: "int", nullable: false),
-                    Player2Id = table.Column<int>(type: "int", nullable: false),
-                    WinnerId = table.Column<int>(type: "int", nullable: true),
-                    Team1Id = table.Column<int>(type: "int", nullable: false),
-                    Team2Id = table.Column<int>(type: "int", nullable: false),
-                    WinnerTeamId = table.Column<int>(type: "int", nullable: true),
-                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ReportedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    ReplayUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    MatchResultType = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Player1Wins = table.Column<int>(type: "int", nullable: true),
-                    Player2Wins = table.Column<int>(type: "int", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    WeekId = table.Column<int>(type: "integer", nullable: false),
+                    Player1Id = table.Column<int>(type: "integer", nullable: false),
+                    Player2Id = table.Column<int>(type: "integer", nullable: false),
+                    WinnerId = table.Column<int>(type: "integer", nullable: true),
+                    Team1Id = table.Column<int>(type: "integer", nullable: false),
+                    Team2Id = table.Column<int>(type: "integer", nullable: false),
+                    WinnerTeamId = table.Column<int>(type: "integer", nullable: true),
+                    Status = table.Column<string>(type: "text", nullable: false),
+                    ReportedDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ReplayUrl = table.Column<string>(type: "text", nullable: true),
+                    MatchResultType = table.Column<string>(type: "text", nullable: true),
+                    Player1Wins = table.Column<int>(type: "integer", nullable: true),
+                    Player2Wins = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Matches", x => x.Id);
-                    table.CheckConstraint("CK_Match_CanonicalOrder", "[Player1Id] < [Player2Id]");
+                    table.CheckConstraint("CK_Match_CanonicalOrder", "\"Player1Id\" < \"Player2Id\"");
                     table.ForeignKey(
                         name: "FK_Matches_Players_Player1Id",
                         column: x => x.Player1Id,
@@ -306,11 +307,11 @@ namespace WarLeague.Data.Migrations
                 name: "PlayerSeasonTeams",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    PlayerId = table.Column<int>(type: "int", nullable: false),
-                    SeasonId = table.Column<int>(type: "int", nullable: false),
-                    TeamId = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    PlayerId = table.Column<int>(type: "integer", nullable: false),
+                    SeasonId = table.Column<int>(type: "integer", nullable: false),
+                    TeamId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -339,15 +340,15 @@ namespace WarLeague.Data.Migrations
                 name: "PlayoffMatchups",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    WeekId = table.Column<int>(type: "int", nullable: false),
-                    Team1Id = table.Column<int>(type: "int", nullable: false),
-                    Team2Id = table.Column<int>(type: "int", nullable: false),
-                    MatchupType = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    TeamWinnerId = table.Column<int>(type: "int", nullable: true),
-                    Round = table.Column<int>(type: "int", nullable: false),
-                    BracketPosition = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    WeekId = table.Column<int>(type: "integer", nullable: false),
+                    Team1Id = table.Column<int>(type: "integer", nullable: false),
+                    Team2Id = table.Column<int>(type: "integer", nullable: false),
+                    MatchupType = table.Column<string>(type: "text", nullable: false),
+                    TeamWinnerId = table.Column<int>(type: "integer", nullable: true),
+                    Round = table.Column<int>(type: "integer", nullable: false),
+                    BracketPosition = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -382,13 +383,13 @@ namespace WarLeague.Data.Migrations
                 name: "RoundRobinMatchups",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    WeekId = table.Column<int>(type: "int", nullable: false),
-                    Team1Id = table.Column<int>(type: "int", nullable: false),
-                    Team2Id = table.Column<int>(type: "int", nullable: false),
-                    MatchupType = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    TeamWinnerId = table.Column<int>(type: "int", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    WeekId = table.Column<int>(type: "integer", nullable: false),
+                    Team1Id = table.Column<int>(type: "integer", nullable: false),
+                    Team2Id = table.Column<int>(type: "integer", nullable: false),
+                    MatchupType = table.Column<string>(type: "text", nullable: false),
+                    TeamWinnerId = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -423,13 +424,13 @@ namespace WarLeague.Data.Migrations
                 name: "TeamStandings",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    SeasonId = table.Column<int>(type: "int", nullable: false),
-                    TeamId = table.Column<int>(type: "int", nullable: false),
-                    Tiebreaker = table.Column<int>(type: "int", nullable: false),
-                    Seed = table.Column<int>(type: "int", nullable: false),
-                    Wins = table.Column<int>(type: "int", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    SeasonId = table.Column<int>(type: "integer", nullable: false),
+                    TeamId = table.Column<int>(type: "integer", nullable: false),
+                    Tiebreaker = table.Column<int>(type: "integer", nullable: false),
+                    Seed = table.Column<int>(type: "integer", nullable: false),
+                    Wins = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -493,7 +494,7 @@ namespace WarLeague.Data.Migrations
                 table: "Formats",
                 columns: new[] { "GuildId", "SingleFormatMode" },
                 unique: true,
-                filter: "[SingleFormatMode] = 1");
+                filter: "\"SingleFormatMode\" = TRUE");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Matches_Player1Id",
@@ -612,7 +613,7 @@ namespace WarLeague.Data.Migrations
                 table: "Seasons",
                 columns: new[] { "FormatId", "Active" },
                 unique: true,
-                filter: "[Active] = 1");
+                filter: "\"Active\" = TRUE");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Seasons_FormatId_SeasonNumber",
@@ -641,7 +642,7 @@ namespace WarLeague.Data.Migrations
                 table: "Teams",
                 columns: new[] { "SeasonId", "DiscordRoleId" },
                 unique: true,
-                filter: "[DiscordRoleId] IS NOT NULL");
+                filter: "\"DiscordRoleId\" IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Teams_SeasonId_Name",
@@ -665,7 +666,7 @@ namespace WarLeague.Data.Migrations
                 table: "Weeks",
                 columns: new[] { "SeasonId", "Status" },
                 unique: true,
-                filter: "[Status] <> 'Completed' and [Status] <> 'NotOpenYet'");
+                filter: "\"Status\" <> 'Completed' AND \"Status\" <> 'NotOpenYet'");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Weeks_SeasonId_WeekNumber",

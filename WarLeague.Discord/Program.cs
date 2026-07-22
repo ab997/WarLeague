@@ -5,14 +5,17 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using WarLeague.Data;
+using Microsoft.Extensions.Options;
+using Serilog;
+using System.Diagnostics;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
+using WarLeague.Data;
+using WarLeague.Data.Data;
+using WarLeague.Data.Repositories;
+using WarLeague.Data.Services;
 using WarLeague.Discord.HostedService;
 using WarLeague.Discord.Services;
-using Serilog;
-using WarLeague.Data.Repositories;
-using WarLeague.Data.Data;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -22,6 +25,8 @@ builder.Configuration
     .SetBasePath(Directory.GetCurrentDirectory())
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
+    .AddUserSecrets<Program>(optional: true)
+    .AddEnvironmentVariables()
     ;
 
 // serilog
@@ -36,7 +41,8 @@ builder.Services.AddSerilog((services, loggerConfig) =>
 // Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<WarLeagueDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseNpgsql(connectionString));
+
 
 // Repositories
 builder.Services.AddScoped<TeamRepository>();
@@ -53,6 +59,8 @@ builder.Services.AddScoped<SeasonRepository>();
 builder.Services.AddScoped<PlayerRepository>();
 builder.Services.AddScoped<PlayerSeasonTeamRepository>();
 builder.Services.AddScoped<PermissionRepository>();
+
+builder.Services.AddScoped<LogsCleanupService>();
 
 // multi server support
 builder.Services.AddScoped<GuildContextService>();
@@ -93,10 +101,18 @@ builder.Services.AddSingleton(interactionService);
 
 builder.Services.AddHostedService<DiscordBotService>();
 builder.Services.AddHostedService<InteractionHandlingService>();
-builder.Services.AddHostedService<LogCleanupService>();
+builder.Services.AddHostedService<LogCleanupHostedService>();
 
 builder.Services.AddHttpClient();
 
 var app = builder.Build();
+
+// Apply migrations automatically
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<WarLeagueDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 
 await app.RunAsync();

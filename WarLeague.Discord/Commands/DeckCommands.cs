@@ -58,7 +58,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         [Summary("deck-file", "The .ydk file to submit")] IAttachment deckFile,
         [Summary("seat-number", "The seat number for this deck submission")] int seatNumber)
     {
-        await DeferAsync(ephemeral: false);
+        await DeferAsync(ephemeral: true);
 
         string? attachmentError = ValidateDeckAttachment(deckFile);
         if (attachmentError is not null)
@@ -109,7 +109,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
     public async Task DeleteDeckSubmissionAsync(
         [Summary("player", "The team member whose deck submission should be deleted")] IUser player)
     {
-        await DeferAsync(ephemeral: false);
+        await DeferAsync(ephemeral: true);
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
         Player callerPlayer = await _playerService.EnsurePlayerExistsAsync(Context.User);
@@ -127,10 +127,11 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         await FollowupAsync(Stringify(result));
     }
 
-    [SlashCommand("list", "Lists submitted decks for each team (current open week)")]
-    public async Task ListAsync()
+    [SlashCommand("admin-list", "Lists submitted decks for each team (current open week)")]
+    [RequireAppPermission(PermissionType.Admin, Group = "Permission")]
+    public async Task AdminListAsync()
     {
-        await DeferAsync(ephemeral: false);
+        await DeferAsync(ephemeral: true);
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
         Week? openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(season.Id, WeekStatus.Open);
@@ -147,6 +148,40 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
+        List<string> lines = await GetDeckSubmissionForSeasonAndWeekString(season, openWeek, submissions);
+
+        await FollowupAsync(string.Join("\n", lines));
+    }
+
+    [SlashCommand("list", "Lists submitted decks for your team (current open week)")]
+    public async Task ListAsync()
+    {
+        await DeferAsync(ephemeral: true);
+
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+        Week? openWeek = await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(season.Id, WeekStatus.Open);
+        if (openWeek is null)
+        {
+            await FollowupAsync("No open week for deck submissions. Open a week first to submit and list decks.");
+            return;
+        }
+
+        Player callerPlayer = await _playerService.EnsurePlayerExistsAsync(Context.User);
+        var pst = await _playerSeasonTeamRepository.GetByPlayerAndSeasonAsync(callerPlayer.Id, season.Id);
+        var submissions = await _deckSubmissionRepository.GetByWeekAndTeamAsync(openWeek.Id, pst.TeamId);
+        if (submissions.Count == 0)
+        {
+            await FollowupAsync($"Week {openWeek.WeekNumber}: no deck submissions yet.");
+            return;
+        }
+
+        List<string> lines = await GetDeckSubmissionForSeasonAndWeekString(season, openWeek, submissions);
+
+        await FollowupAsync(string.Join("\n", lines));
+    }
+
+    private async Task<List<string>> GetDeckSubmissionForSeasonAndWeekString(Season season, Week openWeek, List<DeckSubmission> submissions)
+    {
         var psts = await _playerSeasonTeamRepository.GetBySeasonAsync(season.Id);
         var playerToTeamId = psts
             .Where(pst => pst.TeamId != 0)
@@ -171,7 +206,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
             lines.Add($"**{teamName}:** " + string.Join(", ", parts));
         }
 
-        await FollowupAsync(string.Join("\n", lines));
+        return lines;
     }
 
     private async Task<string?> ValidateDeckSubmissionPermission(Season season, Player callerPlayer, Player targetPlayer)

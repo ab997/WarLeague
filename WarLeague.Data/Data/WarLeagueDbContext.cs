@@ -108,8 +108,12 @@ public class WarLeagueDbContext : DbContext
         // check constraints
         //--------------------------------------
         // Match: canonical order (Player1Id < Player2Id) so unique (WeekId, Player1Id, Player2Id) prevents duplicate pair per week
+        //modelBuilder.Entity<Match>()
+        //    .ToTable(t => t.HasCheckConstraint("CK_Match_CanonicalOrder", "[Player1Id] < [Player2Id]"));
         modelBuilder.Entity<Match>()
-            .ToTable(t => t.HasCheckConstraint("CK_Match_CanonicalOrder", "[Player1Id] < [Player2Id]"));
+        .ToTable(t => t.HasCheckConstraint(
+            "CK_Match_CanonicalOrder",
+            "\"Player1Id\" < \"Player2Id\""));
 
         //--------------------------------------
         // enums as strings
@@ -149,10 +153,14 @@ public class WarLeagueDbContext : DbContext
             .HasIndex(f => new { f.GuildId, f.Name })
             .IsUnique();
 
+        //modelBuilder.Entity<Format>()
+        //  .HasIndex(f => new { f.GuildId, f.SingleFormatMode })
+        //  .IsUnique()
+        //  .HasFilter("[SingleFormatMode] = 1");
         modelBuilder.Entity<Format>()
-          .HasIndex(f => new { f.GuildId, f.SingleFormatMode })
-          .IsUnique()
-          .HasFilter("[SingleFormatMode] = 1");
+        .HasIndex(f => new { f.GuildId, f.SingleFormatMode })
+        .IsUnique()
+        .HasFilter("\"SingleFormatMode\" = TRUE");
 
         modelBuilder.Entity<Player>()
             .HasIndex(p => p.DiscordUserId)
@@ -174,10 +182,14 @@ public class WarLeagueDbContext : DbContext
             .HasIndex(c => new { c.SeasonId, c.Name })
             .IsUnique();
 
+        //modelBuilder.Entity<Season>()
+        //    .HasIndex(s => new { s.FormatId, s.Active })
+        //    .IsUnique()
+        //    .HasFilter("[Active] = 1");
         modelBuilder.Entity<Season>()
-            .HasIndex(s => new { s.FormatId, s.Active })
-            .IsUnique()
-            .HasFilter("[Active] = 1");
+        .HasIndex(s => new { s.FormatId, s.Active })
+        .IsUnique()
+        .HasFilter("\"Active\" = TRUE");
 
         modelBuilder.Entity<Week>()
             .HasIndex(w => new { w.SeasonId, w.WeekNumber })
@@ -185,10 +197,15 @@ public class WarLeagueDbContext : DbContext
 
         // Week: only one non-Completed and non-NotOpenYet per SeasonId
         // Status is stored as string via HasConversion<string>() above, so we filter on string values
+        //modelBuilder.Entity<Week>()
+        //    .HasIndex(w => new { w.SeasonId, w.Status })
+        //    .IsUnique()
+        //    .HasFilter("[Status] <> 'Completed' and [Status] <> 'NotOpenYet'");
         modelBuilder.Entity<Week>()
-            .HasIndex(w => new { w.SeasonId, w.Status })
-            .IsUnique()
-            .HasFilter("[Status] <> 'Completed' and [Status] <> 'NotOpenYet'");
+        .HasIndex(w => new { w.SeasonId, w.Status })
+        .IsUnique()
+        .HasFilter(
+            "\"Status\" <> 'Completed' AND \"Status\" <> 'NotOpenYet'");
 
         // PlayerSeasonTeam: unique per (PlayerId, SeasonId) -> a player can only be in one team per season
         modelBuilder.Entity<PlayerSeasonTeam>()
@@ -205,10 +222,14 @@ public class WarLeagueDbContext : DbContext
             .IsUnique();
 
         // Team: one Discord role per team per season when assigned
+        //modelBuilder.Entity<Team>()
+        //    .HasIndex(t => new { t.SeasonId, t.DiscordRoleId })
+        //    .IsUnique()
+        //    .HasFilter("[DiscordRoleId] IS NOT NULL");
         modelBuilder.Entity<Team>()
-            .HasIndex(t => new { t.SeasonId, t.DiscordRoleId })
-            .IsUnique()
-            .HasFilter("[DiscordRoleId] IS NOT NULL");
+        .HasIndex(t => new { t.SeasonId, t.DiscordRoleId })
+        .IsUnique()
+        .HasFilter("\"DiscordRoleId\" IS NOT NULL");
 
         modelBuilder.Entity<RolePermissionMapping>()
             .HasIndex(w => new { w.GuildId, w.PermissionType })
