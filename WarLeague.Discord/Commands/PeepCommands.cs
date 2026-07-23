@@ -878,9 +878,16 @@ namespace WarLeague.Discord.Commands
             IReadOnlyList<Team> teams,
             IMatchupService matchupService)
         {
-            var teamMatchups = await matchupService.GetExistingTeamMatchupsAsync(week.Id);
+            List<(Team a, Team b)>? teamMatchups = await matchupService.GetExistingTeamMatchupsAsync(week.Id);
+
             if (teamMatchups is null || teamMatchups.Count == 0)
                 return;
+
+            teamMatchups = teamMatchups
+                .Where(x => teams.Select(t => t.Id).Contains(x.a.Id) || teams.Select(t => t.Id).Contains(x.b.Id))
+                .ToList();
+
+
 
 
             var byeTeams = await matchupService.GetByeTeamsForPairingsDisplayAsync(week.Id);
