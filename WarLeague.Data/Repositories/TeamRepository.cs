@@ -62,6 +62,7 @@ public class TeamRepository
     public async Task<List<Team>> GetBySeasonAsync(int id)
     {
         return await _context.Teams
+            .Include(x => x.Conference)
             .Where(t => t.SeasonId == id)
             .ToListAsync();
     }

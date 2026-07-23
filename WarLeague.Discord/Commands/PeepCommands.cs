@@ -447,7 +447,12 @@ namespace WarLeague.Discord.Commands
                     return;
                 }
 
-                await AppendPairingsForWeekAsync(sb, week, teams, matchupService);
+                var conferenceGroups = teams.GroupBy(x => x.Conference.Name);
+                foreach (var group in conferenceGroups)
+                {
+                    sb.AppendLine($"** Conference {group.Key} **");
+                    await AppendPairingsForWeekAsync(sb, week, teams, matchupService);
+                }
 
                 if (sb.Length == 0)
                 {
@@ -467,16 +472,23 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            var weeks = await _weekRepository.GetBySeasonAsync(season.Id);
-            foreach (var week in weeks.OrderBy(w => w.WeekNumber))
+            var conferenceGroups2 = teams.GroupBy(x => x.Conference.Name);
+            foreach (var group in conferenceGroups2)
             {
-                var before = sb.Length;
-                await AppendPairingsForWeekAsync(sb, week, teams, matchupService);
-                if (sb.Length > before)
+                sb.AppendLine($"** Conference {group.Key} **");
+                var weeks = await _weekRepository.GetBySeasonAsync(season.Id);
+                foreach (var week in weeks.OrderBy(w => w.WeekNumber))
                 {
-                    sb.AppendLine();
+                    var before = sb.Length;
+                    await AppendPairingsForWeekAsync(sb, week, teams, matchupService);
+                    if (sb.Length > before)
+                    {
+                        sb.AppendLine();
+                    }
                 }
             }
+
+           
 
             if (sb.Length == 0)
             {
@@ -870,12 +882,13 @@ namespace WarLeague.Discord.Commands
             if (teamMatchups is null || teamMatchups.Count == 0)
                 return;
 
+
             var byeTeams = await matchupService.GetByeTeamsForPairingsDisplayAsync(week.Id);
 
-            sb.AppendLine($"**Week {week.WeekNumber} — Team pairings**");
+            sb.AppendLine($"Week {week.WeekNumber} — Team pairings");
             sb.AppendLine();
 
-            foreach (var (a, b) in teamMatchups)
+            foreach ((Team? a, Team? b) in teamMatchups)
             {
                 if (a.Id == b.Id)
                     continue;
@@ -905,12 +918,12 @@ namespace WarLeague.Discord.Commands
                 return "No matches scheduled for this week.";
             }
 
-            var conferenceGroups = matches.GroupBy(x => x.Team1.Conference.Name);
+            IEnumerable<IGrouping<string, Match>> conferenceGroups = matches.GroupBy(x => x.Team1.Conference.Name);
             var sb = new StringBuilder();
-            foreach (var conferenceGroup in conferenceGroups)
+            foreach (IGrouping<string, Match> conferenceGroup in conferenceGroups)
             {
-                var played = matches.Where(m => m.Status == MatchStatus.Reported).ToList();
-                var pending = matches.Where(m => m.Status != MatchStatus.Reported).ToList();
+                var played = conferenceGroup.Where(m => m.Status == MatchStatus.Reported).ToList();
+                var pending = conferenceGroup.Where(m => m.Status != MatchStatus.Reported).ToList();
 
                 sb.AppendLine($"** Conference {conferenceGroup.Key}**");
                 sb.AppendLine($"Played ({played.Count}):");
