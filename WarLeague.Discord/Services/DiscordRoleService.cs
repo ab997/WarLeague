@@ -22,6 +22,25 @@ namespace WarLeague.Discord.Services
 
             return new SocketRoleResult { Success = true, Role = role, Message = $"Role created and assigned to {player.UserName}."};
         }
+
+        public async Task<SocketRoleResult> RenameTeamRoleAsync(SocketGuild guild, ulong roleId, string newName)
+        {
+            SocketRole? role = guild.GetRole(roleId);
+
+            if (role is null) return new SocketRoleResult { Message = $"Role with ID {roleId} not found." };
+
+            try
+            {
+                await role.ModifyAsync(r => r.Name = newName);
+            }
+            catch (Exception ex)
+            {
+                return new SocketRoleResult { Role = role, Message = $"Failed to rename role: {ex.Message}" };
+            }
+
+            return new SocketRoleResult { Success = true, Role = role, Message = $"Role renamed to '{newName}'." };
+        }
+
         /// <summary>
         /// Creates a Discord role for a team in the specified guild.
         /// Returns the created role's ID or null if creation fails.

@@ -417,5 +417,26 @@ namespace WarLeague.Core.Services
 
             return new BaseResult { Success = true, Message = $"Team '{teamName}' moved to conference '{conference.Name}'." };
         }
+
+        public async Task<RoleResult> RenameAsync(int seasonId, string oldName, string newName, bool canBypassTeamModificationCheck)
+        {
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
+
+            if (season.DisableTeamModification && !canBypassTeamModificationCheck)
+            {
+                return new RoleResult { Success = false, Message = "Team modifications are currently disabled for this season." };
+            }
+
+            Team? team = await _teamRepository.GetByNameAndSeasonAsync(oldName, seasonId);
+            if (team is null)
+            {
+                return new RoleResult { Success = false, Message = $"Team with name '{oldName}' does not exist in this season." };
+            }
+
+            team.Name = newName;
+            await _teamRepository.UpdateAsync(team);
+
+            return new RoleResult { Success = true, Message = $"Team renamed from '{oldName}' to '{newName}' successfully.", DiscordRoleId = team.DiscordRoleId!.Value };
+        }
     }
 }

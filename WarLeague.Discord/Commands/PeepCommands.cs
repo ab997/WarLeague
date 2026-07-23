@@ -2,17 +2,18 @@
 using Discord;
 using Discord.Interactions;
 using Microsoft.EntityFrameworkCore;
+using System.Numerics;
 using System.Text;
-using WarLeague.Data.Entities;
-using WarLeague.Core.Repositories;
 using WarLeague.Core.Model;
+using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
+using WarLeague.Data.Data.Enums;
+using WarLeague.Data.Entities;
+using WarLeague.Data.Enums;
 using WarLeague.Discord.Autocomplete;
+using WarLeague.Discord.Helpers;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
-using WarLeague.Discord.Helpers;
-using WarLeague.Data.Data.Enums;
-using WarLeague.Data.Enums;
 using Format = WarLeague.Data.Entities.Format;
 
 namespace WarLeague.Discord.Commands
@@ -446,7 +447,12 @@ namespace WarLeague.Discord.Commands
                     return;
                 }
 
-                await AppendPairingsForWeekAsync(sb, week, teams, matchupService);
+                var conferenceGroups = teams.GroupBy(x => x.Conference.Name);
+                foreach (var group in conferenceGroups)
+                {
+                    sb.AppendLine($"** Conference {group.Key} **");
+                    await AppendPairingsForWeekAsync(sb, week, teams, matchupService);
+                }
 
                 if (sb.Length == 0)
                 {
@@ -466,16 +472,23 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            var weeks = await _weekRepository.GetBySeasonAsync(season.Id);
-            foreach (var week in weeks.OrderBy(w => w.WeekNumber))
+            var conferenceGroups2 = teams.GroupBy(x => x.Conference.Name);
+            foreach (var group in conferenceGroups2)
             {
-                var before = sb.Length;
-                await AppendPairingsForWeekAsync(sb, week, teams, matchupService);
-                if (sb.Length > before)
+                sb.AppendLine($"** Conference {group.Key} **");
+                var weeks = await _weekRepository.GetBySeasonAsync(season.Id);
+                foreach (var week in weeks.OrderBy(w => w.WeekNumber))
                 {
-                    sb.AppendLine();
+                    var before = sb.Length;
+                    await AppendPairingsForWeekAsync(sb, week, teams, matchupService);
+                    if (sb.Length > before)
+                    {
+                        sb.AppendLine();
+                    }
                 }
             }
+
+           
 
             if (sb.Length == 0)
             {
@@ -869,12 +882,13 @@ namespace WarLeague.Discord.Commands
             if (teamMatchups is null || teamMatchups.Count == 0)
                 return;
 
+
             var byeTeams = await matchupService.GetByeTeamsForPairingsDisplayAsync(week.Id);
 
-            sb.AppendLine($"**Week {week.WeekNumber} — Team pairings**");
+            sb.AppendLine($"Week {week.WeekNumber} — Team pairings");
             sb.AppendLine();
 
-            foreach (var (a, b) in teamMatchups)
+            foreach ((Team? a, Team? b) in teamMatchups)
             {
                 if (a.Id == b.Id)
                     continue;
@@ -897,51 +911,57 @@ namespace WarLeague.Discord.Commands
 
         private async Task<string> BuildWeekResultsAsync(int weekId, int weekNumber)
         {
-            var matches = await _matchRepository.GetByWeekIdAsync(weekId);
+            List<Match> matches = await _matchRepository.GetByWeekIdAsync(weekId);
 
             if (matches.Count == 0)
             {
                 return "No matches scheduled for this week.";
             }
 
-            var played = matches.Where(m => m.Status == MatchStatus.Reported).ToList();
-            var pending = matches.Where(m => m.Status != MatchStatus.Reported).ToList();
-
+            IEnumerable<IGrouping<string, Match>> conferenceGroups = matches.GroupBy(x => x.Team1.Conference.Name);
             var sb = new StringBuilder();
+            foreach (IGrouping<string, Match> conferenceGroup in conferenceGroups)
+            {
+                var played = conferenceGroup.Where(m => m.Status == MatchStatus.Reported).ToList();
+                var pending = conferenceGroup.Where(m => m.Status != MatchStatus.Reported).ToList();
 
-            sb.AppendLine($"Played ({played.Count}):");
-            if (played.Count == 0)
-            {
-                sb.AppendLine("- <none>");
-            }
-            else
-            {
-                foreach (var m in played)
+                sb.AppendLine($"** Conference {conferenceGroup.Key}**");
+                sb.AppendLine($"Played ({played.Count}):");
+                if (played.Count == 0)
                 {
-                    var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : $"<@{m.Player1.DiscordUserId}>";
-                    var p2 = m.Player2 is null ? $"P#{m.Player2Id}" : $"<@{m.Player2.DiscordUserId}>";
-                    var win = m.Winner is null ? "<unknown>" : $"<@{m.Winner.DiscordUserId}>";
-                    var replay = string.IsNullOrWhiteSpace(m.ReplayUrl) ? "" : $" | Replay: {m.ReplayUrl}";
-                    sb.AppendLine($"- {p1} vs {p2} → Winner: {win}{replay}");
+                    sb.AppendLine("- <none>");
+                }
+                else
+                {
+                    foreach (var m in played)
+                    {
+                        var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : $"<@{m.Player1.DiscordUserId}>";
+                        var p2 = m.Player2 is null ? $"P#{m.Player2Id}" : $"<@{m.Player2.DiscordUserId}>";
+                        var win = m.Winner is null ? "<unknown>" : $"<@{m.Winner.DiscordUserId}>";
+                        var replay = string.IsNullOrWhiteSpace(m.ReplayUrl) ? "" : $" | Replay: {m.ReplayUrl}";
+                        sb.AppendLine($"- {p1} vs {p2} → Winner: {win}{replay}");
+                    }
+                }
+
+                sb.AppendLine();
+
+                sb.AppendLine($"Pending ({pending.Count}):");
+                if (pending.Count == 0)
+                {
+                    sb.AppendLine("- <none>");
+                }
+                else
+                {
+                    foreach (var m in pending)
+                    {
+                        var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : $"<@{m.Player1.DiscordUserId}>";
+                        var p2 = m.Player2 is null ? $"P#{m.Player2Id}" : $"<@{m.Player2.DiscordUserId}>";
+                        sb.AppendLine($"- {p1} vs {p2}");
+                    }
                 }
             }
 
-            sb.AppendLine();
-
-            sb.AppendLine($"Pending ({pending.Count}):");
-            if (pending.Count == 0)
-            {
-                sb.AppendLine("- <none>");
-            }
-            else
-            {
-                foreach (var m in pending)
-                {
-                    var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : $"<@{m.Player1.DiscordUserId}>";
-                    var p2 = m.Player2 is null ? $"P#{m.Player2Id}" : $"<@{m.Player2.DiscordUserId}>";
-                    sb.AppendLine($"- {p1} vs {p2}");
-                }
-            }
+            
 
             return sb.ToString().TrimEnd();
         }

@@ -77,6 +77,29 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         await FollowupAsync(Stringify(result, roleResult, assignRoleResult));
     }
 
+    [SlashCommand("rename", "Rename team (Admin only)")]
+    [RequireAppPermission(PermissionType.Admin)]
+    public async Task RenameAsync(
+        [Summary("old-name", "Current name of the team")][Autocomplete(typeof(TeamAutocompleteHandler))] string oldName,
+        [Summary("new-name", "New name for the team")] string newName)
+    {
+        await DeferAsync(ephemeral: false);
+
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+
+        RoleResult result = await _teamService.RenameAsync(season.Id, oldName, newName, true);
+
+        if (!result.Success)
+        {
+            await FollowupAsync(Stringify(result));
+            return;
+        }
+
+        SocketRoleResult socketRoleResukt = await _roleService.RenameTeamRoleAsync(Context.Guild, result.DiscordRoleId, newName);
+
+        await FollowupAsync(Stringify(result, socketRoleResukt));
+    }
+
     
 
     [SlashCommand("admin-create", "Creates a team and assigns the specified user as captain (Admin only)")]
