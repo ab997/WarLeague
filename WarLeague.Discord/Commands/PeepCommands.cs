@@ -451,7 +451,7 @@ namespace WarLeague.Discord.Commands
                 foreach (var group in conferenceGroups)
                 {
                     sb.AppendLine($"** Conference {group.Key} **");
-                    await AppendPairingsForWeekAsync(sb, week, teams, matchupService);
+                    await AppendPairingsForWeekAsync(sb, week, group.ToList(), matchupService);
                 }
 
                 if (sb.Length == 0)
@@ -480,7 +480,7 @@ namespace WarLeague.Discord.Commands
                 foreach (var week in weeks.OrderBy(w => w.WeekNumber))
                 {
                     var before = sb.Length;
-                    await AppendPairingsForWeekAsync(sb, week, teams, matchupService);
+                    await AppendPairingsForWeekAsync(sb, week, group.ToList(), matchupService);
                     if (sb.Length > before)
                     {
                         sb.AppendLine();
