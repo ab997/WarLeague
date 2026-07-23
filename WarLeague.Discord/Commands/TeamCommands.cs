@@ -87,9 +87,17 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
 
         Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
 
-        BaseResult result = await _teamService.RenameAsync(season.Id, oldName, newName, true);
+        RoleResult result = await _teamService.RenameAsync(season.Id, oldName, newName, true);
 
-        await FollowupAsync(Stringify(result));
+        if (!result.Success)
+        {
+            await FollowupAsync(Stringify(result));
+            return;
+        }
+
+        SocketRoleResult socketRoleResukt = await _roleService.RenameTeamRoleAsync(Context.Guild, result.DiscordRoleId, newName);
+
+        await FollowupAsync(Stringify(result, socketRoleResukt));
     }
 
     
