@@ -31,6 +31,10 @@ public class MatchRepository
         return await _context.Matches
             .Include(m => m.Player1)
             .Include(m => m.Player2)
+            .Include(m => m.Team1)
+                .ThenInclude(c => c.Conference)
+            .Include(m => m.Team2)
+                .ThenInclude(c => c.Conference)
             .Include(m => m.Winner)
             .Where(m => m.WeekId == weekId)
             .ToListAsync();
