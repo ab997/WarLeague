@@ -25,6 +25,16 @@ public class MatchRepository
             .OrderBy(m => m.Week.WeekNumber)
             .ToListAsync();
     }
+    public async Task<List<Match>> GetBySeasonAndTeamIdAsync(int seasonId, int teamId)
+    {
+        return await _context.Matches
+            .Include(m => m.Week)
+            .Include(x => x.Team1)
+            .Include(x => x.Team2)
+            .Where(m => m.Week.SeasonId == seasonId && (m.Team1Id == teamId || m.Team2Id == teamId))
+            .OrderBy(m => m.Week.WeekNumber)
+            .ToListAsync();
+    }
 
     public async Task<List<Match>> GetByWeekIdAsync(int weekId)
     {

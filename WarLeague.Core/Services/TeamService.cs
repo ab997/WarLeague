@@ -1,12 +1,10 @@
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Numerics;
-using System.Text;
+
 using WarLeague.Data;
 using WarLeague.Data.Entities;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
+using System.Xml.Linq;
+using WarLeague.Data.Enums;
 
 namespace WarLeague.Core.Services
 {
@@ -437,6 +435,51 @@ namespace WarLeague.Core.Services
             await _teamRepository.UpdateAsync(team);
 
             return new RoleResult { Success = true, Message = $"Team renamed from '{oldName}' to '{newName}' successfully.", DiscordRoleId = team.DiscordRoleId!.Value };
+        }
+        public async Task<RoundSummaryResult> GetRoundsSummary(int seasonId, int teamId)
+        {
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
+            if (season is null)
+            {
+                return new RoundSummaryResult { Success = false, Message = "Season not found." };
+            }
+
+            var team = await _teamRepository.GetByIdAndSeasonAsync(teamId, seasonId);
+            if (team is null)
+            {
+                return new RoundSummaryResult { Success = false, Message = "Team not found." };
+            }
+
+            var weeklyResults = new List<WeeklyResult>();
+
+            List<Match> matches = await _matchRepository.GetBySeasonAndTeamIdAsync(seasonId, teamId);
+            matches = matches
+                .Where(x => x.Status == MatchStatus.Reported)
+                .OrderBy(x => x.Week.WeekNumber).ToList();
+
+            var groupByWeek = matches.GroupBy(x => x.Week.WeekNumber).ToList();
+            
+            foreach (var grp in groupByWeek)
+            {
+                int wins = grp.Count(x => x.WinnerTeamId == teamId);
+                int loses = grp.Count(x => x.WinnerTeamId != teamId);
+                string opposingTeamName = grp.First().Team1Id == teamId ? grp.First().Team2.Name : grp.First().Team1.Name;
+                weeklyResults.Add(new WeeklyResult
+                {
+                    WeekNumber = grp.Key,
+                    Wins = wins,
+                    Loses = loses,
+                    OpposingTeamName = opposingTeamName
+                });
+            }
+
+
+            return new RoundSummaryResult
+            {
+                Success = true,
+                Message = $"Rounds summary for team '{team.Name}' retrieved successfully.",
+                WeeklyResults = weeklyResults
+            };
         }
     }
 }
