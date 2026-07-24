@@ -1,20 +1,21 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using WarLeague.Data;
-using WarLeague.Data.Entities;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
+using WarLeague.Data;
+using WarLeague.Data.Data.Enums;
+using WarLeague.Data.Entities;
+using WarLeague.Data.Repositories;
+using WarLeague.Discord.Autocomplete;
+using WarLeague.Discord.Commands.ResponseEmbeds;
 using WarLeague.Discord.Enums;
 using WarLeague.Discord.Helpers;
 using WarLeague.Discord.Model;
-using WarLeague.Discord.Autocomplete;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 using static WarLeague.Discord.Helpers.ResultHelper;
-using WarLeague.Data.Data.Enums;
-using WarLeague.Data.Repositories;
 
 namespace WarLeague.Discord.Commands;
 
@@ -593,6 +594,34 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .Select(t => $"• **{t.Name}**" + (string.IsNullOrEmpty(t.Conference?.Name) ? "" : $" — {t.Conference.Name}"));
         await FollowupAsync($"**Season {season.SeasonNumber} — Teams:**\n" + string.Join("\n", lines));
+    }
+
+    [SlashCommand("round-summary", "Shows round summary")]
+    public async Task ShowRoundSummaryAsync(
+        [Summary("team-name", "Name of the team")][Autocomplete(typeof(TeamAutocompleteHandler))] string teamName
+        )
+    {
+        await DeferAsync(ephemeral: false);
+
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+        Team? team = await _teamRepository.GetByNameAndSeasonAsync(teamName, season.Id);
+
+        if (team is null)
+        {
+            await FollowupAsync($"Team not found");
+            return;
+        }
+
+        RoundSummaryResult result = await _teamService.GetRoundsSummary(season.Id, team.Id);
+
+        if (result.Success)
+        {
+            await _helperService.SendEmbedInBatchesAsync(Context, RoundSummaryEmbed.Build(result));
+        }
+        else
+        {
+            await FollowupAsync(ResultHelper.Stringify(result));
+        }
     }
 
     private static Color? TryParseHexColor(string hexCode)
