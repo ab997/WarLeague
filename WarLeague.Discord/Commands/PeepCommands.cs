@@ -949,16 +949,13 @@ namespace WarLeague.Discord.Commands
                         sb.AppendLine($"- {p1} vs {p2} → Winner: {win}{replay}");
                     }
                 }
-
                 sb.AppendLine();
 
-                sb.AppendLine($"Pending ({pending.Count}):");
-                if (pending.Count == 0)
+                if (pending.Count > 0)
                 {
-                    sb.AppendLine("- <none>");
-                }
-                else
-                {
+
+                    sb.AppendLine($"Pending ({pending.Count}):");
+
                     foreach (var m in pending)
                     {
                         var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : $"<@{m.Player1.DiscordUserId}>";
@@ -966,6 +963,8 @@ namespace WarLeague.Discord.Commands
                         sb.AppendLine($"- {p1} vs {p2}");
                     }
                 }
+
+             
             }
 
             

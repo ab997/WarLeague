@@ -92,14 +92,11 @@ public class MatchCommands : InteractionModuleBase<SocketInteractionContext>
             }
         }
 
-        sb.AppendLine();
-        sb.AppendLine($"Pending ({pending.Count}):");
-        if (pending.Count == 0)
+        if (pending.Count > 0)
         {
-            sb.AppendLine("- <none>");
-        }
-        else
-        {
+            sb.AppendLine();
+            sb.AppendLine($"Pending ({pending.Count}):");
+
             foreach (var m in pending)
             {
                 var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : $"<@{m.Player1.DiscordUserId}>";

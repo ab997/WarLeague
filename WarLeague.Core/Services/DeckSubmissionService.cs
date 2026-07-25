@@ -30,7 +30,7 @@ namespace WarLeague.Core.Services
             _matchupServiceFactory = matchupServiceFactory;
             _seasonRepository = seasonRepository;
         }
-        public async Task<BaseResult> SubmitAsync(int seasonId, int playerId, string deckContent, int seatNumber)
+        public async Task<BaseResult> SubmitAsync(int seasonId, int playerId, string deckContent, int seatNumber, string deckType)
         {
             Week openWeek = (await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.Open))!;
 
@@ -75,6 +75,7 @@ namespace WarLeague.Core.Services
                 existing.DeckFile = deckContent;
                 existing.SubmittedDate = DateTime.UtcNow;
                 existing.SeatNumber = seatNumber;
+                existing.DeckType = deckType;
                 await _deckSubmissionRepository.UpdateAsync(existing);
                 return new BaseResult { Success = true, Message = $"Deck **updated** for {pst.Player.UserName} for week {openWeek.WeekNumber} (season {pst.Season.SeasonNumber}) at seat {seatNumber}." };
             }
@@ -84,11 +85,12 @@ namespace WarLeague.Core.Services
                 PlayerId = playerId,
                 WeekId = openWeek.Id,
                 DeckFile = deckContent,
+                DeckType = deckType,
                 SubmittedDate = DateTime.UtcNow,
                 SeatNumber = seatNumber
             });
 
-            return new BaseResult { Success = true, Message = $"Deck submitted for {pst.Player.UserName} for week {openWeek.WeekNumber} (season {pst.Season.SeasonNumber}) at seat {seatNumber}." };
+            return new BaseResult { Success = true, Message = $"Deck {deckType} submitted for {pst.Player.UserName} for week {openWeek.WeekNumber} (season {pst.Season.SeasonNumber}) at seat {seatNumber}." };
         }
 
         public async Task<BaseResult> DeleteSubmissionAsync(int seasonId, int playerId)

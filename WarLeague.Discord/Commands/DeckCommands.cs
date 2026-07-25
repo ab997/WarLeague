@@ -56,7 +56,9 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
     public async Task SubmitAsync(
         [Summary("player", "The team member whose deck is being submitted")] IUser player,
         [Summary("deck-file", "The .ydk file to submit")] IAttachment deckFile,
-        [Summary("seat-number", "The seat number for this deck submission")] int seatNumber)
+        [Summary("seat-number", "The seat number for this deck submission")] int seatNumber,
+        [Summary("deck-type", "The decktype for this deck submission")] string deckType
+        )
     {
         await DeferAsync(ephemeral: true);
 
@@ -100,7 +102,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        BaseResult result = await _deckSubmissionService.SubmitAsync(season.Id, targetPlayer.Id, deckContent, seatNumber);
+        BaseResult result = await _deckSubmissionService.SubmitAsync(season.Id, targetPlayer.Id, deckContent, seatNumber, deckType);
 
         await FollowupAsync(Stringify(result));
     }
