@@ -93,7 +93,9 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
     [RequireAppPermission(PermissionType.Admin)]
     public async Task ReportResultAsync(
         [Summary("winner", "Winner player")] IUser winner,
+        [Summary("winner-game-wins", "Winner game wins")] int winnerGameWins,
         [Summary("loser", "Loser player")] IUser loser,
+        [Summary("loser-game-wins", "Loser game wins")] int loserGameWins,
         [Summary("replay-url", "Replay URL for this match")] string replayUrl)
     {
         await DeferAsync(ephemeral: false);
@@ -102,7 +104,7 @@ public class ReportCommands : InteractionModuleBase<SocketInteractionContext>
         Player w = await _playerService.EnsurePlayerExistsAsync(winner);
         Player l = await _playerService.EnsurePlayerExistsAsync(loser);
 
-        BaseResult result = await _matchService.ReportResultAsync(season.Id, w.Id, l.Id, replayUrl);
+        BaseResult result = await _matchService.ReportResultAsync(season.Id, w.Id, l.Id, replayUrl, winnerGameWins, loserGameWins);
 
         await FollowupAsync(ResultHelper.Stringify(result));
     }

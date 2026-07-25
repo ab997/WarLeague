@@ -17,8 +17,9 @@ namespace WarLeague.Core.Services
         private readonly PlayerRepository _playerRepository;
         private readonly ConferenceRepository _conferenceRepository;
         private readonly MatchRepository _matchRepository;
+        private readonly DeckSubmissionRepository _deckSubmissionRepository;
 
-        public TeamService(WarLeagueDbContext context, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, SeasonRepository seasonRepository, PlayerRepository playerRepository, ConferenceRepository conferenceRepository, MatchRepository matchRepository)
+        public TeamService(WarLeagueDbContext context, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, SeasonRepository seasonRepository, PlayerRepository playerRepository, ConferenceRepository conferenceRepository, MatchRepository matchRepository, DeckSubmissionRepository deckSubmissionRepository)
         {
             _context = context;
             _teamRepository = teamRepository;
@@ -27,6 +28,7 @@ namespace WarLeague.Core.Services
             _playerRepository = playerRepository;
             _conferenceRepository = conferenceRepository;
             _matchRepository = matchRepository;
+            _deckSubmissionRepository = deckSubmissionRepository;
         }
 
         public async Task<BaseResult> CreateAsync(int seasonId, string teamName, int captainId, string conferenceName, bool canBypassTeamModificationCheck, ulong? discordRoleId = null)
@@ -436,7 +438,7 @@ namespace WarLeague.Core.Services
 
             return new RoleResult { Success = true, Message = $"Team renamed from '{oldName}' to '{newName}' successfully.", DiscordRoleId = team.DiscordRoleId!.Value };
         }
-        public async Task<RoundSummaryResult> GetRoundsSummary(int seasonId, int teamId)
+        public async Task<RoundSummaryResult> GetRoundsSummaryAsync(int seasonId, int teamId)
         {
             var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
             if (season is null)
@@ -478,7 +480,94 @@ namespace WarLeague.Core.Services
             {
                 Success = true,
                 Message = $"Rounds summary for team '{team.Name}' retrieved successfully.",
-                WeeklyResults = weeklyResults
+                WeeklyResults = weeklyResults,
+                TeamName = team.Name
+            };
+        }
+
+        public async Task<PlayerSummaryResult> GetPlayersSummaryAsync(int seasonId, int teamId)
+        {
+            var season = await _seasonRepository.GetSingleActiveSeasonByIdAsync(seasonId);
+            if (season is null)
+            {
+                return new PlayerSummaryResult { Success = false, Message = "Season not found." };
+            }
+
+            var team = await _teamRepository.GetByIdAndSeasonAsync(teamId, seasonId);
+            if (team is null)
+            {
+                return new PlayerSummaryResult { Success = false, Message = "Team not found." };
+            }
+
+            List<Player> players = await _playerSeasonTeamRepository.GetPlayersByTeamAndSeasonAsync(teamId, seasonId);
+
+
+
+            List<PlayerResult> playerResults = [];
+            foreach (Player player in players)
+            {
+                List<DeckSubmission> deckSubmissions = await _deckSubmissionRepository.GetByPlayerAndSeasonAsync(player.Id, seasonId);
+                // get reported matches for this player directly from deck submissions
+                List<Match> matches = deckSubmissions
+                    .Select(x => x.Week)
+                    .SelectMany(x => x.Matches)
+                    .Where(x => x.Status == MatchStatus.Reported
+                        && (x.Player1Id == player.Id || x.Player2Id == player.Id))
+                    .OrderBy(x => x.Week.WeekNumber)
+                    .ToList();
+
+                // deckSubmission and match both have weekId and playerId we can match them by that
+                Dictionary<(int weekId, int playerId), DeckSubmission> deckSubmissionsDict = deckSubmissions.ToDictionary(
+                    x => (x.WeekId, x.PlayerId));
+
+
+
+                int totalWins = matches.Count(x => x.WinnerId == player.Id);
+                int totalLoses = matches.Count(x => x.WinnerId != player.Id);
+
+                PlayerResult playerResult = new PlayerResult
+                {
+                    Wins = totalWins,
+                    Loses = totalLoses,
+                    Name = player.UserName,
+                    PlayerVsPlayerResults = []
+                };
+                foreach (Match match in matches)
+                {
+                    int opponentId = match.Player1Id == player.Id ? match.Player2Id : match.Player1Id;
+                    // due to above deckSubmission query it is just easier to get player2 from repo than to
+                    // do ef core inlcude thenindlude trickery
+                    Player opponent = await _playerRepository.GetByIdAsync(opponentId);
+                    string deckType = deckSubmissionsDict[(match.Week.WeekNumber, player.Id)].DeckType;
+                    List<DeckSubmission> opponentsDeckSubmissions = await _deckSubmissionRepository.GetByPlayerAndSeasonAsync(opponentId, seasonId);
+                    string opponentsDeckType = opponentsDeckSubmissions.Single(x => x.Week.WeekNumber == match.Week.WeekNumber
+                        && x.PlayerId == opponentId).DeckType;
+
+                    // 0 in case of no-show
+                    int gameWins = match.Player1Id == player.Id ? match.Player1Wins ?? 0 : match.Player2Wins ?? 0;
+                    int gameLoses = match.Player1Id == player.Id ? match.Player2Wins ?? 0 : match.Player1Wins ?? 0;
+                    PlayerVsPlayerResult playerVsPlayerResult = new PlayerVsPlayerResult
+                    {
+                        DeckType = deckType,
+                        OpposingDeckType = opponentsDeckType,
+                        OpponentName = opponent.UserName,
+                        Replay = match.ReplayUrl ?? "",
+                        WeekNumber = match.Week.WeekNumber,
+                        GameWins = gameWins,
+                        GameLoses = gameLoses
+                    };
+
+                    playerResult.PlayerVsPlayerResults.Add(playerVsPlayerResult);
+                }
+
+                playerResults.Add(playerResult);
+            }
+
+            return new PlayerSummaryResult
+            {
+                Success = true,
+                PlayerResults = playerResults,
+                Message = "Player results generated"
             };
         }
     }

@@ -80,5 +80,13 @@ namespace WarLeague.Core.Repositories
                 .Select(pst => pst.PlayerId)
                 .ToListAsync();
         }
+        public async Task<List<Player>> GetPlayersByTeamAndSeasonAsync(int teamId, int seasonId)
+        {
+            return await _context.PlayerSeasonTeams
+                .Where(pst => pst.TeamId == teamId && pst.SeasonId == seasonId)
+                .Include(x => x.Player)
+                .Select(pst => pst.Player)
+                .ToListAsync();
+        }
     }
 }

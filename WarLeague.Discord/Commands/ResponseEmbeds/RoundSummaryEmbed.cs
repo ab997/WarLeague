@@ -11,7 +11,7 @@ namespace WarLeague.Discord.Commands.ResponseEmbeds
         public static Embed Build(RoundSummaryResult result)
         {
             var embed = new EmbedBuilder()
-                .WithTitle("🏆 Round Summary")
+                .WithTitle($"🏆 Round Summary - {result.TeamName}")
                 .WithColor(Color.Gold);
 
             var lines = result.WeeklyResults

@@ -597,7 +597,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     }
 
     [SlashCommand("round-summary", "Shows round summary")]
-    public async Task ShowRoundSummaryAsync(
+    public async Task RoundSummaryAsync(
         [Summary("team-name", "Name of the team")][Autocomplete(typeof(TeamAutocompleteHandler))] string teamName
         )
     {
@@ -612,11 +612,39 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        RoundSummaryResult result = await _teamService.GetRoundsSummary(season.Id, team.Id);
+        RoundSummaryResult result = await _teamService.GetRoundsSummaryAsync(season.Id, team.Id);
 
         if (result.Success)
         {
             await _helperService.SendEmbedInBatchesAsync(Context, RoundSummaryEmbed.Build(result));
+        }
+        else
+        {
+            await FollowupAsync(ResultHelper.Stringify(result));
+        }
+    }
+
+    [SlashCommand("player-summary", "Shows player summary for every player on the team")]
+    public async Task PlayerSummaryAsync(
+        [Summary("team-name", "Name of the team")][Autocomplete(typeof(TeamAutocompleteHandler))] string teamName
+        )
+    {
+        await DeferAsync(ephemeral: false);
+
+        Season season = await _helperService.GetSeasonByCategoryNameAsync(Context);
+        Team? team = await _teamRepository.GetByNameAndSeasonAsync(teamName, season.Id);
+
+        if (team is null)
+        {
+            await FollowupAsync($"Team not found");
+            return;
+        }
+
+        PlayerSummaryResult result = await _teamService.GetPlayersSummaryAsync(season.Id, team.Id);
+
+        if (result.Success)
+        {
+            await _helperService.SendEmbedInBatchesAsync(Context, PlayerSummaryEmbed.Build(result));
         }
         else
         {

@@ -10,4 +10,5 @@ public class DeckSubmission
     public string DeckFile { get; set; } = string.Empty;
     public DateTime SubmittedDate { get; set; } = DateTime.UtcNow;
     public int SeatNumber { get; set; }
+    public string DeckType { get; set; } = "";
 }
