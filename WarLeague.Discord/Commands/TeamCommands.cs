@@ -597,7 +597,7 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
     }
 
     [SlashCommand("round-summary", "Shows round summary")]
-    public async Task ShowRoundSummaryAsync(
+    public async Task RoundSummaryAsync(
         [Summary("team-name", "Name of the team")][Autocomplete(typeof(TeamAutocompleteHandler))] string teamName
         )
     {

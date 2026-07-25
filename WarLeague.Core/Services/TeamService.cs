@@ -478,7 +478,8 @@ namespace WarLeague.Core.Services
             {
                 Success = true,
                 Message = $"Rounds summary for team '{team.Name}' retrieved successfully.",
-                WeeklyResults = weeklyResults
+                WeeklyResults = weeklyResults,
+                TeamName = team.Name
             };
         }
     }

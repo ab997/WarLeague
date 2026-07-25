@@ -11,5 +11,6 @@ namespace WarLeague.Core.Model
             
         }
         public List<WeeklyResult> WeeklyResults { get; set; } = [];
+        public string TeamName { get; set; } = "";
     }
 }
