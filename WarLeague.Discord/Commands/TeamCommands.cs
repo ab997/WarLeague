@@ -624,6 +624,14 @@ public class TeamCommands : InteractionModuleBase<SocketInteractionContext>
         }
     }
 
+    [SlashCommand("player-summary", "Shows player summary for every player on the team")]
+    public async Task PlayerSummaryAsync(
+        [Summary("team-name", "Name of the team")][Autocomplete(typeof(TeamAutocompleteHandler))] string teamName
+        )
+    {
+
+    }
+
     private static Color? TryParseHexColor(string hexCode)
     {
         string hexInput = hexCode.StartsWith('#') ? hexCode[1..] : hexCode;
