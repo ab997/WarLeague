@@ -396,19 +396,13 @@ namespace WarLeague.Discord.Commands
                 return;
             }
 
-            var body = await BuildWeekResultsAsync(week.Id, week.WeekNumber);
+            var adminFooter = _helperService.IsUserAdmin(Context)
+                ? $"[Admin] SeasonId: {season.Id} | WeekId: {week.Id}"
+                : null;
 
-            if (_helperService.IsUserAdmin(Context))
-            {
-                body += $"\n[Admin] SeasonId: {season.Id} | WeekId: {week.Id}";
-            }
+            var embeds = await BuildWeekResultsAsync(week.Id, week.WeekNumber, adminFooter);
 
-            var eb = new EmbedBuilder()
-                .WithTitle($"Week {week.WeekNumber} results")
-                .WithDescription(body.TrimEnd())
-                .WithColor(new Color(88, 101, 242));
-
-            await FollowupAsync(embeds: new[] { eb.Build() });
+            await SendEmbedsInBatchesAsync(embeds);
         }
 
         [SlashCommand("team-pairings", "Shows team-vs-team pairings (and byes) for a week or all weeks")]
@@ -853,23 +847,15 @@ namespace WarLeague.Discord.Commands
             for (int i = 0; i < orderedWeeks.Count; i++)
             {
                 var w = orderedWeeks[i];
-                var body = await BuildWeekResultsAsync(w.Id, w.WeekNumber);
+                var isLastWeek = i == orderedWeeks.Count - 1;
+                var adminFooter = isLastWeek && _helperService.IsUserAdmin(Context)
+                    ? $"[Admin] SeasonId: {season.Id}"
+                    : null;
 
-                if (i == orderedWeeks.Count - 1 && _helperService.IsUserAdmin(Context))
-                {
-                    body += $"\n[Admin] SeasonId: {season.Id}";
-                }
-
-                var eb = new EmbedBuilder()
-                    .WithTitle($"Week {w.WeekNumber} results")
-                    .WithDescription(body.TrimEnd())
-                    .WithColor(new Color(88, 101, 242));
-
-                embeds.Add(eb.Build());
+                embeds.AddRange(await BuildWeekResultsAsync(w.Id, w.WeekNumber, adminFooter));
             }
 
             await SendEmbedsInBatchesAsync(embeds);
-
         }
 
         private static async Task AppendPairingsForWeekAsync(
@@ -916,23 +902,37 @@ namespace WarLeague.Discord.Commands
             sb.AppendLine();
         }
 
-        private async Task<string> BuildWeekResultsAsync(int weekId, int weekNumber)
+        private async Task<List<Embed>> BuildWeekResultsAsync(int weekId, int weekNumber, string? adminFooter = null)
         {
             List<Match> matches = await _matchRepository.GetByWeekIdAsync(weekId);
+            var embeds = new List<Embed>();
 
             if (matches.Count == 0)
             {
-                return "No matches scheduled for this week.";
+                var body = "No matches scheduled for this week.";
+                if (adminFooter is not null)
+                {
+                    body += $"\n{adminFooter}";
+                }
+
+                embeds.Add(new EmbedBuilder()
+                    .WithTitle($"Week {weekNumber} results")
+                    .WithDescription(body)
+                    .WithColor(new Color(88, 101, 242))
+                    .Build());
+
+                return embeds;
             }
 
-            IEnumerable<IGrouping<string, Match>> conferenceGroups = matches.GroupBy(x => x.Team1.Conference.Name);
-            var sb = new StringBuilder();
-            foreach (IGrouping<string, Match> conferenceGroup in conferenceGroups)
+            var conferenceGroups = matches.GroupBy(x => x.Team1.Conference.Name).ToList();
+
+            for (int i = 0; i < conferenceGroups.Count; i++)
             {
+                var conferenceGroup = conferenceGroups[i];
                 var played = conferenceGroup.Where(m => m.Status == MatchStatus.Reported).ToList();
                 var pending = conferenceGroup.Where(m => m.Status != MatchStatus.Reported).ToList();
 
-                sb.AppendLine($"** Conference {conferenceGroup.Key}**");
+                var sb = new StringBuilder();
                 sb.AppendLine($"Played ({played.Count}):");
                 if (played.Count == 0)
                 {
@@ -949,11 +949,10 @@ namespace WarLeague.Discord.Commands
                         sb.AppendLine($"- {p1} vs {p2} → Winner: {win}{replay}");
                     }
                 }
-                sb.AppendLine();
 
                 if (pending.Count > 0)
                 {
-
+                    sb.AppendLine();
                     sb.AppendLine($"Pending ({pending.Count}):");
 
                     foreach (var m in pending)
@@ -964,12 +963,21 @@ namespace WarLeague.Discord.Commands
                     }
                 }
 
-             
+                var isLastConference = i == conferenceGroups.Count - 1;
+                if (isLastConference && adminFooter is not null)
+                {
+                    sb.AppendLine();
+                    sb.Append(adminFooter);
+                }
+
+                embeds.Add(new EmbedBuilder()
+                    .WithTitle($"Week {weekNumber} results — Conference {conferenceGroup.Key}")
+                    .WithDescription(sb.ToString().TrimEnd())
+                    .WithColor(new Color(88, 101, 242))
+                    .Build());
             }
 
-            
-
-            return sb.ToString().TrimEnd();
+            return embeds;
         }
 
         private async Task<Week?> GetActiveOrClosedWeekAsync(int seasonId)
