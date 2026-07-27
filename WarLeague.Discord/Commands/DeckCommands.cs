@@ -123,17 +123,19 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         BaseResult result = await _deckSubmissionService.SubmitAsync(season.Id, targetPlayer.Id, deckContent, seatNumber, deckType);
         await FollowupAsync(Stringify(result) + "\n   Your deck image is being generated and will be sent to your DMs shortly.");
 
-        await GenerateAndSendDeckImageAsync(Context.User, deck, targetPlayer.UserName, seatNumber);
+        Week openWeek = (await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(season.Id, WeekStatus.Open))!;
+
+        await GenerateAndSendDeckImageAsync(Context.User, deck, targetPlayer.UserName, seatNumber, openWeek.WeekNumber);
     }
 
-    private async Task GenerateAndSendDeckImageAsync(IUser user, Deck deck, string playerName, int seat)
+    private async Task GenerateAndSendDeckImageAsync(IUser user, Deck deck, string playerName, int seat, int weekNumber)
     {
         await using MemoryStream image = await _deckImageService.RenderAsync(deck);
 
         await user.SendFileAsync(
             image,
             "deck.png",
-            $"Deck for {playerName} at seat {seat}.");
+            $"Week {weekNumber} deck submitted: {playerName} will duel in seat {seat}.");
     }
 
     [SlashCommand("delete", "Delete a player's deck submission")]
