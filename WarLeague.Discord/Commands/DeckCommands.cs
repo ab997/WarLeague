@@ -1,14 +1,15 @@
 using Discord;
 using Discord.Interactions;
-using WarLeague.Data.Entities;
-using WarLeague.Data.Enums;
+using WarLeague.Core.ImageGenerator;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
+using WarLeague.Data.Data.Enums;
+using WarLeague.Data.Entities;
+using WarLeague.Data.Enums;
 using WarLeague.Discord.Preconditions;
 using WarLeague.Discord.Services;
 using static WarLeague.Discord.Helpers.ResultHelper;
-using WarLeague.Data.Data.Enums;
 
 namespace WarLeague.Discord.Commands;
 
@@ -31,6 +32,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
     private readonly DeckSubmissionRepository _deckSubmissionRepository;
     private readonly WeekRepository _weekRepository;
     private readonly HttpClient _httpClient;
+    private readonly DeckImageService _deckImageService;
 
     public DeckCommands(
         DiscordApiHelperService helperService,
@@ -40,7 +42,8 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         DeckSubmissionService deckSubmissionService,
         DeckSubmissionRepository deckSubmissionRepository,
         WeekRepository weekRepository,
-        HttpClient httpClient)
+        HttpClient httpClient,
+        DeckImageService deckImageService)
     {
         _helperService = helperService;
         _playerService = playerService;
@@ -50,6 +53,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         _deckSubmissionRepository = deckSubmissionRepository;
         _weekRepository = weekRepository;
         _httpClient = httpClient;
+        _deckImageService = deckImageService;
     }
 
     [SlashCommand("submit", "Submit a .ydk file")]
@@ -102,9 +106,40 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        BaseResult result = await _deckSubmissionService.SubmitAsync(season.Id, targetPlayer.Id, deckContent, seatNumber, deckType);
+        Deck deck;
+        try
+        {
+            deck = YdkParser.Parse(deckContent);
+        }
+        catch (Exception ex)
+        {
+            await FollowupAsync($"Failed to parse the deck: {ex.Message}");
+            return;
+        }
 
-        await FollowupAsync(Stringify(result));
+        try
+        {
+            await using MemoryStream image = await _deckImageService.RenderAsync(deck);
+            BaseResult result = await _deckSubmissionService.SubmitAsync(season.Id, targetPlayer.Id, deckContent, seatNumber, deckType);
+
+            if (result.Success)
+            {
+                await FollowupWithFileAsync(
+                  image,
+                  "deck.png",
+                  text: $"Main: {deck.Main.Count} | Extra: {deck.Extra.Count} | Side: {deck.Side.Count}");
+            }
+            else
+            {
+                await FollowupAsync(Stringify(result));
+            }
+          
+        }
+        catch (Exception ex)
+        {
+            await FollowupAsync($"Failed to render the deck image: {ex.Message}");
+        }
+
     }
 
     [SlashCommand("delete", "Delete a player's deck submission")]

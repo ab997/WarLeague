@@ -8,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Serilog;
 using System.Diagnostics;
+using WarLeague.Core.ImageGenerator;
 using WarLeague.Core.Repositories;
 using WarLeague.Core.Services;
 using WarLeague.Data;
@@ -59,6 +60,7 @@ builder.Services.AddScoped<SeasonRepository>();
 builder.Services.AddScoped<PlayerRepository>();
 builder.Services.AddScoped<PlayerSeasonTeamRepository>();
 builder.Services.AddScoped<PermissionRepository>();
+builder.Services.AddScoped<CardRepository>();
 
 builder.Services.AddScoped<LogsCleanupService>();
 
@@ -82,6 +84,11 @@ builder.Services.AddScoped<MatchupServiceFactory>();
 builder.Services.AddScoped<TiebreakerService>();
 builder.Services.AddScoped<TeamStandingsService>();
 builder.Services.AddScoped<PlayoffBracketService>();
+
+builder.Services.AddSingleton<DeckImageService>();
+builder.Services.AddScoped<CardImageProvider>();
+builder.Services.AddScoped<YgoprodeckCardInfoClient>();
+
 
 
 // Services (discord)
