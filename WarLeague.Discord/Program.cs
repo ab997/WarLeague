@@ -85,7 +85,7 @@ builder.Services.AddScoped<TiebreakerService>();
 builder.Services.AddScoped<TeamStandingsService>();
 builder.Services.AddScoped<PlayoffBracketService>();
 
-builder.Services.AddSingleton<DeckImageService>();
+builder.Services.AddScoped<DeckImageService>();
 builder.Services.AddScoped<CardImageProvider>();
 builder.Services.AddScoped<YgoprodeckCardInfoClient>();
 
