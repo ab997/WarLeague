@@ -137,7 +137,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         }
         catch (Exception ex)
         {
-            await FollowupAsync($"Failed to render the deck image: {ex.Message}");
+            await FollowupAsync($"Failed to render the deck image: {ex}");
         }
 
     }
