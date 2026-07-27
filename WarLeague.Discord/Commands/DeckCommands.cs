@@ -125,7 +125,8 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
             await FollowupWithFileAsync(
               image,
               "deck.png",
-              text: $"Main: {deck.Main.Count} | Extra: {deck.Extra.Count} | Side: {deck.Side.Count}");
+              text: $"{result.Message}\n" +
+              $"Main: {deck.Main.Count} | Extra: {deck.Extra.Count} | Side: {deck.Side.Count}");
         }
         else
         {
