@@ -1,5 +1,7 @@
 using Discord;
 using Discord.Interactions;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
+using Microsoft.Extensions.DependencyInjection;
 using WarLeague.Core.ImageGenerator;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
@@ -33,6 +35,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
     private readonly WeekRepository _weekRepository;
     private readonly HttpClient _httpClient;
     private readonly DeckImageService _deckImageService;
+
 
     public DeckCommands(
         DiscordApiHelperService helperService,
@@ -117,22 +120,20 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        await using MemoryStream image = await _deckImageService.RenderAsync(deck);
         BaseResult result = await _deckSubmissionService.SubmitAsync(season.Id, targetPlayer.Id, deckContent, seatNumber, deckType);
+        await FollowupAsync(Stringify(result) + "\n   Your deck image is being generated and will be sent to your DMs shortly.");
 
-        if (result.Success)
-        {
-            await FollowupWithFileAsync(
-              image,
-              "deck.png",
-              text: $"{result.Message}\n" +
-              $"Main: {deck.Main.Count} | Extra: {deck.Extra.Count} | Side: {deck.Side.Count}");
-        }
-        else
-        {
-            await FollowupAsync(Stringify(result));
-        }
+        await GenerateAndSendDeckImageAsync(Context.User, deck, targetPlayer.UserName, seatNumber);
+    }
 
+    private async Task GenerateAndSendDeckImageAsync(IUser user, Deck deck, string playerName, int seat)
+    {
+        await using MemoryStream image = await _deckImageService.RenderAsync(deck);
+
+        await user.SendFileAsync(
+            image,
+            "deck.png",
+            $"Deck for {playerName} at seat {seat}.");
     }
 
     [SlashCommand("delete", "Delete a player's deck submission")]
