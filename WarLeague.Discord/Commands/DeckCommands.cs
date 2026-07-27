@@ -117,27 +117,19 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        try
-        {
-            await using MemoryStream image = await _deckImageService.RenderAsync(deck);
-            BaseResult result = await _deckSubmissionService.SubmitAsync(season.Id, targetPlayer.Id, deckContent, seatNumber, deckType);
+        await using MemoryStream image = await _deckImageService.RenderAsync(deck);
+        BaseResult result = await _deckSubmissionService.SubmitAsync(season.Id, targetPlayer.Id, deckContent, seatNumber, deckType);
 
-            if (result.Success)
-            {
-                await FollowupWithFileAsync(
-                  image,
-                  "deck.png",
-                  text: $"Main: {deck.Main.Count} | Extra: {deck.Extra.Count} | Side: {deck.Side.Count}");
-            }
-            else
-            {
-                await FollowupAsync(Stringify(result));
-            }
-          
-        }
-        catch (Exception ex)
+        if (result.Success)
         {
-            await FollowupAsync($"Failed to render the deck image: {ex}");
+            await FollowupWithFileAsync(
+              image,
+              "deck.png",
+              text: $"Main: {deck.Main.Count} | Extra: {deck.Extra.Count} | Side: {deck.Side.Count}");
+        }
+        else
+        {
+            await FollowupAsync(Stringify(result));
         }
 
     }
