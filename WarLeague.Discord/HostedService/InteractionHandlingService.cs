@@ -41,7 +41,21 @@ namespace WarLeague.Discord.HostedService
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            _discord.Ready += () => _interactions.RegisterCommandsGloballyAsync(true);
+            _discord.Ready += async () =>
+            {
+                _logger.LogInformation("Discord Ready fired");
+
+                try
+                {
+                    _logger.LogInformation("Registering commands...");
+                    await _interactions.RegisterCommandsGloballyAsync(true);
+                    _logger.LogInformation("Commands registered");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Command registration failed");
+                }
+            };
             _discord.InteractionCreated += OnInteractionAsync;
             _interactions.InteractionExecuted += HandleInteractionExecuted;
 
