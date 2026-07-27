@@ -25,6 +25,13 @@ namespace WarLeague.Core.ImageGenerator
 
         public async Task<MemoryStream> RenderAsync(Deck deck, CancellationToken ct = default)
         {
+            List<int> allCards = [];
+            allCards.AddRange(deck.Main);
+            allCards.AddRange(deck.Side);
+            allCards.AddRange(deck.Extra);
+            HashSet<int> hs = allCards.ToHashSet();
+
+            await _images.LoadCacheAsync(hs);
             int mainRows = Math.Max(1, (int)Math.Ceiling(deck.Main.Count / (double)Columns));
             int extraRows = Math.Max(1, (int)Math.Ceiling(deck.Extra.Count / (double)Columns));
             int sideRows = Math.Max(1, (int)Math.Ceiling(deck.Side.Count / (double)Columns));

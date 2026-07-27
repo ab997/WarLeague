@@ -38,5 +38,10 @@ namespace WarLeague.Data.Repositories
             _db.Cards.AddRange(cards);
             await _db.SaveChangesAsync(ct);
         }
+
+        public async Task<List<Card>> GetAllFilteredAsync(List<string> ygoProIds)
+        {
+            return await _db.Cards.Where(x => ygoProIds.Contains(x.YgoproId)).ToListAsync();
+        }
     }
 }

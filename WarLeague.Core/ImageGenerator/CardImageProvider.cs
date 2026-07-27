@@ -10,6 +10,7 @@ namespace WarLeague.Core.ImageGenerator
         private readonly YgoprodeckCardInfoClient _cardInfo;
         private readonly HttpClient _http;
         private readonly ILogger<CardImageProvider> _logger;
+        private Dictionary<int, Card>? _cardCache;
 
         public CardImageProvider(
             CardRepository cards,
@@ -30,17 +31,23 @@ namespace WarLeague.Core.ImageGenerator
         /// </summary>
         public async Task<byte[]?> GetImageBytesAsync(int passcode, CancellationToken ct = default)
         {
-            string passcodeStr = passcode.ToString();
+            if (_cardCache is null)
+            {
+                throw new Exception($"Call {nameof(LoadCacheAsync)} first");
+            }
 
-            Card? card = await _cards.GetByYgoproIdAsync(passcodeStr, ct);
-
-            if (card is null)
+            Card? card;
+            if (!_cardCache.ContainsKey(passcode))
             {
                 card = await CreateCardAsync(passcode, ct);
-
-                if (card is null)
-                    throw new Exception($"Card with id {passcode} was not found in DB and could not be created from API");
             }
+            else
+            {
+                card = _cardCache[passcode];
+            }
+
+            if (card is null)
+                throw new Exception($"Card with id {passcode} was not found in DB and could not be created from API");
 
             if (card.ImageData is not null)
                 return card.ImageData;
@@ -56,6 +63,13 @@ namespace WarLeague.Core.ImageGenerator
             await _cards.UpdateAsync(card, ct);
 
             return downloaded;
+        }
+
+        private async Task<Dictionary<int, Card>> GetCardCacheAsync(HashSet<int> cards)
+        {
+            List<string> strings = cards.Select(x => x.ToString()).ToList();
+            List<Card> cardEntities = await _cards.GetAllFilteredAsync(strings);
+            return cardEntities.ToDictionary(x => int.Parse(x.YgoproId));
         }
 
         private async Task<Card?> CreateCardAsync(int passcode, CancellationToken ct)
@@ -113,6 +127,11 @@ namespace WarLeague.Core.ImageGenerator
                 _logger.LogWarning(ex, "Error downloading card {Passcode}", passcode);
                 return null;
             }
+        }
+
+        internal async Task LoadCacheAsync(HashSet<int> hs)
+        {
+            _cardCache = await GetCardCacheAsync(hs);
         }
     }
 }
