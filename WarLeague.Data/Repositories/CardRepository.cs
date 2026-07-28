@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿
 using WarLeague.Data.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
