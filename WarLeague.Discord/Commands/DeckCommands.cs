@@ -2,6 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using WarLeague.Core.ImageGenerator;
 using WarLeague.Core.Model;
 using WarLeague.Core.Repositories;
@@ -35,6 +36,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
     private readonly WeekRepository _weekRepository;
     private readonly HttpClient _httpClient;
     private readonly DeckImageService _deckImageService;
+    private readonly ILogger<DeckCommands> _logger;
 
 
     public DeckCommands(
@@ -46,7 +48,8 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         DeckSubmissionRepository deckSubmissionRepository,
         WeekRepository weekRepository,
         HttpClient httpClient,
-        DeckImageService deckImageService)
+        DeckImageService deckImageService,
+        ILogger<DeckCommands> logger)
     {
         _helperService = helperService;
         _playerService = playerService;
@@ -57,6 +60,7 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
         _weekRepository = weekRepository;
         _httpClient = httpClient;
         _deckImageService = deckImageService;
+        _logger = logger;
     }
 
     [SlashCommand("submit", "Submit a .ydk file")]
@@ -109,33 +113,36 @@ public class DeckCommands : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        Deck deck;
-        try
-        {
-            deck = YdkParser.Parse(deckContent);
-        }
-        catch (Exception ex)
-        {
-            await FollowupAsync($"Failed to parse the deck: {ex.Message}");
-            return;
-        }
+       
 
         BaseResult result = await _deckSubmissionService.SubmitAsync(season.Id, targetPlayer.Id, deckContent, seatNumber, deckType);
         await FollowupAsync(Stringify(result) + "\n   Your deck image is being generated and will be sent to your DMs shortly.");
 
-        Week openWeek = (await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(season.Id, WeekStatus.Open))!;
 
-        await GenerateAndSendDeckImageAsync(Context.User, deck, targetPlayer.UserName, seatNumber, openWeek.WeekNumber);
+        
+
+        await GuardedGenerateAndSendDeckImageAsync(Context.User, deckContent, targetPlayer.UserName, seatNumber, season.Id);
     }
 
-    private async Task GenerateAndSendDeckImageAsync(IUser user, Deck deck, string playerName, int seat, int weekNumber)
+    private async Task GuardedGenerateAndSendDeckImageAsync(IUser user, string deckContent, string playerName, int seat, int seasonId)
     {
-        await using MemoryStream image = await _deckImageService.RenderAsync(deck);
+        try
+        {
+            Deck deck = YdkParser.Parse(deckContent);
+            Week openWeek = (await _weekRepository.GetSingleWeekBySeasonAndStatusOrDefaultAsync(seasonId, WeekStatus.Open))!;
 
-        await user.SendFileAsync(
-            image,
-            "deck.png",
-            $"Week {weekNumber} deck submitted: {playerName} will duel in seat {seat}.");
+            await using MemoryStream image = await _deckImageService.RenderAsync(deck);
+
+            await user.SendFileAsync(
+                image,
+                "deck.png",
+                $"Week {openWeek.WeekNumber} deck submitted: {playerName} will duel in seat {seat}.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate deck image for user {User}", user.Username);
+            await user.SendMessageAsync($"Failed to generate deck image: {ex.Message}");
+        }
     }
 
     [SlashCommand("delete", "Delete a player's deck submission")]
