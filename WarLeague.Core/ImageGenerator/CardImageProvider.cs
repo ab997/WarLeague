@@ -40,6 +40,7 @@ namespace WarLeague.Core.ImageGenerator
             if (!_cardCache.ContainsKey(passcode))
             {
                 card = await CreateCardAsync(passcode, ct);
+                _cardCache.Add(passcode, card);
             }
             else
             {
@@ -72,14 +73,13 @@ namespace WarLeague.Core.ImageGenerator
             return cardEntities.ToDictionary(x => int.Parse(x.YgoproId));
         }
 
-        private async Task<Card?> CreateCardAsync(int passcode, CancellationToken ct)
+        private async Task<Card> CreateCardAsync(int passcode, CancellationToken ct)
         {
             CardInfoDto? info = await _cardInfo.GetByPasscodeAsync(passcode, ct);
 
             if (info is null)
             {
-                _logger.LogWarning("No YGOPRODeck card info found for passcode {Passcode}", passcode);
-                return null;
+                throw new Exception("No YGOPRODeck card info found for passcode {Passcode}");
             }
 
             DateOnly releaseDate = ParseReleaseDate(info);
