@@ -192,6 +192,22 @@ namespace WarLeague.Test
             result.Success.ShouldBeFalse();
         }
 
+        [Fact]
+        [Trait("Category", "Week")]
+        public async Task WhenClosingSubmissions_WithByeTeam_ThenByeTeamIsExemptFromSubmissionRequirement()
+        {
+            // Arrange
+            int seasonId = await PrepareWeek_ReadyForClosingSubmissions();
+            // but add an extra team
+            _ = await CreateTeamWithPlayer(seasonId, "Team3");
+
+            // Act
+            var result = await _weekService.TransitionToCloseSubmissionsAsync(seasonId);
+
+            // Assert
+            result.Success.ShouldBeTrue();
+        }
+
         //________________________________________________________________________
         // CloseSubmission -> InProgress
         //________________________________________________________________________

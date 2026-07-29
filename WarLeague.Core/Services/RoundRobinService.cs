@@ -272,6 +272,13 @@ namespace WarLeague.Core.Services
                 ?? throw new InvalidOperationException($"Week with id {weekId} not found.");
             var teams = await _teamRepository.GetBySeasonAsync(week.SeasonId);
 
+            // exclude BYE teams
+            List<RoundRobinMatchup> matchups = (await _roundRobinMatchupRepository.GetByWeekIdAsync(weekId))
+                .Where(x => x.MatchupType != MatchupType.Bye)
+                .ToList();
+
+            teams = teams.Where(t => matchups.Any(m => m.Team1Id == t.Id || m.Team2Id == t.Id)).ToList();
+
             var ids = teams.Select(t => t.Id).ToHashSet();
             return ids;
         }
