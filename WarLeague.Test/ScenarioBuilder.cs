@@ -311,7 +311,7 @@ public class ScenarioBuilder
             for (int seat = 1; seat <= submissionsPerTeam; seat++)
             {
                 var playerId = playerIds[seat - 1];
-                var result = await _deckSubmissionService.SubmitAsync(SeasonId, playerId, $"deck_{playerId}_seat{seat}", seat);
+                var result = await _deckSubmissionService.SubmitAsync(SeasonId, playerId, $"deck_{playerId}_seat{seat}", seat, "HAT");
                 result.Success.ShouldBeTrue(result.Message);
             }
         }
@@ -331,7 +331,7 @@ public class ScenarioBuilder
             for (int seat = 1; seat <= submissionsPerTeam; seat++)
             {
                 var playerId = playerIds[seat - 1];
-                var result = await _deckSubmissionService.SubmitAsync(SeasonId, playerId, $"deck_{playerId}_seat{seat}", seat);
+                var result = await _deckSubmissionService.SubmitAsync(SeasonId, playerId, $"deck_{playerId}_seat{seat}", seat, "HAT");
                 result.Success.ShouldBeTrue(result.Message);
             }
         }
@@ -431,7 +431,7 @@ public class ScenarioBuilder
             for (int seat = 1; seat <= submissionsPerTeam; seat++)
             {
                 var playerId = playerIds[seat - 1];
-                var result = await _deckSubmissionService.SubmitAsync(SeasonId, playerId, $"deck_{playerId}_seat{seat}", seat);
+                var result = await _deckSubmissionService.SubmitAsync(SeasonId, playerId, $"deck_{playerId}_seat{seat}", seat, "HAT");
                 result.Success.ShouldBeTrue(result.Message);
             }
         }

@@ -30,8 +30,8 @@ namespace WarLeague.Test
         {
             // Arrange
             var (_, seasonId) = await CreateFormatAndSeason();
-            var startDate = DateTime.Parse("2025-01-01");
-            var endDate = DateTime.Parse("2025-01-07");
+            var startDate = DateTime.UtcNow;
+            var endDate = DateTime.UtcNow;
             await _weekService.CreateAsync(seasonId, 1, startDate, endDate, null, 3);
 
             // Act
@@ -183,7 +183,7 @@ namespace WarLeague.Test
             var (playerId2, _) = await CreateTeamWithPlayer(seasonId, "Team2");
             await _weekService.TransitionToOpenWeekAsync(seasonId, weekNumber);
 
-            await _deckSubmissionService.SubmitAsync(seasonId, (int)playerId1, "deck content", 1);
+            await _deckSubmissionService.SubmitAsync(seasonId, (int)playerId1, "deck content", 1, "HAT");
 
             // Act
             var result = await _weekService.TransitionToCloseSubmissionsAsync(seasonId);

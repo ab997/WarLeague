@@ -158,7 +158,7 @@ namespace WarLeague.Test
 
         private async Task SubmitDeckAsync(int seasonId, int playerId, int seatNumber, string content = "deck content")
         {
-            (await _deckSubmissionService.SubmitAsync(seasonId, playerId, content, seatNumber)).Success.ShouldBeTrue();
+            (await _deckSubmissionService.SubmitAsync(seasonId, playerId, content, seatNumber, "HAT")).Success.ShouldBeTrue();
         }
 
         private async Task CreateMatchAsync(int seasonId, int weekNumber, int player1Id, int player2Id, int teamId, int opponentTeamId)
