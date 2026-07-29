@@ -19,7 +19,7 @@ namespace WarLeague.Test
             var (seasonId, playerId, _, _) = await CreateSeasonWithTeamAndOpenWeek();
 
             // Act
-            var result = await _deckSubmissionService.SubmitAsync(seasonId, playerId, "deck content", seatNumber: 1);
+            var result = await _deckSubmissionService.SubmitAsync(seasonId, playerId, "deck content", seatNumber: 1, "HAT");
 
             // Assert
             result.Success.ShouldBeTrue();
@@ -31,10 +31,10 @@ namespace WarLeague.Test
         {
             // Arrange
             var (seasonId, playerId, _, _) = await CreateSeasonWithTeamAndOpenWeek();
-            await _deckSubmissionService.SubmitAsync(seasonId, playerId, "original deck", 1);
+            await _deckSubmissionService.SubmitAsync(seasonId, playerId, "original deck", 1, "HAT");
 
             // Act
-            var result = await _deckSubmissionService.SubmitAsync(seasonId, playerId, "updated deck", 2);
+            var result = await _deckSubmissionService.SubmitAsync(seasonId, playerId, "updated deck", 2, "HAT");
 
             // Assert
             result.Success.ShouldBeTrue();
@@ -46,10 +46,10 @@ namespace WarLeague.Test
         {
             // Arrange
             var (seasonId, player1Id, _, cpt1Id) = await CreateSeasonWithTeamAndOpenWeek();
-            await _deckSubmissionService.SubmitAsync(seasonId, player1Id, "deck1", seatNumber: 1);
+            await _deckSubmissionService.SubmitAsync(seasonId, player1Id, "deck1", seatNumber: 1, "HAT");
 
             // Act
-            var result = await _deckSubmissionService.SubmitAsync(seasonId, cpt1Id, "deck2", seatNumber: 1);
+            var result = await _deckSubmissionService.SubmitAsync(seasonId, cpt1Id, "deck2", seatNumber: 1, "HAT");
 
             // Assert
             result.Success.ShouldBeFalse();
@@ -63,8 +63,8 @@ namespace WarLeague.Test
             var (seasonId, player1Id, player2Id, _) = await CreateSeasonWithTeamAndOpenWeek();
 
             // Act
-            var result1 = await _deckSubmissionService.SubmitAsync(seasonId, player1Id, "deck1", 1);
-            var result2 = await _deckSubmissionService.SubmitAsync(seasonId, player2Id, "deck2", 1);
+            var result1 = await _deckSubmissionService.SubmitAsync(seasonId, player1Id, "deck1", 1, "HAT");
+            var result2 = await _deckSubmissionService.SubmitAsync(seasonId, player2Id, "deck2", 1, "HAT");
 
             // Assert
             result1.Success.ShouldBeTrue();
@@ -79,8 +79,8 @@ namespace WarLeague.Test
             var (seasonId, playerId, _, _) = await CreateSeasonWithTeamAndOpenWeek(submissionsRequired: 3);
 
             // Act
-            var result0 = await _deckSubmissionService.SubmitAsync(seasonId, playerId, "deck", seatNumber: 0);
-            var result4 = await _deckSubmissionService.SubmitAsync(seasonId, playerId, "deck", seatNumber: 4);
+            var result0 = await _deckSubmissionService.SubmitAsync(seasonId, playerId, "deck", seatNumber: 0, "HAT");
+            var result4 = await _deckSubmissionService.SubmitAsync(seasonId, playerId, "deck", seatNumber: 4, "HAT");
 
             // Assert
             result0.Success.ShouldBeFalse();
@@ -97,7 +97,7 @@ namespace WarLeague.Test
             await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 3);
 
             // Act Assert
-            Should.Throw<Exception>(async () => await _deckSubmissionService.SubmitAsync(seasonId, playerId, "deck", 1));
+            Should.Throw<Exception>(async () => await _deckSubmissionService.SubmitAsync(seasonId, playerId, "deck", 1, "HAT"));
         }
 
         [Fact]
@@ -109,7 +109,7 @@ namespace WarLeague.Test
             var unassignedPlayer = await CreatePlayer(999999);
 
             // Act
-            var result = await _deckSubmissionService.SubmitAsync(seasonId, unassignedPlayer.Id, "deck", 1);
+            var result = await _deckSubmissionService.SubmitAsync(seasonId, unassignedPlayer.Id, "deck", 1, "HAT");
 
             // Assert
             result.Success.ShouldBeFalse();
@@ -121,7 +121,7 @@ namespace WarLeague.Test
         {
             // Arrange
             var (seasonId, playerId, _, _) = await CreateSeasonWithTeamAndOpenWeek();
-            await _deckSubmissionService.SubmitAsync(seasonId, playerId, "deck", 1);
+            await _deckSubmissionService.SubmitAsync(seasonId, playerId, "deck", 1, "HAT");
 
             // Act
             var result = await _deckSubmissionService.DeleteSubmissionAsync(seasonId, playerId);
@@ -156,13 +156,13 @@ namespace WarLeague.Test
             // Week 1: Create, submit, and close
             await _weekService.CreateAsync(seasonId, 1, DateTime.UtcNow, DateTime.UtcNow.AddDays(7), null, 1);
             await _weekService.TransitionToOpenWeekAsync(seasonId, 1);
-            await _deckSubmissionService.SubmitAsync(seasonId, player1.Id, "week1 deck", 1);
+            await _deckSubmissionService.SubmitAsync(seasonId, player1.Id, "week1 deck", 1, "HAT");
             await _weekService.UpdateAsync(seasonId, 1, null, null, null, WeekStatus.Completed, 2);
 
             // Week 2: Create, make open, and submit
             await _weekService.CreateAsync(seasonId, 2, DateTime.UtcNow.AddDays(7), DateTime.UtcNow.AddDays(14), null, 1);
             await _weekService.TransitionToOpenWeekAsync(seasonId, 2);
-            await _deckSubmissionService.SubmitAsync(seasonId, player1.Id, "week2 deck", 1);
+            await _deckSubmissionService.SubmitAsync(seasonId, player1.Id, "week2 deck", 1, "HAT");
 
             // Act - Delete submission
             var result = await _deckSubmissionService.DeleteSubmissionAsync(seasonId, player1.Id);
@@ -190,11 +190,11 @@ namespace WarLeague.Test
         {
             // Arrange
             var (seasonId, player1Id, player2Id, _) = await CreateSeasonWithTeamAndOpenWeek();
-            await _deckSubmissionService.SubmitAsync(seasonId, player1Id, "deck1", 1);
+            await _deckSubmissionService.SubmitAsync(seasonId, player1Id, "deck1", 1, "HAT");
             await _deckSubmissionService.DeleteSubmissionAsync(seasonId, player1Id);
 
             // Act
-            var result = await _deckSubmissionService.SubmitAsync(seasonId, player2Id, "deck2", 1);
+            var result = await _deckSubmissionService.SubmitAsync(seasonId, player2Id, "deck2", 1, "HAT");
 
             // Assert
             result.Success.ShouldBeTrue();
