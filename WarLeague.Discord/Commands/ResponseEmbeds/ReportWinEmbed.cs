@@ -27,8 +27,8 @@ namespace WarLeague.Discord.Commands.ResponseEmbeds
                 .WithTitle("🏆 Match Result")
                 .WithDescription($"**{result.Winner}** has won the match! {emoji}")
                 .WithColor(Color.Gold)
-                .AddField("Winner", $"{result.Winner} — {result.WinnerTeam}", inline: true)
-                .AddField("Loser", $"{result.Loser} — {result.LoserTeam}", inline: true)
+                .AddField("Winner", $"{result.Winner} ({result.WinnerDeck}) — {result.WinnerTeam}", inline: true)
+                .AddField("Loser", $"{result.Loser} ({result.LoserDeck}) — {result.LoserTeam}", inline: true)
                 ;
             if (!string.IsNullOrWhiteSpace(result.ReplayUrl))
             {

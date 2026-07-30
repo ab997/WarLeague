@@ -13,8 +13,10 @@ namespace WarLeague.Core.Model
         }
         public string Winner { get; set; } = "";
         public string WinnerTeam { get; set; } = "";
+        public string WinnerDeck { get; set; } = "";
         public string Loser { get; set; } = "";
         public string LoserTeam { get; set; } = "";
+        public string LoserDeck { get; set; }
         public string ReplayUrl { get; set; } = "";
     }
 }
