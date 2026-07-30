@@ -11,18 +11,18 @@ namespace WarLeague.Core.Services
     {
         private readonly WeekRepository _weekRepository;
         private readonly TeamRepository _teamRepository;
-        private readonly PlayerSeasonTeamRepository _playerSeasonTeamRepository;
         private readonly MatchRepository _matchRepository;
         private readonly MatchupServiceFactory _matchupServiceFactory;
         private readonly SeasonRepository _seasonRepository;
-        public MatchService(WeekRepository weekRepository, TeamRepository teamRepository, PlayerSeasonTeamRepository playerSeasonTeamRepository, MatchRepository matchRepository, MatchupServiceFactory matchupServiceFactory, SeasonRepository seasonRepository)
+        private readonly DeckSubmissionRepository _deckSubmissionRepository;
+        public MatchService(WeekRepository weekRepository, TeamRepository teamRepository, MatchRepository matchRepository, MatchupServiceFactory matchupServiceFactory, SeasonRepository seasonRepository, DeckSubmissionRepository deckSubmissionRepository)
         {
             _weekRepository = weekRepository;
             _teamRepository = teamRepository;
-            _playerSeasonTeamRepository = playerSeasonTeamRepository;
             _matchRepository = matchRepository;
             _matchupServiceFactory = matchupServiceFactory;
             _seasonRepository = seasonRepository;
+            _deckSubmissionRepository = deckSubmissionRepository;
         }
 
 
@@ -95,14 +95,19 @@ namespace WarLeague.Core.Services
 
             await _matchRepository.UpdateAsync(match);
 
+            string winnerDeck = (await _deckSubmissionRepository.GetByPlayerAndWeekAsync(player.Id, week.Id))?.DeckType ?? "";
+            string loserDeck = (await _deckSubmissionRepository.GetByPlayerAndWeekAsync(opponentPlayer.Id, week.Id))?.DeckType ?? "";
+
             return new ReportWinResult 
             {
                 Success = true,
                 Message = "Match result reported successfully.",
                 Winner = player.UserName,
                 WinnerTeam = team.Name,
+                WinnerDeck = winnerDeck,
                 Loser = opponentPlayer.UserName,
                 LoserTeam = opponentTeam.Name,
+                LoserDeck = loserDeck,
                 ReplayUrl = replayUrl
             };
         }
