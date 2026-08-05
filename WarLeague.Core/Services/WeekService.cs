@@ -365,8 +365,8 @@ namespace WarLeague.Core.Services
                 {
                     var p1 = m.Player1;
                     var p2 = m.Player2;
-                    var m1 = p1 != null ? $"<@{p1.DiscordUserId}>" : "[TBD]";
-                    var m2 = p2 != null ? $"<@{p2.DiscordUserId}>" : "[TBD]";
+                    var m1 = p1 != null ? p1.UserName : "[TBD]";
+                    var m2 = p2 != null ? p2.UserName : "[TBD]";
                     return $"{m1} vs {m2}";
                 })
                 .ToList();

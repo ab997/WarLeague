@@ -942,9 +942,9 @@ namespace WarLeague.Discord.Commands
                 {
                     foreach (var m in played)
                     {
-                        var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : $"<@{m.Player1.DiscordUserId}>";
-                        var p2 = m.Player2 is null ? $"P#{m.Player2Id}" : $"<@{m.Player2.DiscordUserId}>";
-                        var win = m.Winner is null ? "<unknown>" : $"<@{m.Winner.DiscordUserId}>";
+                        var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : m.Player1.UserName;
+                        var p2 = m.Player2 is null ? $"P#{m.Player2Id}" : m.Player2.UserName;
+                        var win = m.Winner is null ? "<unknown>" : m.Winner.UserName;
                         var replay = string.IsNullOrWhiteSpace(m.ReplayUrl) ? "" : $" | Replay: {m.ReplayUrl}";
                         sb.AppendLine($"- {p1} vs {p2} → Winner: {win}{replay}");
                     }
@@ -957,8 +957,8 @@ namespace WarLeague.Discord.Commands
 
                     foreach (var m in pending)
                     {
-                        var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : $"<@{m.Player1.DiscordUserId}>";
-                        var p2 = m.Player2 is null ? $"P#{m.Player2Id}" : $"<@{m.Player2.DiscordUserId}>";
+                        var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : m.Player1.UserName;
+                        var p2 = m.Player2 is null ? $"P#{m.Player2Id}" : m.Player2.UserName;
                         sb.AppendLine($"- {p1} vs {p2}");
                     }
                 }
@@ -1110,7 +1110,7 @@ namespace WarLeague.Discord.Commands
                 .ToList();
 
             var sb = new StringBuilder();
-            sb.AppendLine($"Captain: <@{team.Captain.DiscordUserId}>");
+            sb.AppendLine($"Captain: {team.Captain.UserName}");
             sb.AppendLine($"Created: {team.CreatedDate:yyyy-MM-dd}");
             sb.AppendLine();
             sb.AppendLine($"Players ({players.Count}):");
@@ -1123,9 +1123,9 @@ namespace WarLeague.Discord.Commands
             {
                 foreach (var p in players)
                 {
-                    // Prefer stored username; include a mention for convenience
+                    // Prefer stored username
                     var name = string.IsNullOrWhiteSpace(p.UserName) ? $"Player #{p.Id}" : p.UserName;
-                    sb.AppendLine($"- {name} (<@{p.DiscordUserId}>)");
+                    sb.AppendLine($"- {name}");
                 }
             }
 

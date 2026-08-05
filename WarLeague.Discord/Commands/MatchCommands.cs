@@ -83,9 +83,9 @@ public class MatchCommands : InteractionModuleBase<SocketInteractionContext>
         {
             foreach (var m in played)
             {
-                var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : $"<@{m.Player1.DiscordUserId}>";
-                var p2 = m.Player2 is null ? $"P#{m.Player2Id}" : $"<@{m.Player2.DiscordUserId}>";
-                var win = m.Winner is null ? "<unknown>" : $"<@{m.Winner.DiscordUserId}>";
+                var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : m.Player1.UserName;
+                var p2 = m.Player2 is null ? $"P#{m.Player2Id}" : m.Player2.UserName;
+                var win = m.Winner is null ? "<unknown>" : m.Winner.UserName;
                 var score = m.Player1Wins.HasValue && m.Player2Wins.HasValue ? $" {m.Player1Wins}-{m.Player2Wins} " : " ";
                 var replay = string.IsNullOrWhiteSpace(m.ReplayUrl) ? "" : $" | Replay: {m.ReplayUrl}";
                 sb.AppendLine($"- {p1} vs {p2} →{score}Winner: {win}{replay}");
@@ -99,8 +99,8 @@ public class MatchCommands : InteractionModuleBase<SocketInteractionContext>
 
             foreach (var m in pending)
             {
-                var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : $"<@{m.Player1.DiscordUserId}>";
-                var p2 = m.Player2 is null ? $"P#{m.Player2Id}" : $"<@{m.Player2.DiscordUserId}>";
+                var p1 = m.Player1 is null ? $"P#{m.Player1Id}" : m.Player1.UserName;
+                var p2 = m.Player2 is null ? $"P#{m.Player2Id}" : m.Player2.UserName;
                 sb.AppendLine($"- {p1} vs {p2}");
             }
         }
