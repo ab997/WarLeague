@@ -59,7 +59,7 @@ namespace WarLeague.Core.Services
                 var opponents = scheduledMatches
                     .Select(m => m.Player1Id == winnerId ? m.Player2 : m.Player1)
                     .DistinctBy(p => p.Id)
-                    .Select(p => $"<@{p.DiscordUserId}>")
+                    .Select(p => p.UserName)
                     .ToList();
 
                 return new ReportWinResult

@@ -383,7 +383,7 @@ namespace WarLeague.Discord.Commands
 
             var membersText = members.Count == 0
                 ? "<no registered members>"
-                : string.Join(", ", members.Select(p => $"<@{p.DiscordUserId}>"));
+                : string.Join(", ", members.Select(p => p.UserName));
 
             var sb = new StringBuilder();
             sb.AppendLine($"Season {season.SeasonNumber} has concluded.");
@@ -429,20 +429,20 @@ namespace WarLeague.Discord.Commands
                     for (int i = 0; i < wm.Pairs.Count; i++)
                     {
                         var (p1, p2) = wm.Pairs[i];
-                        sb.AppendLine($"{i + 1}. <@{p1.DiscordUserId}> vs <@{p2.DiscordUserId}>");
+                        sb.AppendLine($"{i + 1}. {p1.UserName} vs {p2.UserName}");
                     }
                 }
 
                 if (wm.UnpairedA.Count > 0)
                 {
                     sb.AppendLine();
-                    sb.AppendLine($"Unpaired ({wm.TeamA.Name}): {string.Join(", ", wm.UnpairedA.Select(p => $"<@{p.DiscordUserId}>"))}");
+                    sb.AppendLine($"Unpaired ({wm.TeamA.Name}): {string.Join(", ", wm.UnpairedA.Select(p => p.UserName))}");
                 }
 
                 if (wm.UnpairedB.Count > 0)
                 {
                     sb.AppendLine();
-                    sb.AppendLine($"Unpaired ({wm.TeamB.Name}): {string.Join(", ", wm.UnpairedB.Select(p => $"<@{p.DiscordUserId}>"))}");
+                    sb.AppendLine($"Unpaired ({wm.TeamB.Name}): {string.Join(", ", wm.UnpairedB.Select(p => p.UserName))}");
                 }
 
                 string fieldValue = TrimToMaxChars(sb.ToString().Trim(), 1024);
