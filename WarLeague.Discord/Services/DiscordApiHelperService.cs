@@ -74,10 +74,9 @@ namespace WarLeague.Discord.Services
         }
 
 
-        /// <summary>
-        /// Sends embeds in batches to respect Discord's limit of up to 10 embeds per message.
-        /// </summary>
-        public async Task SendEmbedsInBatchesAsync(SocketInteractionContext context, IReadOnlyList<Embed> embeds)
+        public async Task SendEmbedsInBatchesAsync(
+            SocketInteractionContext context,
+            IReadOnlyList<Embed> embeds)
         {
             if (embeds == null || embeds.Count == 0)
             {
@@ -85,11 +84,36 @@ namespace WarLeague.Discord.Services
                 return;
             }
 
-            const int batchSize = 10;
-            for (int i = 0; i < embeds.Count; i += batchSize)
+            const int maxEmbeds = 10;
+            const int maxCharacters = 6000;
+
+            var batch = new List<Embed>();
+            var characterCount = 0;
+
+            foreach (var embed in embeds)
             {
-                Embed[] batch = embeds.Skip(i).Take(batchSize).ToArray();
-                await context.Interaction.FollowupAsync(embeds: batch);
+                // Discord.Net already calculates the total length of this embed.
+                var length = embed.Length;
+
+                if (batch.Count > 0 &&
+                    (batch.Count >= maxEmbeds ||
+                     characterCount + length > maxCharacters))
+                {
+                    await context.Interaction.FollowupAsync(
+                        embeds: batch.ToArray());
+
+                    batch.Clear();
+                    characterCount = 0;
+                }
+
+                batch.Add(embed);
+                characterCount += length;
+            }
+
+            if (batch.Count > 0)
+            {
+                await context.Interaction.FollowupAsync(
+                    embeds: batch.ToArray());
             }
         }
         public async Task SendEmbedInBatchesAsync(SocketInteractionContext context, Embed embed)
